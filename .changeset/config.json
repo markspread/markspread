@@ -6,12 +6,12 @@
     { "repo": "markspread/markspread" }
   ],
   "commit": false,
-  "fixed": [["markspread", "@markspread/sdk", "@markspread/cli"]],
+  "fixed": [],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@markspread-fixtures/*"],
+  "ignore": [],
   "snapshot": {
     "useCalculatedVersion": true,
     "prereleaseTemplate": "0.0.0-canary-{tag}"
