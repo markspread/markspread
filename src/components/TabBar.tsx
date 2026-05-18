@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import type { PaneNode, PaneTab } from "../lib/editor/layout-model";
 import { useEditorLayout } from "../store/editor-layout";
 import { type OpenTab, useTabs } from "../store/tabs";
+import { Icon } from "./Icon";
 
 interface TabBarProps {
   workspace: string;
@@ -195,9 +196,9 @@ export const TabBar = memo(function TabBar({ workspace, pane }: TabBarProps) {
               <span
                 aria-hidden="true"
                 title={t("tabs.pinned", "Pinned")}
-                className="text-[var(--color-muted)]"
+                className="inline-flex text-[var(--color-muted)]"
               >
-                📌
+                <Icon name="pin" size={12} />
               </span>
             )}
             <span className="max-w-[18rem] truncate" aria-label={rel}>
@@ -212,9 +213,9 @@ export const TabBar = memo(function TabBar({ workspace, pane }: TabBarProps) {
               <span
                 aria-hidden="true"
                 title={t("tabs.orphaned", "File no longer exists on disk")}
-                className="ml-0.5 text-yellow-500"
+                className="ml-0.5 inline-flex text-yellow-500"
               >
-                ⚠
+                <Icon name="warning" size={12} />
               </span>
             )}
             <button
@@ -228,7 +229,7 @@ export const TabBar = memo(function TabBar({ workspace, pane }: TabBarProps) {
                 onTogglePin(tab);
               }}
             >
-              {tab.pinned ? "📍" : "📌"}
+              <Icon name={tab.pinned ? "pin" : "pin-off"} size={12} />
             </button>
             <button
               type="button"
@@ -239,7 +240,7 @@ export const TabBar = memo(function TabBar({ workspace, pane }: TabBarProps) {
                 onClose(tab);
               }}
             >
-              ×
+              <Icon name="close" size={12} />
             </button>
           </div>
         );

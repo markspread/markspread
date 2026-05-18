@@ -13,6 +13,7 @@ import { useSettings } from "../store/settings";
 import { useTabs } from "../store/tabs";
 import { useToasts } from "../store/toasts";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
+import { Icon } from "./Icon";
 
 interface DirEntry {
   name: string;
@@ -1642,9 +1643,9 @@ const FileRow = ({
         <span
           aria-label={t("filetree.aria.locked", "File is locked by another process")}
           title={t("filetree.tooltip.locked", "Another process is holding this file.")}
-          className="ml-1 shrink-0 text-[var(--color-muted)] text-xs"
+          className="ml-1 inline-flex shrink-0 text-[var(--color-muted)]"
         >
-          🔒
+          <Icon name="lock" size={12} />
         </span>
       )}
     </li>

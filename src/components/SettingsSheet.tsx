@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import type { ThemeMode } from "../lib/theme";
 import { useTheme } from "../store/theme";
 import { useSettingsSheet } from "../store/settings-sheet";
+import { Icon } from "./Icon";
 import { SettingsAi } from "./SettingsAi";
 import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsBackup } from "./SettingsBackup";
@@ -75,7 +76,7 @@ export function SettingsSheet() {
             aria-label={t("settings.sheet.close", "Close settings")}
             className="rounded px-2 py-0.5 text-[var(--color-muted)] text-sm hover:bg-[var(--color-border)]/40"
           >
-            ✕
+            <Icon name="close" size={14} />
           </button>
         </header>
         <div className="flex-1 overflow-y-auto">

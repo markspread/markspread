@@ -3,6 +3,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Icon, type IconName } from "../components/Icon";
 import { useRecentWorkspaces } from "../store/recent-workspaces";
 
 type RecentStatus = "pending" | "ok" | "missing" | "unmounted";
@@ -250,11 +251,11 @@ export function Welcome({
                 const label = segments[segments.length - 1] || w.path;
                 const status = statuses[w.path] ?? "pending";
                 const dim = status === "missing" || status === "unmounted";
-                const icon =
+                const iconName: IconName | null =
                   status === "missing"
-                    ? "⚠"
+                    ? "warning"
                     : status === "unmounted"
-                      ? "⏏"
+                      ? "eject"
                       : null;
                 return (
                   <li
@@ -287,10 +288,8 @@ export function Welcome({
                       onClick={() => void handleRecentClick(w.path)}
                       onFocus={() => setFocusedIdx(i)}
                     >
-                      {icon && (
-                        <span aria-hidden="true" className="text-xs">
-                          {icon}
-                        </span>
+                      {iconName && (
+                        <Icon name={iconName} size={12} className="shrink-0" />
                       )}
                       <span className="truncate font-medium">{label}</span>
                       <span className="truncate text-[var(--color-muted)] text-xs">

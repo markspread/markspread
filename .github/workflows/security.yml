@@ -48,9 +48,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
-      - uses: rustsec/audit-check@e9159ac5f7d7d873ce074ca134da2f445c0a4a61 # v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@f7ae479469b4c4fb5c1818615346605e61b5dc27 # cargo-audit
+      - name: cargo audit
+        working-directory: src-tauri
+        run: cargo audit --deny warnings
 
   pnpm-audit:
     runs-on: ubuntu-latest

@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../lib/focus-trap";
+import { Icon } from "./Icon";
 import {
   installPlugin,
   licenceWarning,
@@ -73,7 +74,7 @@ export function PluginMarketplace({ open, onClose }: PluginMarketplaceProps) {
             className="rounded px-2 py-0.5 text-[var(--color-muted)] text-sm hover:bg-[var(--color-border)]/40"
             aria-label={t("plugins.market.close", "Close marketplace")}
           >
-            ✕
+            <Icon name="close" size={14} />
           </button>
         </header>
         <div className="flex items-center gap-2 border-[var(--color-border)] border-b px-4 py-2">
@@ -118,7 +119,12 @@ export function PluginMarketplace({ open, onClose }: PluginMarketplaceProps) {
                   <span className="font-medium text-sm">
                     {listing.name}
                     {listing.officialBadge && (
-                      <span className="ml-2 text-[var(--color-accent)]">★</span>
+                      <Icon
+                        name="star"
+                        size={12}
+                        fill="currentColor"
+                        className="ml-2 inline text-[var(--color-accent)]"
+                      />
                     )}
                   </span>
                   <span className="text-[var(--color-muted)]">
@@ -126,7 +132,10 @@ export function PluginMarketplace({ open, onClose }: PluginMarketplaceProps) {
                   </span>
                   <span className="mt-1">{listing.description}</span>
                   {warning && (
-                    <span className="mt-1 text-yellow-500">⚠ {warning}</span>
+                    <span className="mt-1 inline-flex items-center gap-1 text-yellow-500">
+                      <Icon name="warning" size={12} />
+                      {warning}
+                    </span>
                   )}
                 </span>
                 <button

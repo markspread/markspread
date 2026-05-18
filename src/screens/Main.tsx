@@ -4,6 +4,7 @@ import { EditorPane } from "../components/EditorPane";
 import { FileTree } from "../components/FileTree";
 import { PaneEditor } from "../components/PaneEditor";
 import { PaneTree } from "../components/PaneTree";
+import { Icon } from "../components/Icon";
 import { SettingsSheet } from "../components/SettingsSheet";
 import { ShortcutHint } from "../components/ShortcutHint";
 import { SidebarPeek } from "../components/SidebarPeek";
@@ -122,7 +123,7 @@ export function Main() {
             aria-label={t("main.action.settings", "Settings")}
             title={t("main.action.settings.tooltip", "Settings (⌘,)")}
           >
-            ⚙
+            <Icon name="settings" />
           </button>
           <button
             type="button"

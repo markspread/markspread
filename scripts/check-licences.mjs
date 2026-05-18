@@ -12,7 +12,30 @@ const ALLOW = new Set([
   "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0",
   "0BSD", "Unlicense", "CC0-1.0", "CC-BY-3.0", "CC-BY-4.0",
   "Python-2.0", "BlueOak-1.0.0",
+  // SIL Open Font License — the @fontsource* packages ship fonts under it.
+  "OFL-1.1",
 ]);
+
+// Packages whose published metadata omits a `license` field (pnpm reports
+// "Unknown") but whose bundled LICENSE file confirms a permissive licence.
+const OVERRIDES = new Map([
+  ["khroma", "MIT"], // LICENSE file: MIT © Fabio Spampinato, Andrew Maney
+]);
+
+// True when an SPDX expression is satisfied by the allow-list: a bare or
+// parenthesised `A OR B` passes if any clause is allowed; `A AND B`
+// requires every clause.
+function isAllowedExpression(licence) {
+  const inner = licence.replace(/^\(/, "").replace(/\)$/, "").trim();
+  if (ALLOW.has(inner)) return true;
+  if (/\sOR\s/i.test(inner)) {
+    return inner.split(/\s+OR\s+/i).some((c) => ALLOW.has(c.trim()));
+  }
+  if (/\sAND\s/i.test(inner)) {
+    return inner.split(/\s+AND\s+/i).every((c) => ALLOW.has(c.trim()));
+  }
+  return false;
+}
 
 let licensesJson;
 try {
@@ -25,14 +48,12 @@ try {
 const groups = JSON.parse(licensesJson);
 const failures = [];
 for (const [licence, packages] of Object.entries(groups)) {
-  if (ALLOW.has(licence)) continue;
-  // Reasonable best-effort: licences like "(MIT OR Apache-2.0)" pass if
-  // any clause is on the allow-list.
-  if (/^\((.+)\)$/.test(licence)) {
-    const clauses = licence.slice(1, -1).split(/\s+OR\s+/).map((c) => c.trim());
-    if (clauses.some((c) => ALLOW.has(c))) continue;
+  if (isAllowedExpression(licence)) continue;
+  for (const pkg of packages) {
+    const override = OVERRIDES.get(pkg.name);
+    if (override && ALLOW.has(override)) continue;
+    failures.push({ licence, name: pkg.name, version: pkg.versions?.[0] });
   }
-  for (const pkg of packages) failures.push({ licence, name: pkg.name, version: pkg.versions?.[0] });
 }
 
 if (failures.length > 0) {

@@ -1017,11 +1017,14 @@ mod tests {
     async fn fs_read_file_detects_legacy_encoding() {
         let dir = tempdir().unwrap();
         let ws = dir.path().display().to_string();
-        // EUC-KR encoding of "한글" — bytes are not valid UTF-8.
-        let euckr = b"\xc7\xd1\xb1\xdb";
+        // EUC-KR encoding of a Korean paragraph — bytes are not valid UTF-8.
+        // chardetng is statistical, so the fixture must be long enough for a
+        // confident guess; a handful of bytes is inherently ambiguous.
+        let expected = "한글 문서입니다. 마크다운 편집기 마크스프레드는 한국어 문서를 잘 지원합니다. 인코딩 자동 감지 기능을 확인하기 위한 테스트 문장입니다.";
+        let euckr = b"\xc7\xd1\xb1\xdb\x20\xb9\xae\xbc\xad\xc0\xd4\xb4\xcf\xb4\xd9\x2e\x20\xb8\xb6\xc5\xa9\xb4\xd9\xbf\xee\x20\xc6\xed\xc1\xfd\xb1\xe2\x20\xb8\xb6\xc5\xa9\xbd\xba\xc7\xc1\xb7\xb9\xb5\xe5\xb4\xc2\x20\xc7\xd1\xb1\xb9\xbe\xee\x20\xb9\xae\xbc\xad\xb8\xa6\x20\xc0\xdf\x20\xc1\xf6\xbf\xf8\xc7\xd5\xb4\xcf\xb4\xd9\x2e\x20\xc0\xce\xc4\xda\xb5\xf9\x20\xc0\xda\xb5\xbf\x20\xb0\xa8\xc1\xf6\x20\xb1\xe2\xb4\xc9\xc0\xbb\x20\xc8\xae\xc0\xce\xc7\xcf\xb1\xe2\x20\xc0\xa7\xc7\xd1\x20\xc5\xd7\xbd\xba\xc6\xae\x20\xb9\xae\xc0\xe5\xc0\xd4\xb4\xcf\xb4\xd9\x2e";
         std::fs::write(dir.path().join("k.md"), euckr).unwrap();
         let r = fs_read_file(ws, "k.md".into(), None).await.unwrap();
-        assert_eq!(r.content, "한글");
+        assert_eq!(r.content, expected);
         // chardetng will pick a Korean encoding label (EUC-KR maps to "EUC-KR").
         assert!(
             r.encoding.eq_ignore_ascii_case("EUC-KR")

@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { useSidebarPeek } from "../store/sidebar-peek";
 import { useWorkspace } from "../store/workspace";
 import { FileTree } from "./FileTree";
+import { Icon } from "./Icon";
 
 const PEEK_WIDTH_PX = 320;
 
@@ -154,7 +155,7 @@ export function SidebarPeek() {
               : t("peek.action.pin.tooltip", "Pin (⌘⇧B)")
           }
         >
-          {pinned ? "📍" : "📌"}
+          <Icon name={pinned ? "pin" : "pin-off"} size={14} />
         </button>
       </header>
       {/* S-SBP-004: independent scroll area. FileTree already owns its
