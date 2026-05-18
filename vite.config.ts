@@ -2,12 +2,30 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { visualizer } from "rollup-plugin-visualizer";
 
 const host = process.env.TAURI_DEV_HOST;
 
+// Emit the bundle treemap only when explicitly asked (the perf CI sets
+// MARKSPREAD_BUNDLE_REPORT=1) so a normal `vite build` stays lean.
+const bundleReport = process.env.MARKSPREAD_BUNDLE_REPORT === "1";
+
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    ...(bundleReport
+      ? [
+          visualizer({
+            filename: "bundle-treemap.html",
+            template: "treemap",
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
+  ],
 
   resolve: {
     alias: {

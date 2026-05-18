@@ -37,6 +37,8 @@ jobs:
         with: { node-version: 20 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
+      - name: Build renderer bundle
+        run: pnpm vite:build
       - name: Linux runtime deps
         if: runner.os == 'Linux'
         run: |
@@ -83,7 +85,10 @@ jobs:
         if: runner.os == 'Windows'
         run: cargo install tauri-driver
       - name: Build debug bundle
-        run: pnpm tauri build --debug
+        # --no-bundle: tauri-driver drives the compiled binary directly,
+        # so skip the installer bundle (and its updater-artifact signing,
+        # which would otherwise demand TAURI_SIGNING_PRIVATE_KEY).
+        run: pnpm tauri build --debug --no-bundle
       - name: Tauri shell specs
         run: pnpm exec playwright test --project=tauri
       - uses: actions/upload-artifact@v4
