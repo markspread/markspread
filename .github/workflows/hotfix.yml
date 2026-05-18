@@ -103,7 +103,7 @@ jobs:
         with: { fetch-depth: 0 }
 
       - name: Open back-port PR if commit isn't already on main
-        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
           if git merge-base --is-ancestor "${{ inputs.commit_sha }}" origin/main; then
             echo "Commit already on main — no back-port needed."

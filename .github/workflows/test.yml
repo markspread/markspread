@@ -4,7 +4,7 @@
 # regressions:
 #
 #   unit          ubuntu only — vitest + cargo test, ~2 min
-#   smoke matrix  macos-14 (arm64), macos-13 (intel), windows-latest
+#   smoke matrix  macos-14 (arm64), macos-15-intel (intel), windows-latest
 #                 (x64), ubuntu-latest (x64) — runs the renderer e2e
 #                 against `pnpm tauri build --debug` and walks the
 #                 first-launch + create-workspace flow only. ~12 min.
@@ -37,8 +37,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: corepack enable && pnpm install --frozen-lockfile
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with: { workspaces: src-tauri -> target }
       - name: Vitest
         run: pnpm vitest run --coverage
@@ -62,16 +62,12 @@ jobs:
         include:
           - os: macos-14         # Apple Silicon
             target: aarch64-apple-darwin
-            shell: bash
-          - os: macos-13         # Intel — kept on the long-term runner image so we still cover x86_64 macOS
+          - os: macos-15-intel   # Intel — keeps x86_64 macOS coverage on a supported runner image
             target: x86_64-apple-darwin
-            shell: bash
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            shell: pwsh
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -80,10 +76,10 @@ jobs:
 
       - run: corepack enable && pnpm install --frozen-lockfile
 
-      - uses: dtolnay/rust-toolchain@stable
-        with: { targets: ${{ matrix.target }} }
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with: { targets: "${{ matrix.target }}" }
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with: { workspaces: src-tauri -> target }
 
       - name: Linux runtime deps
@@ -103,7 +99,6 @@ jobs:
       - name: Smoke — first launch + create workspace
         env:
           MARKSPREAD_AI_MOCK: "1"
-        shell: ${{ matrix.shell }}
         run: |
           pnpm exec playwright test --project=renderer --grep "first-launch|workspace-authoring"
 

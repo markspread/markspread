@@ -90,7 +90,12 @@
       "binary_headline": "이 파일은 텍스트 문서가 아닙니다.",
       "reveal": "파일 탐색기에서 보기",
       "open_with": "기본 앱으로 열기"
-    }
+    },
+    "placeholder": "입력을 시작하거나 ⌘K를 눌러 명령을 실행하세요",
+    "view.aria": "보기 모드",
+    "view.edit": "편집",
+    "view.preview": "미리보기",
+    "view.spread": "스프레드"
   },
   "error": {
     "generic": "문제가 발생했습니다.",
@@ -327,7 +332,43 @@
         "rule": "규칙",
         "count": "횟수"
       }
-    }
+    },
+    "ai.alias": "별칭",
+    "ai.empty": "아직 저장된 키가 없습니다.",
+    "ai.key": "API 키",
+    "ai.make_default": "기본값으로 설정",
+    "ai.provider": "제공자",
+    "ai.remove": "제거",
+    "ai.save": "키 저장",
+    "ai.subscribe": "Claude로 구독",
+    "ai.subscription_help": "API 키 대신 Claude Pro / Max 구독을 사용하세요.",
+    "ai.title": "AI",
+    "backup.empty": "이 워크스페이스에 대한 스냅샷이 아직 없습니다.",
+    "backup.no_workspace": "스냅샷을 보려면 워크스페이스를 여세요.",
+    "backup.restore": "복원",
+    "backup.title": "백업 및 복원",
+    "keybindings.empty": "검색과 일치하는 명령이 없습니다.",
+    "keybindings.search": "명령 검색…",
+    "keybindings.title": "키 바인딩",
+    "plugins.browse": "마켓플레이스 둘러보기",
+    "plugins.empty": "설치된 플러그인이 없습니다.",
+    "plugins.enabled": "활성화됨",
+    "plugins.title": "플러그인",
+    "plugins.uninstall": "제거",
+    "security.cancel": "취소",
+    "security.confirm": "예, 모두 지웁니다",
+    "security.erase": "모든 데이터 지우기…",
+    "security.erase_help": "이 기기에서 모든 로컬 환경 설정, 스냅샷, 키체인 항목을 제거합니다. 되돌릴 수 없습니다.",
+    "security.title": "보안",
+    "updater.auto": "업데이트 자동 다운로드",
+    "updater.channel": "채널",
+    "updater.channel_stable": "안정 버전",
+    "updater.channel_beta": "베타",
+    "updater.check_now": "업데이트 확인",
+    "updater.current": "현재 버전",
+    "updater.found": "업데이트 가능: v{{v}}",
+    "updater.title": "업데이트",
+    "updater.uptodate": "최신 버전을 사용 중입니다."
   },
   "single_file": {
     "aria": {
@@ -563,5 +604,110 @@
         }
       }
     }
+  },
+  "common": {
+    "cancel": "취소",
+    "close": "닫기",
+    "insert": "삽입",
+    "save": "저장"
+  },
+  "export": {
+    "aria": "문서 내보내기",
+    "close": "닫기",
+    "done": "{{path}}(으)로 내보냈습니다",
+    "done_anon": "내보내기 완료.",
+    "failed": "내보내기 실패.",
+    "format": "형식",
+    "run": "내보내기",
+    "template": "템플릿",
+    "title": "내보내기"
+  },
+  "keybindings": {
+    "chord.waiting": "다음 키 입력 대기 중…",
+    "record.conflict": "이 단축키는 이미 {{name}}에서 사용 중입니다. 저장하면 재할당됩니다.",
+    "record.instructions": "사용할 키를 누르세요. 취소하려면 Esc.",
+    "record.reset": "프리셋으로 초기화",
+    "record.title": "{{name}} 단축키 편집",
+    "record.unbind": "바인딩 해제",
+    "record.waiting": "키 입력 대기 중…",
+    "reset.backupSaved": "이전 바인딩을 {{path}}에 저장했습니다",
+    "reset.confirm": "모두 초기화",
+    "reset.title": "모든 키 바인딩 초기화",
+    "reset.tokenPrompt": "{{token}}을(를) 입력해 확인하세요.",
+    "reset.warning": "변경한 모든 단축키를 지우고 활성 프리셋을 복원합니다. 이전 바인딩은 keybindings.json.bak에 저장됩니다.",
+    "sheet.edit": "편집",
+    "sheet.empty": "검색과 일치하는 단축키가 없습니다.",
+    "sheet.search_label": "단축키 검색",
+    "sheet.search_placeholder": "단축키 검색… (Esc로 닫기)",
+    "sheet.title": "키보드 단축키",
+    "sheet.unbound": "미지정"
+  },
+  "md": {
+    "image.alt": "대체 텍스트",
+    "image.alt.placeholder": "이미지를 설명하세요",
+    "image.pick": "파일 선택…",
+    "image.picking": "저장 중…",
+    "image.title": "이미지 삽입",
+    "image.url": "URL 또는 경로",
+    "image.url.placeholder": "./assets/figure.png  또는  https://…",
+    "link.text": "텍스트",
+    "link.text.placeholder": "링크 텍스트",
+    "link.title": "링크 삽입",
+    "link.titleAttr": "제목 (선택 사항)",
+    "link.titleAttr.placeholder": "마우스 오버 툴팁",
+    "link.url": "URL",
+    "link.url.placeholder": "https://… 또는 ./relative/path.md",
+    "table.align": "열 정렬",
+    "table.cols": "열",
+    "table.rows": "행 (본문)",
+    "table.title": "표 삽입"
+  },
+  "plugin": {
+    "perm.allow": "허용",
+    "perm.aria": "플러그인 권한",
+    "perm.deny": "거부",
+    "perm.fs_outside": "이 워크스페이스 밖의 파일 읽기/쓰기",
+    "perm.fs_read": "이 워크스페이스의 파일 읽기",
+    "perm.fs_write": "이 워크스페이스의 파일 쓰기",
+    "perm.headline": "{{name}}이(가) 권한을 요청합니다",
+    "perm.keychain": "키체인: ",
+    "perm.network": "네트워크: ",
+    "perm.shell": "셸 명령 실행 (v1에서는 거부됨)"
+  },
+  "plugins": {
+    "market.aria": "플러그인 마켓플레이스",
+    "market.close": "마켓플레이스 닫기",
+    "market.empty": "아직 결과가 없습니다. 검색해 보세요.",
+    "market.install": "설치",
+    "market.search": "플러그인 검색…",
+    "market.search_btn": "검색",
+    "market.title": "플러그인 마켓플레이스"
+  },
+  "preview": {
+    "aria": "마크다운 미리보기",
+    "copied": "복사됨",
+    "copy": "복사"
+  },
+  "recovery": {
+    "aria": "저장되지 않은 변경 사항 복구",
+    "body": "이전 세션이 예기치 않게 종료되었습니다. 복원할 스냅샷을 선택하세요.",
+    "dismiss": "닫기",
+    "restore": "복원",
+    "title": "저장되지 않은 변경 사항을 복구할까요?"
+  },
+  "save": {
+    "external_changed": "디스크에서 파일이 변경되어 저장이 일시 중지되었습니다",
+    "external_deleted": "디스크에서 파일이 삭제되어 저장이 일시 중지되었습니다"
+  },
+  "subscription": {
+    "auth.aria": "Claude로 로그인",
+    "auth.cancel": "취소",
+    "auth.close": "닫기",
+    "auth.code": "코드",
+    "auth.exchanging": "로그인 마무리 중…",
+    "auth.open_browser": "아래 링크를 브라우저에서 열고 요청을 승인하세요.",
+    "auth.starting": "로그인 시작 중…",
+    "auth.success": "성공적으로 로그인했습니다.",
+    "auth.title": "Claude로 로그인"
   }
 }

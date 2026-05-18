@@ -27,14 +27,14 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: corepack enable && pnpm install --frozen-lockfile
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
       - run: pnpm tauri build --debug
       - name: Probe cold-start
         run: node scripts/perf/cold-start-probe.mjs --runs 5 --report perf-stats.jsonl
       - name: Compare against budgets
         run: node scripts/perf/check-budgets.mjs perf-stats.jsonl
       - uses: actions/upload-artifact@v4
-        with: { name: perf-stats-${{ matrix.os }}, path: perf-stats.jsonl }
+        with: { name: "perf-stats-${{ matrix.os }}", path: perf-stats.jsonl }
 
   bundle-size:
     runs-on: ubuntu-latest

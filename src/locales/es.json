@@ -90,7 +90,12 @@
       "binary_headline": "Este archivo no es un documento de texto.",
       "reveal": "Mostrar en el explorador",
       "open_with": "Abrir con la app predeterminada"
-    }
+    },
+    "placeholder": "Empieza a escribir… o pulsa ⌘K para ver comandos",
+    "view.aria": "Modo de vista",
+    "view.edit": "Editar",
+    "view.preview": "Vista previa",
+    "view.spread": "Combinado"
   },
   "error": {
     "generic": "Ha ocurrido un error.",
@@ -322,7 +327,43 @@
         "rule": "Regla",
         "count": "Recuento"
       }
-    }
+    },
+    "ai.alias": "Alias",
+    "ai.empty": "Aún no hay claves guardadas.",
+    "ai.key": "Clave de API",
+    "ai.make_default": "Establecer como predeterminada",
+    "ai.provider": "Proveedor",
+    "ai.remove": "Quitar",
+    "ai.save": "Guardar clave",
+    "ai.subscribe": "Suscribirse con Claude",
+    "ai.subscription_help": "Usa tu suscripción Claude Pro / Max en lugar de una clave de API.",
+    "ai.title": "IA",
+    "backup.empty": "Aún no hay instantáneas para este espacio de trabajo.",
+    "backup.no_workspace": "Abre un espacio de trabajo para ver las instantáneas.",
+    "backup.restore": "Restaurar",
+    "backup.title": "Copia de seguridad y restauración",
+    "keybindings.empty": "Ningún comando coincide con la búsqueda.",
+    "keybindings.search": "Buscar comandos…",
+    "keybindings.title": "Atajos de teclado",
+    "plugins.browse": "Explorar el mercado",
+    "plugins.empty": "No hay complementos instalados.",
+    "plugins.enabled": "Activado",
+    "plugins.title": "Complementos",
+    "plugins.uninstall": "Desinstalar",
+    "security.cancel": "Cancelar",
+    "security.confirm": "Sí, borrar todo",
+    "security.erase": "Borrar todos los datos…",
+    "security.erase_help": "Elimina de este dispositivo todas las preferencias locales, instantáneas y entradas del llavero. No se puede deshacer.",
+    "security.title": "Seguridad",
+    "updater.auto": "Descargar actualizaciones automáticamente",
+    "updater.channel": "Canal",
+    "updater.channel_stable": "Estable",
+    "updater.channel_beta": "Beta",
+    "updater.check_now": "Buscar actualizaciones",
+    "updater.current": "Versión actual",
+    "updater.found": "Actualización disponible: v{{v}}",
+    "updater.title": "Actualizaciones",
+    "updater.uptodate": "Tienes la última versión."
   },
   "shortcut_hint": {
     "aria": "Sugerencia de atajo de teclado",
@@ -563,5 +604,110 @@
         }
       }
     }
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "insert": "Insertar",
+    "save": "Guardar"
+  },
+  "export": {
+    "aria": "Exportar documento",
+    "close": "Cerrar",
+    "done": "Exportado a {{path}}",
+    "done_anon": "Exportación completada.",
+    "failed": "Error al exportar.",
+    "format": "Formato",
+    "run": "Exportar",
+    "template": "Plantilla",
+    "title": "Exportar"
+  },
+  "keybindings": {
+    "chord.waiting": "esperando la siguiente tecla…",
+    "record.conflict": "Este atajo ya lo usa {{name}}. Al guardar se reasignará.",
+    "record.instructions": "Pulsa las teclas que quieras usar. Esc para cancelar.",
+    "record.reset": "Restablecer al preajuste",
+    "record.title": "Editar atajo de {{name}}",
+    "record.unbind": "Desvincular",
+    "record.waiting": "Esperando teclas…",
+    "reset.backupSaved": "Asignaciones anteriores guardadas en {{path}}",
+    "reset.confirm": "Restablecer todo",
+    "reset.title": "Restablecer todos los atajos",
+    "reset.tokenPrompt": "Escribe {{token}} para confirmar.",
+    "reset.warning": "Esto borra todos los atajos que has cambiado y restaura el preajuste activo. Tus asignaciones anteriores se guardarán en keybindings.json.bak.",
+    "sheet.edit": "Editar",
+    "sheet.empty": "Ningún atajo coincide con tu búsqueda.",
+    "sheet.search_label": "Buscar atajos",
+    "sheet.search_placeholder": "Buscar atajos… (Esc para cerrar)",
+    "sheet.title": "Atajos de teclado",
+    "sheet.unbound": "Sin asignar"
+  },
+  "md": {
+    "image.alt": "Texto alternativo",
+    "image.alt.placeholder": "Describe la imagen",
+    "image.pick": "Elegir archivo…",
+    "image.picking": "Guardando…",
+    "image.title": "Insertar imagen",
+    "image.url": "URL o ruta",
+    "image.url.placeholder": "./assets/figure.png  o  https://…",
+    "link.text": "Texto",
+    "link.text.placeholder": "Texto del enlace",
+    "link.title": "Insertar enlace",
+    "link.titleAttr": "Título (opcional)",
+    "link.titleAttr.placeholder": "Información al pasar el cursor",
+    "link.url": "URL",
+    "link.url.placeholder": "https://… o ./relative/path.md",
+    "table.align": "Alineación de columnas",
+    "table.cols": "Columnas",
+    "table.rows": "Filas (cuerpo)",
+    "table.title": "Insertar tabla"
+  },
+  "plugin": {
+    "perm.allow": "Permitir",
+    "perm.aria": "Permisos del complemento",
+    "perm.deny": "Denegar",
+    "perm.fs_outside": "Leer/escribir archivos fuera de este espacio de trabajo",
+    "perm.fs_read": "Leer archivos de este espacio de trabajo",
+    "perm.fs_write": "Escribir archivos en este espacio de trabajo",
+    "perm.headline": "{{name}} solicita permisos",
+    "perm.keychain": "Llavero: ",
+    "perm.network": "Red: ",
+    "perm.shell": "Ejecutar comandos de shell (denegado en v1)"
+  },
+  "plugins": {
+    "market.aria": "Mercado de complementos",
+    "market.close": "Cerrar el mercado",
+    "market.empty": "Aún no hay resultados. Prueba a buscar.",
+    "market.install": "Instalar",
+    "market.search": "Buscar complementos…",
+    "market.search_btn": "Buscar",
+    "market.title": "Mercado de complementos"
+  },
+  "preview": {
+    "aria": "Vista previa de Markdown",
+    "copied": "Copiado",
+    "copy": "Copiar"
+  },
+  "recovery": {
+    "aria": "Recuperar cambios no guardados",
+    "body": "La sesión anterior terminó inesperadamente. Elige una instantánea para restaurar.",
+    "dismiss": "Descartar",
+    "restore": "Restaurar",
+    "title": "¿Recuperar cambios no guardados?"
+  },
+  "save": {
+    "external_changed": "El archivo cambió en el disco; guardado en pausa",
+    "external_deleted": "El archivo se eliminó del disco; guardado en pausa"
+  },
+  "subscription": {
+    "auth.aria": "Iniciar sesión con Claude",
+    "auth.cancel": "Cancelar",
+    "auth.close": "Cerrar",
+    "auth.code": "Código",
+    "auth.exchanging": "Finalizando inicio de sesión…",
+    "auth.open_browser": "Abre el enlace de abajo en tu navegador y aprueba la solicitud.",
+    "auth.starting": "Iniciando sesión…",
+    "auth.success": "Sesión iniciada correctamente.",
+    "auth.title": "Iniciar sesión con Claude"
   }
 }

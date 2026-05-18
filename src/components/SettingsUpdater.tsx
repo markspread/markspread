@@ -62,8 +62,8 @@ export function SettingsUpdater() {
           value={channel}
           onChange={(e) => setChannel(e.target.value as UpdateChannel)}
         >
-          <option value="stable">Stable</option>
-          <option value="beta">Beta</option>
+          <option value="stable">{t("settings.updater.channel_stable", "Stable")}</option>
+          <option value="beta">{t("settings.updater.channel_beta", "Beta")}</option>
         </select>
       </label>
       <label className="flex items-center gap-2 text-xs">

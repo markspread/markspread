@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Stamp pkgver + sha256 into PKGBUILD
-        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         working-directory: packaging/aur/markspread-bin
         run: |
           set -euo pipefail

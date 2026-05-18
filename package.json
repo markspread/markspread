@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Markspread — lightweight markdown reviewer for the AI era",
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",

@@ -52,7 +52,20 @@ for (const file of walk(srcRoot)) {
   haystack += "\n";
 }
 
-const unused = keys.filter((key) => !haystack.includes(key));
+// Keys are often built dynamically, e.g. t(`errors.access.rule.${ruleId}.title`).
+// Collect the static prefix preceding each `${…}` interpolation in a template
+// literal so dynamically-addressed keys aren't reported as orphaned.
+const dynamicPrefixes = [];
+const tplRe = /`([^`\\]*?)\$\{/g;
+let tm;
+while ((tm = tplRe.exec(haystack)) !== null) {
+  const prefix = tm[1];
+  if (prefix.includes(".")) dynamicPrefixes.push(prefix);
+}
+
+const unused = keys.filter(
+  (key) => !haystack.includes(key) && !dynamicPrefixes.some((p) => key.startsWith(p)),
+);
 
 if (unused.length === 0) {
   console.log("unused-i18n-keys: 0");

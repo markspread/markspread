@@ -268,7 +268,7 @@ pub async fn ops_export_diagnostics() -> Result<DiagnosticsBundle, AppError> {
             .lines()
             .rev()
             .take(500)
-            .map(|l| redact_path(l))
+            .map(redact_path)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()

@@ -45,7 +45,7 @@ runs:
         node-version: ${{ inputs.node-version }}
 
     - name: Install pnpm
-      uses: pnpm/action-setup@v4
+      uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       with:
         version: ${{ inputs.pnpm-version }}
 
@@ -71,14 +71,14 @@ runs:
     - shell: bash
       run: pnpm install --frozen-lockfile
 
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
       with:
         targets: ${{ inputs.rust-targets }}
         components: ${{ inputs.rust-components }}
 
     - name: Install sccache
       if: inputs.sccache == 'true'
-      uses: mozilla-actions/sccache-action@v0.0.4
+      uses: mozilla-actions/sccache-action@2e7f9ec7921547d4b46598398ca573513895d0bd # v0.0.4
 
     - name: Configure sccache
       if: inputs.sccache == 'true'
@@ -89,6 +89,6 @@ runs:
 
     - name: Rust target cache
       if: inputs.sccache != 'true'
-      uses: Swatinem/rust-cache@v2
+      uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       with:
         workspaces: src-tauri -> target

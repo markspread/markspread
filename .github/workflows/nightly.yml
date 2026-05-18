@@ -76,12 +76,12 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true' && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: slackapi/slack-github-action@v1
+      - uses: slackapi/slack-github-action@fcfb566f8b0aab22203f066d80ca1d7e4b5d05b3 # v1
         with:
           payload: |
             {
               "channel": "C-MARKSPREAD-RELEASES",
-              "text": "🌙 Nightly ${{ needs.precheck.outputs.tag }} published to beta channel.\nManifest: ${{ needs.build.outputs.manifest_url }}"
+              "text": "🌙 Nightly ${{ needs.precheck.outputs.tag }} published to beta channel.\nRelease: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.precheck.outputs.tag }}"
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

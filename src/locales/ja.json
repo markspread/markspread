@@ -90,7 +90,12 @@
       "binary_headline": "このファイルはテキスト文書ではありません。",
       "reveal": "ファイルマネージャーで表示",
       "open_with": "既定のアプリで開く"
-    }
+    },
+    "placeholder": "入力を開始するか、⌘K でコマンドを表示",
+    "view.aria": "表示モード",
+    "view.edit": "編集",
+    "view.preview": "プレビュー",
+    "view.spread": "スプレッド"
   },
   "error": {
     "generic": "問題が発生しました。",
@@ -322,7 +327,43 @@
         "rule": "ルール",
         "count": "件数"
       }
-    }
+    },
+    "ai.alias": "エイリアス",
+    "ai.empty": "保存されたキーはまだありません。",
+    "ai.key": "API キー",
+    "ai.make_default": "デフォルトに設定",
+    "ai.provider": "プロバイダー",
+    "ai.remove": "削除",
+    "ai.save": "キーを保存",
+    "ai.subscribe": "Claude でサブスクライブ",
+    "ai.subscription_help": "API キーの代わりに Claude Pro / Max のサブスクリプションを使用します。",
+    "ai.title": "AI",
+    "backup.empty": "このワークスペースのスナップショットはまだありません。",
+    "backup.no_workspace": "スナップショットを表示するにはワークスペースを開いてください。",
+    "backup.restore": "復元",
+    "backup.title": "バックアップと復元",
+    "keybindings.empty": "検索に一致するコマンドがありません。",
+    "keybindings.search": "コマンドを検索…",
+    "keybindings.title": "キー割り当て",
+    "plugins.browse": "マーケットプレイスを見る",
+    "plugins.empty": "インストール済みのプラグインはありません。",
+    "plugins.enabled": "有効",
+    "plugins.title": "プラグイン",
+    "plugins.uninstall": "アンインストール",
+    "security.cancel": "キャンセル",
+    "security.confirm": "はい、すべて消去します",
+    "security.erase": "すべてのデータを消去…",
+    "security.erase_help": "このデバイスからすべてのローカル設定、スナップショット、キーチェーン項目を削除します。元に戻せません。",
+    "security.title": "セキュリティ",
+    "updater.auto": "更新を自動的にダウンロード",
+    "updater.channel": "チャンネル",
+    "updater.channel_stable": "安定版",
+    "updater.channel_beta": "ベータ版",
+    "updater.check_now": "更新を確認",
+    "updater.current": "現在のバージョン",
+    "updater.found": "更新が利用可能: v{{v}}",
+    "updater.title": "更新",
+    "updater.uptodate": "最新バージョンを使用しています。"
   },
   "shortcut_hint": {
     "aria": "ショートカットヒント",
@@ -563,5 +604,110 @@
         }
       }
     }
+  },
+  "common": {
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "insert": "挿入",
+    "save": "保存"
+  },
+  "export": {
+    "aria": "ドキュメントをエクスポート",
+    "close": "閉じる",
+    "done": "{{path}} にエクスポートしました",
+    "done_anon": "エクスポートが完了しました。",
+    "failed": "エクスポートに失敗しました。",
+    "format": "形式",
+    "run": "エクスポート",
+    "template": "テンプレート",
+    "title": "エクスポート"
+  },
+  "keybindings": {
+    "chord.waiting": "次のキー入力を待っています…",
+    "record.conflict": "このショートカットは既に {{name}} で使用されています。保存すると再割り当てされます。",
+    "record.instructions": "使用したいキーを押してください。キャンセルするには Esc。",
+    "record.reset": "プリセットにリセット",
+    "record.title": "{{name}} のショートカットを編集",
+    "record.unbind": "割り当て解除",
+    "record.waiting": "キー入力を待っています…",
+    "reset.backupSaved": "以前の割り当てを {{path}} に保存しました",
+    "reset.confirm": "すべてリセット",
+    "reset.title": "すべてのキー割り当てをリセット",
+    "reset.tokenPrompt": "確認するには {{token}} と入力してください。",
+    "reset.warning": "変更したすべてのショートカットを消去し、有効なプリセットを復元します。以前の割り当ては keybindings.json.bak に保存されます。",
+    "sheet.edit": "編集",
+    "sheet.empty": "検索に一致するショートカットがありません。",
+    "sheet.search_label": "ショートカットを検索",
+    "sheet.search_placeholder": "ショートカットを検索…（Esc で閉じる）",
+    "sheet.title": "キーボードショートカット",
+    "sheet.unbound": "未割り当て"
+  },
+  "md": {
+    "image.alt": "代替テキスト",
+    "image.alt.placeholder": "画像を説明してください",
+    "image.pick": "ファイルを選択…",
+    "image.picking": "保存中…",
+    "image.title": "画像を挿入",
+    "image.url": "URL またはパス",
+    "image.url.placeholder": "./assets/figure.png  または  https://…",
+    "link.text": "テキスト",
+    "link.text.placeholder": "リンクテキスト",
+    "link.title": "リンクを挿入",
+    "link.titleAttr": "タイトル（任意）",
+    "link.titleAttr.placeholder": "ホバー時のツールチップ",
+    "link.url": "URL",
+    "link.url.placeholder": "https://… または ./relative/path.md",
+    "table.align": "列の配置",
+    "table.cols": "列",
+    "table.rows": "行（本文）",
+    "table.title": "表を挿入"
+  },
+  "plugin": {
+    "perm.allow": "許可",
+    "perm.aria": "プラグインの権限",
+    "perm.deny": "拒否",
+    "perm.fs_outside": "このワークスペース外のファイルの読み書き",
+    "perm.fs_read": "このワークスペースのファイルを読み取る",
+    "perm.fs_write": "このワークスペースのファイルに書き込む",
+    "perm.headline": "{{name}} が権限を要求しています",
+    "perm.keychain": "キーチェーン: ",
+    "perm.network": "ネットワーク: ",
+    "perm.shell": "シェルコマンドの実行（v1 では拒否）"
+  },
+  "plugins": {
+    "market.aria": "プラグインマーケットプレイス",
+    "market.close": "マーケットプレイスを閉じる",
+    "market.empty": "まだ結果がありません。検索してみてください。",
+    "market.install": "インストール",
+    "market.search": "プラグインを検索…",
+    "market.search_btn": "検索",
+    "market.title": "プラグインマーケットプレイス"
+  },
+  "preview": {
+    "aria": "Markdown プレビュー",
+    "copied": "コピーしました",
+    "copy": "コピー"
+  },
+  "recovery": {
+    "aria": "未保存の変更を復元",
+    "body": "前回のセッションが予期せず終了しました。復元するスナップショットを選択してください。",
+    "dismiss": "閉じる",
+    "restore": "復元",
+    "title": "未保存の変更を復元しますか？"
+  },
+  "save": {
+    "external_changed": "ディスク上でファイルが変更されたため、保存を一時停止しました",
+    "external_deleted": "ディスク上でファイルが削除されたため、保存を一時停止しました"
+  },
+  "subscription": {
+    "auth.aria": "Claude でサインイン",
+    "auth.cancel": "キャンセル",
+    "auth.close": "閉じる",
+    "auth.code": "コード",
+    "auth.exchanging": "サインインを完了しています…",
+    "auth.open_browser": "下のリンクをブラウザで開き、リクエストを承認してください。",
+    "auth.starting": "サインインを開始しています…",
+    "auth.success": "サインインに成功しました。",
+    "auth.title": "Claude でサインイン"
   }
 }

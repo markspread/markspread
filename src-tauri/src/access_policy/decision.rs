@@ -7,6 +7,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 
 #[allow(dead_code)]
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum AccessCategory {

@@ -25,7 +25,7 @@ pub async fn os_reveal_path(path: String) -> AppResult<()> {
                 .arg(&target)
                 .status()
                 .map_err(|e| AppError::Invalid(format!("open -R failed: {e}")))?;
-            return Ok(());
+            Ok(())
         }
         #[cfg(target_os = "windows")]
         {
@@ -36,7 +36,7 @@ pub async fn os_reveal_path(path: String) -> AppResult<()> {
                 .arg(&arg)
                 .status()
                 .map_err(|e| AppError::Invalid(format!("explorer failed: {e}")))?;
-            return Ok(());
+            Ok(())
         }
         #[cfg(target_os = "linux")]
         {
@@ -48,7 +48,7 @@ pub async fn os_reveal_path(path: String) -> AppResult<()> {
                 .arg(&parent)
                 .status()
                 .map_err(|e| AppError::Invalid(format!("xdg-open failed: {e}")))?;
-            return Ok(());
+            Ok(())
         }
         #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
         {
@@ -89,7 +89,7 @@ pub async fn os_open_with(path: String) -> AppResult<()> {
         })
         .await
         .map_err(|e| AppError::Invalid(format!("internal: {e}")))??;
-        return Ok(());
+        Ok(())
     }
     #[cfg(target_os = "windows")]
     {
@@ -104,7 +104,7 @@ pub async fn os_open_with(path: String) -> AppResult<()> {
         })
         .await
         .map_err(|e| AppError::Invalid(format!("internal: {e}")))??;
-        return Ok(());
+        Ok(())
     }
     #[cfg(target_os = "linux")]
     {
@@ -120,7 +120,7 @@ pub async fn os_open_with(path: String) -> AppResult<()> {
         })
         .await
         .map_err(|e| AppError::Invalid(format!("internal: {e}")))??;
-        return Ok(());
+        Ok(())
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     {
@@ -141,7 +141,7 @@ pub async fn os_list_fonts() -> AppResult<Vec<String>> {
             .faces()
             .flat_map(|face| face.families.iter().map(|(name, _)| name.clone()))
             .collect();
-        families.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+        families.sort_by_key(|f| f.to_lowercase());
         families.dedup();
         families
     })

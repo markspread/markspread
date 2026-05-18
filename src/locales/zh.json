@@ -90,7 +90,12 @@
       "binary_headline": "此文件不是文本文档。",
       "reveal": "在文件管理器中显示",
       "open_with": "用默认应用打开"
-    }
+    },
+    "placeholder": "开始输入…或按 ⌘K 调出命令",
+    "view.aria": "查看模式",
+    "view.edit": "编辑",
+    "view.preview": "预览",
+    "view.spread": "并排"
   },
   "error": {
     "generic": "出现错误。",
@@ -322,7 +327,43 @@
         "rule": "规则",
         "count": "次数"
       }
-    }
+    },
+    "ai.alias": "别名",
+    "ai.empty": "尚未保存任何密钥。",
+    "ai.key": "API 密钥",
+    "ai.make_default": "设为默认",
+    "ai.provider": "提供商",
+    "ai.remove": "移除",
+    "ai.save": "保存密钥",
+    "ai.subscribe": "使用 Claude 订阅",
+    "ai.subscription_help": "使用您的 Claude Pro / Max 订阅，而不是 API 密钥。",
+    "ai.title": "AI",
+    "backup.empty": "此工作区尚无快照。",
+    "backup.no_workspace": "打开工作区以查看快照。",
+    "backup.restore": "恢复",
+    "backup.title": "备份与恢复",
+    "keybindings.empty": "没有与搜索匹配的命令。",
+    "keybindings.search": "搜索命令…",
+    "keybindings.title": "快捷键",
+    "plugins.browse": "浏览市场",
+    "plugins.empty": "未安装任何插件。",
+    "plugins.enabled": "已启用",
+    "plugins.title": "插件",
+    "plugins.uninstall": "卸载",
+    "security.cancel": "取消",
+    "security.confirm": "是的，清除所有内容",
+    "security.erase": "清除所有数据…",
+    "security.erase_help": "从此设备移除所有本地偏好设置、快照和钥匙串条目。无法撤销。",
+    "security.title": "安全",
+    "updater.auto": "自动下载更新",
+    "updater.channel": "渠道",
+    "updater.channel_stable": "稳定版",
+    "updater.channel_beta": "测试版",
+    "updater.check_now": "检查更新",
+    "updater.current": "当前版本",
+    "updater.found": "有可用更新: v{{v}}",
+    "updater.title": "更新",
+    "updater.uptodate": "您使用的是最新版本。"
   },
   "shortcut_hint": {
     "aria": "快捷键提示",
@@ -563,5 +604,110 @@
         }
       }
     }
+  },
+  "common": {
+    "cancel": "取消",
+    "close": "关闭",
+    "insert": "插入",
+    "save": "保存"
+  },
+  "export": {
+    "aria": "导出文档",
+    "close": "关闭",
+    "done": "已导出到 {{path}}",
+    "done_anon": "导出完成。",
+    "failed": "导出失败。",
+    "format": "格式",
+    "run": "导出",
+    "template": "模板",
+    "title": "导出"
+  },
+  "keybindings": {
+    "chord.waiting": "等待下一个按键…",
+    "record.conflict": "该快捷键已被 {{name}} 使用。保存后将重新分配。",
+    "record.instructions": "按下要使用的按键。按 Esc 取消。",
+    "record.reset": "重置为预设",
+    "record.title": "编辑 {{name}} 的快捷键",
+    "record.unbind": "取消绑定",
+    "record.waiting": "等待按键…",
+    "reset.backupSaved": "之前的绑定已保存到 {{path}}",
+    "reset.confirm": "全部重置",
+    "reset.title": "重置所有快捷键",
+    "reset.tokenPrompt": "输入 {{token}} 以确认。",
+    "reset.warning": "这将清除您更改的所有快捷键并恢复当前预设。您之前的绑定将保存到 keybindings.json.bak。",
+    "sheet.edit": "编辑",
+    "sheet.empty": "没有与搜索匹配的快捷键。",
+    "sheet.search_label": "搜索快捷键",
+    "sheet.search_placeholder": "搜索快捷键…(按 Esc 关闭)",
+    "sheet.title": "键盘快捷键",
+    "sheet.unbound": "未绑定"
+  },
+  "md": {
+    "image.alt": "替代文本",
+    "image.alt.placeholder": "描述图片",
+    "image.pick": "选择文件…",
+    "image.picking": "保存中…",
+    "image.title": "插入图片",
+    "image.url": "URL 或路径",
+    "image.url.placeholder": "./assets/figure.png  或  https://…",
+    "link.text": "文本",
+    "link.text.placeholder": "链接文本",
+    "link.title": "插入链接",
+    "link.titleAttr": "标题（可选）",
+    "link.titleAttr.placeholder": "悬停提示",
+    "link.url": "URL",
+    "link.url.placeholder": "https://… 或 ./relative/path.md",
+    "table.align": "列对齐",
+    "table.cols": "列",
+    "table.rows": "行（正文）",
+    "table.title": "插入表格"
+  },
+  "plugin": {
+    "perm.allow": "允许",
+    "perm.aria": "插件权限",
+    "perm.deny": "拒绝",
+    "perm.fs_outside": "读写此工作区之外的文件",
+    "perm.fs_read": "读取此工作区中的文件",
+    "perm.fs_write": "写入此工作区中的文件",
+    "perm.headline": "{{name}} 请求权限",
+    "perm.keychain": "钥匙串: ",
+    "perm.network": "网络: ",
+    "perm.shell": "运行 shell 命令（v1 中已拒绝）"
+  },
+  "plugins": {
+    "market.aria": "插件市场",
+    "market.close": "关闭市场",
+    "market.empty": "暂无结果。试试搜索。",
+    "market.install": "安装",
+    "market.search": "搜索插件…",
+    "market.search_btn": "搜索",
+    "market.title": "插件市场"
+  },
+  "preview": {
+    "aria": "Markdown 预览",
+    "copied": "已复制",
+    "copy": "复制"
+  },
+  "recovery": {
+    "aria": "恢复未保存的更改",
+    "body": "上一次会话意外结束。请选择要恢复的快照。",
+    "dismiss": "忽略",
+    "restore": "恢复",
+    "title": "恢复未保存的更改？"
+  },
+  "save": {
+    "external_changed": "磁盘上的文件已更改；保存已暂停",
+    "external_deleted": "磁盘上的文件已删除；保存已暂停"
+  },
+  "subscription": {
+    "auth.aria": "使用 Claude 登录",
+    "auth.cancel": "取消",
+    "auth.close": "关闭",
+    "auth.code": "代码",
+    "auth.exchanging": "正在完成登录…",
+    "auth.open_browser": "在浏览器中打开下面的链接并批准请求。",
+    "auth.starting": "正在开始登录…",
+    "auth.success": "登录成功。",
+    "auth.title": "使用 Claude 登录"
   }
 }

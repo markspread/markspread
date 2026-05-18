@@ -16,7 +16,7 @@ on:
   workflow_run:
     workflows: ["Release"]
     types: [completed]
-    branches-ignore: [] # tag pushes only — handled by the if: below
+    # tag pushes only — filtered by the `if:` on the job below
 
 permissions:
   contents: read
@@ -34,7 +34,7 @@ jobs:
 
       - name: Resolve .dmg URL + SHA256
         id: meta
-        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
           set -euo pipefail
           tag="${{ steps.tag.outputs.tag }}"

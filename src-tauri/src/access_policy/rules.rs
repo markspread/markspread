@@ -93,21 +93,19 @@ pub fn is_pol_exception(relative: &Path) -> bool {
         .unwrap_or_default();
 
     // .github/**/*.{md,yml,yaml}
-    if segs.first() == Some(&".github") {
-        if file_name.ends_with(".md")
+    if segs.first() == Some(&".github")
+        && (file_name.ends_with(".md")
             || file_name.ends_with(".yml")
-            || file_name.ends_with(".yaml")
-        {
-            return true;
-        }
+            || file_name.ends_with(".yaml"))
+    {
+        return true;
     }
     // .vscode/{settings,launch,tasks}.json or .vscode/*.md
-    if segs.contains(&".vscode") {
-        if matches!(file_name, "settings.json" | "launch.json" | "tasks.json")
-            || file_name.ends_with(".md")
-        {
-            return true;
-        }
+    if segs.contains(&".vscode")
+        && (matches!(file_name, "settings.json" | "launch.json" | "tasks.json")
+            || file_name.ends_with(".md"))
+    {
+        return true;
     }
     // .cursor/rules/*.md, .cursor/*.md
     if segs.contains(&".cursor") && file_name.ends_with(".md") {

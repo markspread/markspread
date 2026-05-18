@@ -118,7 +118,7 @@ export function ImageDialog() {
             autoFocus
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="./assets/figure.png  or  https://…"
+            placeholder={t("md.image.url.placeholder", "./assets/figure.png  or  https://…")}
           />
         </label>
         {hits.length > 0 && (

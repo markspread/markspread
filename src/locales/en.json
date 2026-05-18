@@ -90,7 +90,12 @@
       "binary_headline": "This file is not a text document.",
       "reveal": "Reveal in file manager",
       "open_with": "Open with default app"
-    }
+    },
+    "placeholder": "Start typing… or press ⌘K for commands",
+    "view.aria": "View mode",
+    "view.edit": "Edit",
+    "view.preview": "Preview",
+    "view.spread": "Spread"
   },
   "error": {
     "generic": "Something went wrong.",
@@ -327,7 +332,43 @@
         "rule": "Rule",
         "count": "Count"
       }
-    }
+    },
+    "ai.alias": "Alias",
+    "ai.empty": "No keys saved yet.",
+    "ai.key": "API Key",
+    "ai.make_default": "Make default",
+    "ai.provider": "Provider",
+    "ai.remove": "Remove",
+    "ai.save": "Save key",
+    "ai.subscribe": "Subscribe with Claude",
+    "ai.subscription_help": "Use your Claude Pro / Max subscription instead of an API key.",
+    "ai.title": "AI",
+    "backup.empty": "No snapshots yet for this workspace.",
+    "backup.no_workspace": "Open a workspace to view snapshots.",
+    "backup.restore": "Restore",
+    "backup.title": "Backup & Restore",
+    "keybindings.empty": "No commands match the search.",
+    "keybindings.search": "Search commands…",
+    "keybindings.title": "Keybindings",
+    "plugins.browse": "Browse marketplace",
+    "plugins.empty": "No plugins installed.",
+    "plugins.enabled": "Enabled",
+    "plugins.title": "Plugins",
+    "plugins.uninstall": "Uninstall",
+    "security.cancel": "Cancel",
+    "security.confirm": "Yes, erase everything",
+    "security.erase": "Erase all data…",
+    "security.erase_help": "Removes all local preferences, snapshots, and keychain entries from this device. Cannot be undone.",
+    "security.title": "Security",
+    "updater.auto": "Automatically download updates",
+    "updater.channel": "Channel",
+    "updater.channel_stable": "Stable",
+    "updater.channel_beta": "Beta",
+    "updater.check_now": "Check for updates",
+    "updater.current": "Current version",
+    "updater.found": "Update available: v{{v}}",
+    "updater.title": "Updates",
+    "updater.uptodate": "You're on the latest version."
   },
   "single_file": {
     "aria": {
@@ -563,5 +604,110 @@
         }
       }
     }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "insert": "Insert",
+    "save": "Save"
+  },
+  "export": {
+    "aria": "Export document",
+    "close": "Close",
+    "done": "Exported to {{path}}",
+    "done_anon": "Export complete.",
+    "failed": "Export failed.",
+    "format": "Format",
+    "run": "Export",
+    "template": "Template",
+    "title": "Export"
+  },
+  "keybindings": {
+    "chord.waiting": "waiting for next key…",
+    "record.conflict": "This shortcut is already used by {{name}}. Saving will reassign it.",
+    "record.instructions": "Press the keys you want to use. Esc to cancel.",
+    "record.reset": "Reset to preset",
+    "record.title": "Edit shortcut for {{name}}",
+    "record.unbind": "Unbind",
+    "record.waiting": "Waiting for keys…",
+    "reset.backupSaved": "Previous bindings saved to {{path}}",
+    "reset.confirm": "Reset all",
+    "reset.title": "Reset all keybindings",
+    "reset.tokenPrompt": "Type {{token}} to confirm.",
+    "reset.warning": "This clears every shortcut you've changed and restores the active preset. Your previous bindings will be saved to keybindings.json.bak.",
+    "sheet.edit": "Edit",
+    "sheet.empty": "No shortcuts match your search.",
+    "sheet.search_label": "Search shortcuts",
+    "sheet.search_placeholder": "Search shortcuts… (Esc to close)",
+    "sheet.title": "Keyboard Shortcuts",
+    "sheet.unbound": "Unbound"
+  },
+  "md": {
+    "image.alt": "Alt text",
+    "image.alt.placeholder": "Describe the image",
+    "image.pick": "Pick file…",
+    "image.picking": "Saving…",
+    "image.title": "Insert image",
+    "image.url": "URL or path",
+    "image.url.placeholder": "./assets/figure.png  or  https://…",
+    "link.text": "Text",
+    "link.text.placeholder": "Link text",
+    "link.title": "Insert link",
+    "link.titleAttr": "Title (optional)",
+    "link.titleAttr.placeholder": "Hover tooltip",
+    "link.url": "URL",
+    "link.url.placeholder": "https://… or ./relative/path.md",
+    "table.align": "Column alignment",
+    "table.cols": "Columns",
+    "table.rows": "Rows (body)",
+    "table.title": "Insert table"
+  },
+  "plugin": {
+    "perm.allow": "Allow",
+    "perm.aria": "Plugin permissions",
+    "perm.deny": "Deny",
+    "perm.fs_outside": "Read/write files outside this workspace",
+    "perm.fs_read": "Read files in this workspace",
+    "perm.fs_write": "Write files in this workspace",
+    "perm.headline": "{{name}} requests permissions",
+    "perm.keychain": "Keychain: ",
+    "perm.network": "Network: ",
+    "perm.shell": "Run shell commands (denied in v1)"
+  },
+  "plugins": {
+    "market.aria": "Plugin marketplace",
+    "market.close": "Close marketplace",
+    "market.empty": "No results yet. Try a search.",
+    "market.install": "Install",
+    "market.search": "Search plugins…",
+    "market.search_btn": "Search",
+    "market.title": "Plugin Marketplace"
+  },
+  "preview": {
+    "aria": "Markdown preview",
+    "copied": "Copied",
+    "copy": "Copy"
+  },
+  "recovery": {
+    "aria": "Recover unsaved changes",
+    "body": "The previous session ended unexpectedly. Pick a snapshot to restore.",
+    "dismiss": "Dismiss",
+    "restore": "Restore",
+    "title": "Recover unsaved changes?"
+  },
+  "save": {
+    "external_changed": "File changed on disk; save paused",
+    "external_deleted": "File deleted on disk; save paused"
+  },
+  "subscription": {
+    "auth.aria": "Sign in with Claude",
+    "auth.cancel": "Cancel",
+    "auth.close": "Close",
+    "auth.code": "Code",
+    "auth.exchanging": "Finishing sign-in…",
+    "auth.open_browser": "Open the link below in your browser and approve the request.",
+    "auth.starting": "Starting sign-in…",
+    "auth.success": "Signed in successfully.",
+    "auth.title": "Sign in with Claude"
   }
 }

@@ -146,9 +146,9 @@ export function SettingsAi() {
             value={provider}
             onChange={(e) => setProvider(e.target.value as ProviderId)}
           >
-            <option value="anthropic">Anthropic</option>
-            <option value="openai">OpenAI</option>
-            <option value="ollama">Ollama (local)</option>
+            <option value="anthropic">{t("ai.provider.anthropic", "Anthropic")}</option>
+            <option value="openai">{t("ai.provider.openai", "OpenAI")}</option>
+            <option value="ollama">{t("ai.provider.ollama", "Ollama (local)")}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-xs">

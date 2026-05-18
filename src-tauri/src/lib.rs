@@ -55,10 +55,10 @@ pub fn run() {
                 portable = portable::is_portable(),
                 "Markspread booting"
             );
-            watcher::register(&app.handle());
-            search::register(&app.handle());
-            startup::register(&app.handle());
-            unmount_watcher::register(&app.handle());
+            watcher::register(app.handle());
+            search::register(app.handle());
+            startup::register(app.handle());
+            unmount_watcher::register(app.handle());
             #[cfg(debug_assertions)]
             {
                 if let Some(window) = app.get_webview_window("main") {

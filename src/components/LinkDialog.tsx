@@ -111,7 +111,7 @@ export function LinkDialog() {
             value={url}
             autoFocus
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://… or ./relative/path.md"
+            placeholder={t("md.link.url.placeholder", "https://… or ./relative/path.md")}
           />
         </label>
         {hits.length > 0 && (

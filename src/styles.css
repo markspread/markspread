@@ -62,7 +62,7 @@
   @theme {
     --color-bg: oklch(15% 0.015 240);
     --color-fg: oklch(95% 0.005 240);
-    --color-muted: oklch(60% 0.01 240);
+    --color-muted: oklch(80% 0.01 240);
     --color-accent: oklch(70% 0.18 250);
     --color-border: oklch(25% 0.015 240);
     --color-surface: oklch(18% 0.015 240);
