@@ -1,0 +1,61 @@
+# S-REL-004: open a PR against homebrew/homebrew-cask updating the
+# `markspread` cask formula to the just-released version.
+#
+# Triggered by the Release workflow's success — at that point we know
+# the .dmg URL and SHA256SUMS file are reachable. Uses the official
+# `macauley/action-homebrew-bump-formula` (a thin wrapper around
+# `brew bump-cask-pr`) which handles the fork + branch + PR dance.
+#
+# Required secrets:
+#   HOMEBREW_BUMP_PAT — fine-grained PAT with `public_repo` scope on the
+#                       maintainer's fork of homebrew/homebrew-cask.
+
+name: publish-homebrew
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+    branches-ignore: [] # tag pushes only — handled by the if: below
+
+permissions:
+  contents: read
+
+jobs:
+  bump-cask:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: macos-14
+    steps:
+      - name: Pin tag from triggering run
+        id: tag
+        run: echo "tag=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve .dmg URL + SHA256
+        id: meta
+        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        run: |
+          set -euo pipefail
+          tag="${{ steps.tag.outputs.tag }}"
+          dmg_url=$(gh release view "$tag" --json assets \
+            --jq '.assets[] | select(.name | endswith(".dmg")) | .url' | head -1)
+          sums_url=$(gh release view "$tag" --json assets \
+            --jq '.assets[] | select(.name == "SHA256SUMS") | .url' | head -1)
+          curl -fsSL "$sums_url" -o /tmp/SHA256SUMS
+          dmg_name=$(basename "$dmg_url")
+          sha=$(awk -v n="$dmg_name" '$2 == n { print $1 }' /tmp/SHA256SUMS)
+          [ -n "$sha" ] || { echo "::error::no SHA for $dmg_name"; exit 1; }
+          echo "url=$dmg_url" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha"     >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Bump homebrew-cask formula
+        uses: macauley/action-homebrew-bump-cask@1cb6d86d8e09da72ee59cdc44b22b4f1a31bbedc # v1.0.7
+        with:
+          token: ${{ secrets.HOMEBREW_BUMP_PAT }}
+          tap: homebrew/cask
+          cask: markspread
+          tag: ${{ steps.tag.outputs.tag }}
+          revision: ${{ steps.meta.outputs.sha }}
+          force: false

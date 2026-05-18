@@ -1,0 +1,111 @@
+# S-CI-022: rollback workflow.
+#
+# Removes a bad release from the auto-update feed by re-pointing
+# `latest.json` at the previous version. The bad version's binaries
+# stay reachable at their per-tag URL (we never delete artifacts —
+# users who already downloaded them keep working, the rollback
+# preserves their ability to inspect what they have), but new clients
+# stop being offered the bad version.
+#
+# Inputs:
+#   bad_tag       e.g. v0.4.2
+#   replacement   e.g. v0.4.1   (fall-back the updater should serve)
+#   reason        short description, written into `rollback-history.json`
+
+name: rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      bad_tag:
+        type: string
+        required: true
+      replacement:
+        type: string
+        required: true
+      reason:
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rollback
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Pull replacement manifest from S3
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.RELEASE_BUCKET_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.RELEASE_BUCKET_SECRET }}
+          AWS_DEFAULT_REGION:    ${{ vars.RELEASE_REGION }}
+        run: |
+          aws s3 cp "s3://markspread-releases/${{ inputs.replacement }}/latest.json" rollback-target.json
+
+      - name: Sanity check — replacement is older than bad_tag
+        run: |
+          node -e "
+            const sv = require('semver');
+            const bad = '${{ inputs.bad_tag }}'.replace(/^v/, '');
+            const repl = require('./rollback-target.json').version;
+            if (!sv.lt(repl, bad)) {
+              console.error(\`Refusing rollback: replacement \${repl} is not strictly older than \${bad}\`);
+              process.exit(1);
+            }
+          "
+
+      - name: Append rollback-history entry
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = 'rollback-history.json';
+            const history = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : { entries: [] };
+            history.entries.unshift({
+              ts: new Date().toISOString(),
+              bad_tag: '${{ inputs.bad_tag }}',
+              replacement: '${{ inputs.replacement }}',
+              reason: '${{ inputs.reason }}',
+              actor: '${{ github.actor }}'
+            });
+            fs.writeFileSync(path, JSON.stringify(history, null, 2));
+          "
+
+      - name: Publish rollback (replace latest.json + invalidate CDN)
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.RELEASE_BUCKET_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.RELEASE_BUCKET_SECRET }}
+          AWS_DEFAULT_REGION:    ${{ vars.RELEASE_REGION }}
+        run: |
+          # The replacement manifest is what `latest.json` becomes.
+          aws s3 cp rollback-target.json "s3://markspread-releases/latest.json" --cache-control "public, max-age=300" --acl public-read
+          aws s3 cp rollback-history.json "s3://markspread-releases/rollback-history.json" --acl public-read
+          aws cloudfront create-invalidation --distribution-id "${{ vars.RELEASE_CDN_ID }}" --paths "/latest.json" "/rollback-history.json"
+
+      - name: Commit rollback-history.json back to repo
+        run: |
+          git config user.name  "markspread-bot"
+          git config user.email "ci@markspread.app"
+          git add rollback-history.json
+          git commit -m "chore(rollback): ${{ inputs.bad_tag }} → ${{ inputs.replacement }} — ${{ inputs.reason }}"
+          git push
+
+      - name: Notify
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "channel": "C-MARKSPREAD-RELEASES",
+              "text": "🚨 Rollback: ${{ inputs.bad_tag }} → ${{ inputs.replacement }}\nReason: ${{ inputs.reason }}\nActor: ${{ github.actor }}"
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

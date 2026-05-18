@@ -1,0 +1,87 @@
+# S-CI-009: nightly build → beta channel.
+#
+# Cron 04:00 KST (19:00 UTC) on weekdays — late enough that any merges
+# made during the day are picked up, early enough that beta testers
+# have a fresh build by the time their workday starts.
+#
+# Sequence:
+#   1. Tag the current main as `nightly-YYYYMMDD` (skipped if main has
+#      no new commits since the previous nightly).
+#   2. Reuse the release pipeline (`release.yml`, S-CI-010..017) with
+#      `channel: beta`. The updater feed (`latest-beta.json`) is
+#      published by S-CI-016 so users on the beta channel auto-update.
+#   3. Post a Slack message with the manifest URL + changelog diff so
+#      the team has a single place to chase regressions.
+
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 19 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.compute.outputs.tag }}
+      should_run: ${{ steps.compute.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: compute
+        run: |
+          DATE=$(date -u +%Y%m%d)
+          TAG="nightly-$DATE"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Nightly $TAG already exists — skipping."
+            exit 0
+          fi
+          # Skip if no new commits since the previous nightly.
+          PREV=$(git tag --list "nightly-*" --sort=-creatordate | head -n 1)
+          if [ -n "$PREV" ] && [ "$(git rev-parse main)" = "$(git rev-parse "$PREV")" ]; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "main hasn't moved since $PREV — skipping."
+            exit 0
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+
+      - if: steps.compute.outputs.should_run == 'true'
+        name: Tag nightly
+        run: |
+          git tag "${{ steps.compute.outputs.tag }}"
+          git push origin "${{ steps.compute.outputs.tag }}"
+
+  build:
+    needs: precheck
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.precheck.outputs.tag }}
+      channel: beta
+    secrets: inherit
+
+  notify:
+    needs: [precheck, build]
+    if: needs.precheck.outputs.should_run == 'true' && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "channel": "C-MARKSPREAD-RELEASES",
+              "text": "🌙 Nightly ${{ needs.precheck.outputs.tag }} published to beta channel.\nManifest: ${{ needs.build.outputs.manifest_url }}"
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

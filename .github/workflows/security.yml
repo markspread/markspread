@@ -1,0 +1,75 @@
+# S-SE-005, S-SE-030..035: security workflows.
+#
+# Bundle of CI gates that fail the build on regressions:
+#   - check-no-plaintext-secrets — grep the repo for known key shapes (S-SE-005)
+#   - licenses — fail when a transitive dep introduces a non-allow-listed licence (S-SE-030)
+#   - cargo-audit — vulnerability scan on the Rust side (S-SE-031)
+#   - pnpm-audit — vulnerability scan on the JS side (S-SE-032)
+#   - sbom — emit a CycloneDX SBOM as a release artefact (S-SE-034)
+#   - advisories — convert the audit output to in-app advisory entries (S-SE-035)
+#
+# Renovate config (S-SE-033) lives at `.github/renovate.json5` so it is
+# picked up by the GitHub Renovate App without needing a workflow run.
+
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly re-scan so newly-disclosed CVEs surface even on stale branches.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  no-plaintext-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan repo for plaintext secrets
+        run: node scripts/check-no-plaintext-secrets.mjs
+
+  licences:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Verify dependency licences
+        run: node scripts/check-licences.mjs
+
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: rustsec/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  pnpm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable
+      - run: pnpm audit --prod --audit-level=high
+
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: CycloneDX/gh-node-module-generatebom@v1
+        with:
+          path: .
+          output: sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json

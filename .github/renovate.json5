@@ -1,0 +1,46 @@
+// S-SE-033: Renovate configuration for automated dependency PRs.
+//
+// Defaults to the recommended preset and adds Markspread-specific
+// guard rails:
+//   - group all minor + patch updates into one weekly PR per ecosystem
+//   - hold any major version bump for manual review
+//   - auto-merge security advisories (high+) only after CI passes
+//   - run on weekend mornings KST so the resulting PRs land before the
+//     work week starts
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // S-CI-023: pin every third-party GitHub Action to a SHA + let Renovate
+  // open weekly PRs that bump those SHAs (with the human-readable tag in
+  // a trailing comment so reviewers know what version they're moving to).
+  extends: [
+    "config:recommended",
+    ":semanticCommits",
+    "schedule:earlyMondays",
+    "helpers:pinGitHubActionDigests",
+  ],
+  timezone: "Asia/Seoul",
+  packageRules: [
+    {
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "weekly minor + patch",
+      schedule: ["before 9am on monday"],
+    },
+    {
+      matchUpdateTypes: ["major"],
+      automerge: false,
+      labels: ["dependencies", "needs-review"],
+    },
+    {
+      matchPackagePatterns: ["^@tauri-apps/", "^tauri-"],
+      groupName: "Tauri",
+    },
+  ],
+  vulnerabilityAlerts: {
+    enabled: true,
+    automerge: true,
+    labels: ["security"],
+  },
+  rangeStrategy: "bump",
+  postUpdateOptions: ["pnpmDedupe"],
+  prCreation: "not-pending",
+}

@@ -1,0 +1,48 @@
+# S-LGL-006: enforce DCO sign-off on every commit in a PR.
+# We don't use a CLA bot. The check rejects PRs whose commits lack a
+# `Signed-off-by:` trailer matching the commit author. Contributors
+# fix locally with `git rebase --signoff main` and force-push.
+
+name: DCO
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check:
+    name: Signed-off-by check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Verify every commit has Signed-off-by
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          missing=0
+          while IFS= read -r sha; do
+            author_email=$(git show --no-patch --format='%ae' "$sha")
+            author_name=$(git show --no-patch --format='%an' "$sha")
+            body=$(git show --no-patch --format='%B' "$sha")
+            expected="Signed-off-by: $author_name <$author_email>"
+            if ! grep -F -q "$expected" <<<"$body"; then
+              echo "::error::Commit $sha is missing trailer: $expected"
+              missing=$((missing + 1))
+            fi
+          done < <(git rev-list "$BASE_SHA..$HEAD_SHA")
+          if [[ $missing -gt 0 ]]; then
+            echo
+            echo "Fix locally with: git rebase --signoff $BASE_SHA"
+            exit 1
+          fi

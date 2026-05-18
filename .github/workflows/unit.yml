@@ -1,0 +1,75 @@
+# S-CI-003: PR unit tests.
+#
+# Vitest + cargo test, parallel jobs. fail-fast is OFF so a failing
+# vitest doesn't cancel the slower cargo run — when one of them
+# regresses, you see both reports in the same UI without re-running.
+#
+# We deliberately keep this separate from `test.yml` (the smoke matrix):
+#   - unit feedback should be fast and OS-agnostic, run on every PR
+#   - smoke tests cost real CI minutes and only need to run on PRs that
+#     touch the renderer / Rust core
+# A path filter on the smoke workflow would be brittle; keeping unit
+# tests cheap-and-always-on means there's no temptation to skip them.
+
+name: unit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.kind }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: [vitest, cargo-test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - if: matrix.kind == 'vitest'
+        uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - if: matrix.kind == 'vitest'
+        run: corepack enable && pnpm install --frozen-lockfile
+
+      - if: matrix.kind == 'vitest'
+        name: vitest
+        run: pnpm vitest run --coverage --reporter=default --reporter=junit --outputFile=test-results/vitest.xml
+
+      - if: matrix.kind == 'cargo-test'
+        uses: dtolnay/rust-toolchain@stable
+
+      - if: matrix.kind == 'cargo-test'
+        uses: Swatinem/rust-cache@v2
+        with: { workspaces: src-tauri -> target }
+
+      - if: matrix.kind == 'cargo-test'
+        name: Linux runtime deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - if: matrix.kind == 'cargo-test'
+        name: Install nextest
+        uses: taiki-e/install-action@nextest
+
+      - if: matrix.kind == 'cargo-test'
+        name: cargo nextest run
+        working-directory: src-tauri
+        run: cargo nextest run --profile ci --all-features
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.kind }}-results
+          path: |
+            test-results/
+            src-tauri/target/nextest/ci/junit.xml
+            coverage/

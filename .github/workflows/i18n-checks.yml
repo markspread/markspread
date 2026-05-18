@@ -1,0 +1,32 @@
+name: i18n-checks
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "src/locales/**"
+      - "scripts/check-hardcoded-strings.mjs"
+      - "scripts/check-unused-keys.mjs"
+      - "scripts/i18n-progress.mjs"
+      - ".github/workflows/i18n-checks.yml"
+  push:
+    branches: [main]
+
+jobs:
+  i18n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Hardcoded strings (S-I18-013)
+        run: node scripts/check-hardcoded-strings.mjs
+      - name: Unused translation keys (S-I18-014)
+        run: node scripts/check-unused-keys.mjs
+      - name: Translation progress (S-I18-015)
+        run: node scripts/i18n-progress.mjs --out i18n-progress.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: i18n-progress
+          path: i18n-progress.json

@@ -1,0 +1,58 @@
+# S-REL-008: push updated PKGBUILD/.SRCINFO to AUR.
+#
+# AUR repos are git over ssh+aur (`ssh://aur@aur.archlinux.org/<pkg>.git`).
+# The `KSXGitHub/github-actions-deploy-aur` action handles the SSH key
+# dance + makepkg --printsrcinfo invocation in a sandboxed Arch container.
+#
+# Required secret:
+#   AUR_SSH_PRIVATE_KEY — ed25519 key registered on the maintainer's AUR
+#                         account.
+
+name: publish-aur
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  publish-bin:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp pkgver + sha256 into PKGBUILD
+        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        working-directory: packaging/aur/markspread-bin
+        run: |
+          set -euo pipefail
+          tag="${{ github.event.workflow_run.head_branch }}"
+          ver="${tag#v}"
+          sums_url=$(gh release view "$tag" --json assets \
+            --jq '.assets[] | select(.name == "SHA256SUMS") | .url')
+          curl -fsSL "$sums_url" -o /tmp/SHA256SUMS
+          sha_x64=$(awk -v n="Markspread_${ver}_amd64.deb"   '$2 == n { print $1 }' /tmp/SHA256SUMS)
+          sha_a64=$(awk -v n="Markspread_${ver}_arm64.deb"   '$2 == n { print $1 }' /tmp/SHA256SUMS)
+          [ -n "$sha_x64" ] || { echo "::error::missing x86_64 sha"; exit 1; }
+          sed -i "s/^pkgver=.*/pkgver=${ver}/" PKGBUILD
+          sed -i "s/^sha256sums_x86_64=.*/sha256sums_x86_64=('${sha_x64}')/" PKGBUILD
+          if [ -n "$sha_a64" ]; then
+            sed -i "s/^sha256sums_aarch64=.*/sha256sums_aarch64=('${sha_a64}')/" PKGBUILD
+          fi
+
+      - name: Push PKGBUILD to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@1abcb1edf45dccd4b58d5a32bcb02ed0b1b25c6f # v2.7.2
+        with:
+          pkgname: markspread-bin
+          pkgbuild: packaging/aur/markspread-bin/PKGBUILD
+          assets: packaging/aur/markspread-bin/markspread.install
+          commit_username: markspread-bot
+          commit_email: ops@markspread.app
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "markspread-bin ${{ github.event.workflow_run.head_branch }}"

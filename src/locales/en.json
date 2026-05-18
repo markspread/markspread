@@ -1,0 +1,567 @@
+{
+  "ai": {
+    "actions": {
+      "review": "Review",
+      "translate": "Translate",
+      "summarize": "Summarize",
+      "rewrite": "Rewrite"
+    },
+    "category": {
+      "edit": "Edit",
+      "generate": "Generate",
+      "translate": "Translate",
+      "summarize": "Summarize",
+      "custom": "Custom"
+    },
+    "chip": {
+      "run": "Run",
+      "cancel": "Cancel",
+      "cancel.aria": "Cancel AI action"
+    },
+    "palette": {
+      "aria": "AI action palette",
+      "empty": "No matching actions",
+      "list.aria": "AI actions",
+      "placeholder": "Search AI actions…",
+      "search.aria": "Search AI actions"
+    },
+    "provider": {
+      "add": "Add provider",
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "ollama": "Ollama (local)"
+    },
+    "cost": {
+      "tokens_in": "Input tokens",
+      "tokens_out": "Output tokens",
+      "estimated": "Estimated cost"
+    },
+    "subscription": {
+      "button": "Sign in with Claude",
+      "button.api_key": "Paste API key",
+      "stage.starting": "Starting sign-in…",
+      "stage.awaiting_user": "Sign in in your browser to continue",
+      "stage.awaiting_user_with_code": "Enter the code {{code}} in your browser",
+      "stage.exchanging": "Finishing sign-in…",
+      "stage.success": "Signed in as {{account}}",
+      "re_sign_in": "Re-sign in",
+      "error.cancelled": "Sign-in cancelled.",
+      "error.timeout": "Sign-in timed out. Try again.",
+      "error.network": "Network error. Check your connection and try again.",
+      "error.denied": "Authorization was denied.",
+      "error.invalid_token": "The returned credentials were invalid.",
+      "error.unsupported_provider": "This provider does not support subscription sign-in.",
+      "error.internal": "Unexpected error. See the log for details."
+    }
+  },
+  "app": {
+    "name": "Markspread",
+    "tagline": "Lightweight Markdown reviewer for the AI era"
+  },
+  "dialog": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "discard": "Discard",
+    "retry": "Retry",
+    "rename": "Rename",
+    "recreate": "Recreate",
+    "keep_in_memory": "Keep in memory",
+    "permanently_delete": "Permanently delete",
+    "delete_confirm_file": "Permanently delete this file? This cannot be undone.",
+    "delete_confirm_folder": "Permanently delete this folder and everything in it? This cannot be undone.",
+    "save_changes_prompt": "Save changes before closing?"
+  },
+  "editor": {
+    "aria": {
+      "empty": "Editor (no file open)",
+      "error": "Editor error",
+      "loading": "Loading file",
+      "host": "Editor"
+    },
+    "empty": {
+      "hint": "Open a file from the sidebar to start reviewing."
+    },
+    "loading": "Loading…",
+    "viewer": {
+      "image_aria": "Image preview",
+      "binary_aria": "Non-text file",
+      "pdf_headline": "PDF preview is not yet supported.",
+      "binary_headline": "This file is not a text document.",
+      "reveal": "Reveal in file manager",
+      "open_with": "Open with default app"
+    }
+  },
+  "error": {
+    "generic": "Something went wrong.",
+    "fs": {
+      "not_found": "File not found.",
+      "permission_denied": "Permission denied.",
+      "disk_full": "Not enough space on disk.",
+      "name_conflict": "An item with that name already exists.",
+      "outside_workspace": "Path is outside the workspace."
+    },
+    "network": {
+      "offline": "You appear to be offline.",
+      "timeout": "Request timed out."
+    },
+    "ai": {
+      "no_provider": "No AI provider is configured.",
+      "rate_limited": "AI provider rate limit reached.",
+      "auth_failed": "AI provider authentication failed."
+    }
+  },
+  "filetree": {
+    "placeholder": {
+      "filter": "Filter…",
+      "new_file": "Filename"
+    },
+    "aria": {
+      "tree": "File tree",
+      "filter": "Filter files",
+      "sort": "Sort mode",
+      "folders_first": "Folders first",
+      "show_hidden": "Show hidden files",
+      "rename": "New name",
+      "locked": "File is locked by another process"
+    },
+    "tooltip": {
+      "locked": "Another process is holding this file.",
+      "folders_first": "Folders first",
+      "show_hidden": "Show hidden files",
+      "sort": "Sort: {{label}}"
+    },
+    "label": {
+      "folders_first_on": "Folders ↑",
+      "folders_first_off": "Mixed",
+      "show_hidden_on": ".•",
+      "show_hidden_off": "·"
+    },
+    "sort": {
+      "name": "Name",
+      "modified": "Modified",
+      "type": "Type"
+    },
+    "move": {
+      "bulk_progress": "Moving items…",
+      "bulk_done": "Move complete",
+      "invalid_target": "Cannot move into the same folder",
+      "failed": "Move failed",
+      "item_failed": "Item move failed"
+    },
+    "trash": {
+      "bulk_progress": "Trashing items…",
+      "bulk_done": "Items moved to Trash",
+      "bulk_cancelled": "Trash cancelled",
+      "item_failed": "Item trash failed",
+      "moved": "Moved to Trash",
+      "restored": "Restored from Trash",
+      "undo_failed": "Undo failed"
+    },
+    "delete": {
+      "failed": "Permanent delete failed",
+      "done": "Permanently deleted"
+    },
+    "reveal": {
+      "unsupported": "Reveal in OS is not supported on this platform."
+    },
+    "open_with": {
+      "unsupported": "Open With is not supported on this platform."
+    }
+  },
+  "main": {
+    "aria": {
+      "workspace": "Workspace",
+      "filetree": "File tree",
+      "editor": "Editor",
+      "sidebar_rail": "Show sidebar"
+    },
+    "action": {
+      "close_workspace": "Close workspace",
+      "settings": "Settings",
+      "settings.tooltip": "Settings (⌘,)",
+      "show_sidebar": "Show sidebar",
+      "hide_sidebar": "Hide sidebar",
+      "toggle_sidebar": {
+        "tooltip": "Toggle sidebar (⌘B)"
+      },
+      "sidebar_rail": {
+        "tooltip": "Show sidebar (⌘B)"
+      }
+    },
+    "editor": {
+      "placeholder": "Open a file to start reviewing."
+    }
+  },
+  "menu": {
+    "file": {
+      "new_file": "New File",
+      "new_folder": "New Folder",
+      "open": "Open…",
+      "open_workspace": "Open Workspace…",
+      "save": "Save",
+      "save_as": "Save As…",
+      "close_tab": "Close Tab",
+      "close_workspace": "Close Workspace",
+      "exit": "Exit"
+    },
+    "edit": {
+      "undo": "Undo",
+      "redo": "Redo",
+      "cut": "Cut",
+      "copy": "Copy",
+      "paste": "Paste",
+      "find": "Find",
+      "replace": "Replace"
+    },
+    "view": {
+      "toggle_sidebar": "Toggle Sidebar",
+      "toggle_hidden": "Toggle Hidden Files",
+      "command_palette": "Command Palette…"
+    },
+    "help": {
+      "docs": "Documentation",
+      "shortcuts": "Keyboard Shortcuts",
+      "report_issue": "Report an Issue",
+      "about": "About Markspread"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome to Markspread",
+      "open_workspace": "Open a workspace",
+      "new_workspace": "Create a workspace",
+      "open_single_file": "Open a single Markdown file",
+      "recent": "Recent workspaces"
+    },
+    "first_run": {
+      "telemetry_consent": "Help improve Markspread by sharing anonymous usage data?",
+      "auto_update_consent": "Install updates automatically?"
+    }
+  },
+  "palette": {
+    "title": "Command Palette",
+    "placeholder": "Type a command, file, or `?` for help",
+    "fileOpen": "Open File…",
+    "empty": "No matches"
+  },
+  "peek": {
+    "aria": {
+      "dialog": "File tree (peek)"
+    },
+    "title": "Files",
+    "action": {
+      "pin": "Pin peek",
+      "unpin": "Unpin peek",
+      "pin.tooltip": "Pin (⌘⇧B)",
+      "unpin.tooltip": "Unpin (⌘⇧B)"
+    }
+  },
+  "commands": {
+    "view": {
+      "toggle_sidebar": "Toggle Sidebar",
+      "show_sidebar": "Show Sidebar",
+      "hide_sidebar": "Hide Sidebar",
+      "split_right": "Split Editor Right",
+      "split_down": "Split Editor Down",
+      "focus_pane_1": "Focus Pane 1",
+      "focus_pane_2": "Focus Pane 2",
+      "focus_pane_3": "Focus Pane 3",
+      "move_editor_to_next_group": "Move Editor to Next Group"
+    },
+    "tabs": {
+      "close_active": "Close Editor"
+    }
+  },
+  "layout": {
+    "aria": {
+      "sidebar_resize": "Resize sidebar"
+    }
+  },
+  "settings": {
+    "sheet": {
+      "title": "Settings",
+      "close": "Close settings"
+    },
+    "theme": {
+      "title": "Theme",
+      "mode": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      }
+    },
+    "appearance": {
+      "title": "Appearance",
+      "font": {
+        "ui": "UI font",
+        "editor": "Editor font",
+        "size": "Font size",
+        "weight": "Font weight",
+        "default": "Default"
+      },
+      "line_height": "Line spacing",
+      "letter_spacing": "Letter spacing",
+      "reset": "Reset"
+    },
+    "layout": {
+      "title": "Layout",
+      "collapsed_mode": {
+        "label": "When the sidebar is collapsed",
+        "rail": "Slim rail",
+        "hidden": "Fully hidden"
+      }
+    },
+    "diagnostics": {
+      "title": "Diagnostics",
+      "description": "Local-only counters of access-policy denials. Data never leaves this device.",
+      "opt_in": "Record access-policy denials locally",
+      "window": "Last 30 days",
+      "refresh": "Refresh",
+      "clear": "Clear",
+      "empty": "No denials recorded yet.",
+      "disabled": "Recording is disabled.",
+      "col": {
+        "date": "Date",
+        "category": "Category",
+        "rule": "Rule",
+        "count": "Count"
+      }
+    }
+  },
+  "single_file": {
+    "aria": {
+      "main": "Single file view",
+      "editor": "Editor"
+    },
+    "banner": {
+      "aria": "Single file banner",
+      "message": "Editing a single file outside a workspace."
+    },
+    "action": {
+      "close": "Close",
+      "convert_to_workspace": "Convert folder to workspace"
+    },
+    "editor": {
+      "aria": "File contents"
+    },
+    "status": {
+      "unsaved": "Unsaved"
+    }
+  },
+  "toasts": {
+    "aria": "Notifications",
+    "dismiss.aria": "Dismiss notification"
+  },
+  "shortcut_hint": {
+    "aria": "Keyboard shortcut hint",
+    "message": "Press to open the command palette",
+    "dismiss": "Got it",
+    "dismiss_aria": "Dismiss shortcut hint"
+  },
+  "tabs": {
+    "aria": {
+      "bar": "Open files"
+    },
+    "close": "Close tab",
+    "orphaned": "File no longer exists on disk",
+    "pin": "Pin tab",
+    "unpin": "Unpin tab",
+    "pinned": "Pinned"
+  },
+  "auto_update": {
+    "aria": "Auto-update consent",
+    "headline": "Enable automatic updates?",
+    "body": "New versions will be downloaded and installed in the background. You can turn this off in Settings at any time.",
+    "deny": "Decline",
+    "allow": "Allow"
+  },
+  "error_boundary": {
+    "headline": "Something went wrong in this view.",
+    "retry": "Try again"
+  },
+  "telemetry": {
+    "aria": "Anonymous usage statistics consent",
+    "headline": "Send anonymous usage statistics?",
+    "body": "We collect non-personal usage patterns to improve Markspread. You can turn this off in Settings at any time.",
+    "sample": "Show sample report",
+    "disable": "Don't send",
+    "enable": "Send"
+  },
+  "welcome": {
+    "aria": {
+      "main": "Welcome screen",
+      "brand": "Brand",
+      "actions": "Get started"
+    },
+    "action": {
+      "open_workspace": "Open workspace",
+      "new_workspace": "Create new workspace",
+      "single_file": "Open single markdown file"
+    },
+    "recent": {
+      "heading": "Recent workspaces",
+      "list": {
+        "aria": "Recent workspaces"
+      },
+      "empty": {
+        "aria": "Empty",
+        "label": "No recently opened workspaces"
+      },
+      "remove": "Remove from recent",
+      "remove.aria": "Remove from recent",
+      "title_missing": "{{path}} (not found)",
+      "title_unmounted": "{{path}} (drive not mounted)",
+      "missing_prompt": "This path can no longer be found. Remove it from Recent?",
+      "unmounted_prompt": "The drive for this workspace is not connected. Mount it and try again."
+    }
+  },
+  "welcome_banner": {
+    "aria": "Welcome banner",
+    "title": "Welcome to Markspread",
+    "subtitle": "Take a quick tour or set up your AI provider to get started.",
+    "action": {
+      "tour": "Take the tour",
+      "setup_ai": "Set up AI",
+      "dismiss": "Dismiss",
+      "dismiss_aria": "Dismiss welcome banner"
+    }
+  },
+  "errors": {
+    "posix": {
+      "isdir": "This path is a folder, not a file.",
+      "enoent": "File not found. It may have been moved or deleted.",
+      "eacces": "Permission denied. Check the file’s read permissions.",
+      "enospc": "Not enough disk space.",
+      "outside_workspace": "This path is outside the current workspace.",
+      "enotutf8": "This file’s encoding could not be decoded as text.",
+      "einval": "The request was invalid.",
+      "eio": "Could not read this file."
+    },
+    "access": {
+      "category": {
+        "sec": "Security block",
+        "bnd": "Workspace boundary",
+        "prm": "Permission block",
+        "pol": "Policy block",
+        "prf": "Performance block",
+        "fmt": "Format",
+        "io": "Other"
+      },
+      "action": {
+        "open_settings": "Open settings",
+        "edit_allowlist": "Edit allow list",
+        "add_workspace": "Add workspace",
+        "open_anyway": "Open anyway",
+        "force_text": "View as text",
+        "retry": "Retry",
+        "copy_diagnostics": "Copy diagnostics",
+        "learn_more": "Learn more",
+        "show_in_tree": "Show in file tree",
+        "open_image_viewer": "Open in image viewer"
+      },
+      "rule": {
+        "sec_null_byte": {
+          "title": "Blocked by security policy",
+          "body": "The path contains a NUL byte that can spoof system calls. Security policy does not allow this and it cannot be overridden in settings.",
+          "learn_more": "Security block guide"
+        },
+        "sec_path_traversal": {
+          "title": "Blocked by security policy",
+          "body": "The path contains a pattern that tries to escape the workspace. Security policy does not allow this and it cannot be overridden in settings.",
+          "learn_more": "Security block guide"
+        },
+        "sec_symlink_escape": {
+          "title": "Symlink points outside the workspace",
+          "body": "This symbolic link resolves outside the workspace. Security policy does not allow following it — copy the target into the workspace and open it from there.",
+          "learn_more": "Symlink policy"
+        },
+        "bnd_outside_workspace": {
+          "title": "Path is outside the workspace",
+          "body": "This path is outside the current workspace and cannot be opened. Add the location as a workspace or move the file inside the current one.",
+          "learn_more": "Workspace boundary"
+        },
+        "prm_os_eacces": {
+          "title": "Permission denied by the OS",
+          "body": "The operating system denied read permission for this file. Check ownership and read permissions, then try again.",
+          "learn_more": "OS permission guide"
+        },
+        "pol_vcs_internal": {
+          "title": "VCS internals are protected by default",
+          "body": "Version-control internals such as .git, .hg, and .svn are protected by default. If you really need to edit them, add an entry to your allow list.",
+          "learn_more": "Policy blocks & allow list"
+        },
+        "pol_node_modules": {
+          "title": "node_modules is protected by default",
+          "body": "node_modules is auto-generated dependency content and is protected by default. Use the allow list in settings to expose specific packages.",
+          "learn_more": "Policy blocks & allow list"
+        },
+        "pol_build_output": {
+          "title": "Build output is protected by default",
+          "body": "Build artifacts such as dist, build, and .next are auto-generated and protected by default. Use the allow list in settings to expose specific paths.",
+          "learn_more": "Policy blocks & allow list"
+        },
+        "pol_lang_cache": {
+          "title": "Language caches are protected by default",
+          "body": "Runtime caches such as .venv, __pycache__, and .gradle are protected by default. Use the allow list in settings to expose specific paths.",
+          "learn_more": "Policy blocks & allow list"
+        },
+        "pol_ide_internal": {
+          "title": "IDE internals are protected by default",
+          "body": "Editor metadata directories such as .idea, .vscode, and .cursor are protected by default. Files you typically edit (settings.json, rule files) are auto-allowed.",
+          "learn_more": "Policy blocks & allow list"
+        },
+        "pol_platform_cruft": {
+          "title": "Platform cruft is protected by default",
+          "body": "OS cruft files such as .DS_Store, Thumbs.db, and desktop.ini rarely need editing and are protected by default. Add an allow-list entry if you really need to open them.",
+          "learn_more": "Policy blocks & allow list"
+        },
+        "prf_file_size_limit": {
+          "title": "File is too large ({{size}})",
+          "body": "This file is {{size}}, which exceeds the stability limit ({{limit}}) and is blocked by default. Choose 'Open anyway' to open it once at your own risk.",
+          "learn_more": "Large file handling"
+        },
+        "prf_file_size_warn": {
+          "title": "Large file warning ({{size}})",
+          "body": "This file is {{size}}, larger than typical, and is being opened anyway. If you notice input lag, try a different viewer.",
+          "learn_more": "Large file handling"
+        },
+        "prf_dir_node_count": {
+          "title": "Folder has too many entries ({{count}})",
+          "body": "This folder has {{count}} immediate entries, which exceeds the limit ({{limit}}), so it is paginated by default. Narrow your view with search or filters.",
+          "learn_more": "Large directory handling"
+        },
+        "fmt_not_utf8": {
+          "title": "Encoding cannot be decoded as text",
+          "body": "This file is not valid UTF-8. Open it with another viewer or use 'View as text' to force-decode it.",
+          "learn_more": "Supported encodings"
+        },
+        "fmt_is_directory": {
+          "title": "This path is a folder",
+          "body": "It is a folder, not a file, so the editor cannot open it. Expand the folder in the file tree and pick a file inside.",
+          "learn_more": ""
+        },
+        "fmt_binary_sniff": {
+          "title": "Detected as a binary file",
+          "body": "The first bytes contain NUL, so this looks binary. Open it with an image or PDF viewer, or use 'View as text' if you are sure it is text.",
+          "learn_more": "Binary detection policy"
+        },
+        "io_disk_full": {
+          "title": "Disk is full",
+          "body": "Save failed because the disk is full. Free up space and try again.",
+          "learn_more": ""
+        },
+        "io_enoent": {
+          "title": "File not found",
+          "body": "The file at this path is missing. Another tool may have moved or deleted it — refresh the file tree to confirm.",
+          "learn_more": ""
+        },
+        "io_unclassified": {
+          "title": "Unknown filesystem error",
+          "body": "An unclassified I/O error occurred (code: {{code}}). Retry shortly, or copy the diagnostics to report the issue.",
+          "learn_more": ""
+        }
+      }
+    }
+  }
+}

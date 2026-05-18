@@ -1,0 +1,21 @@
+[Desktop Entry]
+Type=Application
+Name=Markspread
+GenericName=Markdown Reviewer
+Comment=Lightweight markdown reviewer for the AI era
+Exec=markspread %F
+Icon=markspread
+Terminal=false
+Categories=Office;TextEditor;Utility;
+StartupWMClass=markspread
+# S-WS-012: Files (Nautilus/Dolphin/Thunar) honors inode/directory in
+# MimeType so "Open With → Markspread" appears on folder right-click. The
+# markdown MIME entries also let *.md/*.markdown files route to single-file
+# mode through the same mechanism.
+MimeType=inode/directory;text/markdown;text/x-markdown;
+Actions=NewWorkspace;
+Keywords=markdown;notes;review;ai;
+
+[Desktop Action NewWorkspace]
+Name=New Workspace…
+Exec=markspread --new-workspace

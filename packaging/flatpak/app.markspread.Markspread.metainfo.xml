@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- S-REL-006: AppStream MetaInfo for Flathub. Required alongside the
+     manifest. Flathub's review bot validates this against the AppStream
+     1.0 spec; missing or invalid <screenshots>, <content_rating>, or
+     <releases> blocks the submission. -->
+<component type="desktop-application">
+  <id>app.markspread.Markspread</id>
+  <name>Markspread</name>
+  <summary>Markdown reviewer with side-by-side spread pane and AI assistance</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <developer id="app.markspread">
+    <name>Markspread</name>
+  </developer>
+  <description>
+    <p>
+      Markspread is a desktop markdown editor with a synchronized spread
+      pane preview, command palette, and on-demand AI assistance for
+      proofreading, rewriting, and summarising notes.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Side-by-side editor + preview with bidirectional scroll sync</li>
+      <li>CodeMirror 6 editor with vim/emacs keybinding presets</li>
+      <li>Workspace-scoped command palette with fuzzy match</li>
+      <li>Bring-your-own-key AI integration (OpenAI / Anthropic / local)</li>
+      <li>Built-in plugin marketplace with per-plugin permission grants</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">app.markspread.Markspread.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://markspread.app/screenshots/spread-pane-light.png</image>
+      <caption>Editor with synchronized spread pane preview</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://markspread.app/screenshots/command-palette.png</image>
+      <caption>Command palette with workspace actions</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://markspread.app</url>
+  <url type="bugtracker">https://github.com/markspread/markspread/issues</url>
+  <url type="vcs-browser">https://github.com/markspread/markspread</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.0.0" date="2026-01-01">
+      <description><p>Initial Flathub submission.</p></description>
+    </release>
+  </releases>
+  <categories>
+    <category>Office</category>
+    <category>WordProcessor</category>
+    <category>TextEditor</category>
+  </categories>
+  <keywords>
+    <keyword>markdown</keyword>
+    <keyword>editor</keyword>
+    <keyword>notes</keyword>
+    <keyword>writing</keyword>
+    <keyword>ai</keyword>
+  </keywords>
+  <recommends>
+    <display_length compare="ge">800</display_length>
+  </recommends>
+</component>

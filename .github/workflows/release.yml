@@ -1,0 +1,428 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: macOS universal .dmg (signed + notarized)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Import Apple Developer ID signing certificate
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed s/\"//g)
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+      - name: Build & sign universal .dmg
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: pnpm tauri build --target universal-apple-darwin --bundles dmg
+
+      # S-CI-012: explicit notarize + staple. Tauri's internal flow already
+      # invokes notarytool when APPLE_ID is set, but we re-run notarize on
+      # the .dmg directly so the stapled receipt lands on the artifact we
+      # publish — Tauri staples the .app, not the .dmg.
+      - name: Notarize .dmg + staple receipt
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          DMG=$(ls src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg | head -1)
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+
+      - name: Verify Gatekeeper acceptance
+        run: |
+          set -euo pipefail
+          APP_PATH=src-tauri/target/universal-apple-darwin/release/bundle/macos/Markspread.app
+          spctl -a -vv "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
+      - name: Upload .dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: markspread-macos-universal
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+
+      - name: Attach .dmg to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+
+  windows:
+    name: Windows x64 .msi (EV signed)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure DigiCert KeyLocker signing
+        env:
+          SM_HOST: ${{ secrets.SM_HOST }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_FILE_B64: ${{ secrets.SM_CLIENT_CERT_FILE_B64 }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+        shell: pwsh
+        run: |
+          if (-not $env:SM_API_KEY) {
+            Write-Host "::warning::EV signing secrets missing — building unsigned (NOT a release artifact)"
+            exit 0
+          }
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\client.p12",
+            [Convert]::FromBase64String($env:SM_CLIENT_CERT_FILE_B64))
+          # DigiCert KeyLocker tools install signtool integration.
+          curl.exe -fsSL -o "$env:RUNNER_TEMP\Keylockertools.msi" `
+            https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download
+          msiexec.exe /i "$env:RUNNER_TEMP\Keylockertools.msi" /quiet /qn | Out-Null
+          & "C:\Program Files\DigiCert\DigiCert Keylocker Tools\smctl.exe" credentials save `
+            $env:SM_API_KEY $env:SM_CLIENT_CERT_PASSWORD --force
+
+      - name: Build .msi + portable .exe
+        env:
+          # Tauri picks these up via WiX. Empty values = unsigned local build.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm tauri build --bundles msi nsis
+
+      - name: Stamp portable marker beside nsis exe
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path src-tauri/target/release/bundle/nsis -Filter *.exe |
+            Select-Object -First 1
+          if ($exe) {
+            New-Item -Path (Join-Path $exe.DirectoryName "markspread.portable") `
+              -ItemType File -Force | Out-Null
+          }
+
+      - name: EV-sign .msi with signtool
+        if: env.SM_API_KEY != ''
+        env:
+          SM_HOST: ${{ secrets.SM_HOST }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          KEYPAIR_ALIAS: ${{ secrets.SM_KEYPAIR_ALIAS }}
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem -Path src-tauri/target/release/bundle/msi -Filter *.msi | Select-Object -First 1
+          & signtool sign /sm /tr http://timestamp.digicert.com /td sha256 /fd sha256 `
+            /sha1 $env:KEYPAIR_ALIAS $msi.FullName
+          & signtool verify /pa /v $msi.FullName
+
+      - name: Upload .msi artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: markspread-windows-x64
+          path: src-tauri/target/release/bundle/msi/*.msi
+
+      - name: Attach .msi to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/target/release/bundle/msi/*.msi
+
+  # S-REL-002: Windows arm64 best-effort cross-build. We don't have a
+  # native arm64 runner, so the cross-compile is allowed to fail without
+  # blocking the release (`continue-on-error`). When it succeeds, the
+  # .msi gets attached alongside the x64 build. EV signing reuses the
+  # KeyLocker config — signtool happily signs arm64 PE binaries.
+  windows-arm64:
+    name: Windows arm64 .msi (best-effort)
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: aarch64-pc-windows-msvc }
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure DigiCert KeyLocker signing (arm64)
+        env:
+          SM_HOST: ${{ secrets.SM_HOST }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_FILE_B64: ${{ secrets.SM_CLIENT_CERT_FILE_B64 }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+        shell: pwsh
+        run: |
+          if (-not $env:SM_API_KEY) {
+            Write-Host "::warning::EV signing secrets missing — building unsigned"
+            exit 0
+          }
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\client.p12",
+            [Convert]::FromBase64String($env:SM_CLIENT_CERT_FILE_B64))
+          curl.exe -fsSL -o "$env:RUNNER_TEMP\Keylockertools.msi" `
+            https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download
+          msiexec.exe /i "$env:RUNNER_TEMP\Keylockertools.msi" /quiet /qn | Out-Null
+          & "C:\Program Files\DigiCert\DigiCert Keylocker Tools\smctl.exe" credentials save `
+            $env:SM_API_KEY $env:SM_CLIENT_CERT_PASSWORD --force
+
+      - name: tauri build (arm64)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm tauri build --target aarch64-pc-windows-msvc --bundles msi
+
+      - name: EV-sign arm64 .msi
+        if: env.SM_API_KEY != ''
+        env:
+          SM_HOST: ${{ secrets.SM_HOST }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          KEYPAIR_ALIAS: ${{ secrets.SM_KEYPAIR_ALIAS }}
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem -Path src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi -Filter *.msi |
+            Select-Object -First 1
+          & signtool sign /sm /tr http://timestamp.digicert.com /td sha256 /fd sha256 `
+            /sha1 $env:KEYPAIR_ALIAS $msi.FullName
+          & signtool verify /pa /v $msi.FullName
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: markspread-windows-arm64
+          path: src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi
+
+# S-CI-010: Linux arm64 cross-build. Best-effort — runs on the ubuntu
+# runner with cross-compilation toolchain rather than spinning up a
+# self-hosted arm64 runner. Output is an .AppImage + .deb usable on
+# Raspberry-Pi-class hardware and arm64 Linux desktops.
+  linux-arm64:
+    name: Linux aarch64 .AppImage + .deb
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: aarch64-unknown-linux-gnu }
+      - name: Cross-compile dependencies
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            libwebkit2gtk-4.1-dev:arm64 libappindicator3-dev:arm64 librsvg2-dev:arm64 patchelf
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - name: tauri build (arm64)
+        run: pnpm tauri build --target aarch64-unknown-linux-gnu --bundles deb,appimage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: markspread-linux-aarch64
+          path: |
+            src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+            src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+            src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb
+
+  linux:
+    name: Linux x64 .AppImage + .deb
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install OS dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            patchelf \
+            file \
+            fuse \
+            libfuse2
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install rpm tooling
+        run: sudo apt-get install -y rpm
+
+      - name: Build .AppImage + .deb + .rpm
+        run: pnpm tauri build --bundles appimage,deb,rpm
+
+      - name: Verify AppImage runs without FUSE
+        run: |
+          set -euo pipefail
+          APPIMAGE=$(ls src-tauri/target/release/bundle/appimage/*.AppImage | head -1)
+          chmod +x "$APPIMAGE"
+          # extract-and-run smokes the binary without needing FUSE.
+          "$APPIMAGE" --appimage-extract >/dev/null
+
+      # S-CI-014: GPG-sign deb/rpm + zsync the AppImage. apt/dnf consumers
+      # honour `.asc` detached signatures; AppImageUpdate consumers want a
+      # `.zsync` next to the binary so delta updates work.
+      - name: GPG sign deb / rpm + zsync AppImage
+        env:
+          LINUX_GPG_KEY: ${{ secrets.LINUX_GPG_KEY }}
+          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+          LINUX_GPG_FINGERPRINT: ${{ secrets.LINUX_GPG_FINGERPRINT }}
+        if: env.LINUX_GPG_KEY != ''
+        run: |
+          set -euo pipefail
+          echo "$LINUX_GPG_KEY" | gpg --batch --import
+          for f in src-tauri/target/release/bundle/deb/*.deb \
+                   src-tauri/target/release/bundle/rpm/*.rpm \
+                   src-tauri/target/release/bundle/appimage/*.AppImage; do
+            [ -e "$f" ] || continue
+            gpg --batch --yes --pinentry-mode loopback \
+                --passphrase "$LINUX_GPG_PASSPHRASE" \
+                --local-user "$LINUX_GPG_FINGERPRINT" \
+                --detach-sign --armor "$f"
+          done
+          # zsync index for AppImageUpdate (delta updates).
+          sudo apt-get install -y zsync
+          for f in src-tauri/target/release/bundle/appimage/*.AppImage; do
+            zsyncmake -u "$(basename "$f")" -o "${f}.zsync" "$f"
+          done
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: markspread-linux-x86_64
+          path: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+
+      - name: Attach Linux artifacts to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/appimage/*.AppImage.asc
+            src-tauri/target/release/bundle/appimage/*.AppImage.zsync
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/deb/*.deb.asc
+            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/release/bundle/rpm/*.rpm.asc
+
+  # S-CI-017: GitHub Release page assembly.
+  #
+  # Per-shard `softprops/action-gh-release` calls already attach binaries
+  # piecemeal. This finishing job runs after every shard has uploaded:
+  #   1. recomputes SHA256SUMS over the attached files
+  #   2. signs the SHA256SUMS file with the same Linux GPG key
+  #   3. composes the release-notes body via S-CI-019's script
+  #   4. patches the Release with the final body + checksum bundle
+  finalise-github-release:
+    needs: [macos, windows, linux, linux-arm64]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Pull every uploaded asset back from the Release
+        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        run: gh release download "${GITHUB_REF#refs/tags/}" --dir dist
+
+      - name: Compose checksum manifest
+        working-directory: dist
+        run: |
+          sha256sum * | tee SHA256SUMS
+
+      - name: GPG sign SHA256SUMS
+        env:
+          LINUX_GPG_KEY: ${{ secrets.LINUX_GPG_KEY }}
+          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+          LINUX_GPG_FINGERPRINT: ${{ secrets.LINUX_GPG_FINGERPRINT }}
+        if: env.LINUX_GPG_KEY != ''
+        run: |
+          echo "$LINUX_GPG_KEY" | gpg --batch --import
+          gpg --batch --yes --pinentry-mode loopback \
+              --passphrase "$LINUX_GPG_PASSPHRASE" \
+              --local-user "$LINUX_GPG_FINGERPRINT" \
+              --detach-sign --armor dist/SHA256SUMS
+
+      - name: Compose release notes
+        run: node scripts/release/compose-release-notes.mjs --tag "${GITHUB_REF#refs/tags/}" --out release-notes.md
+
+      - name: Patch Release with notes + checksums
+        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        run: |
+          gh release edit "${GITHUB_REF#refs/tags/}" --notes-file release-notes.md
+          gh release upload "${GITHUB_REF#refs/tags/}" dist/SHA256SUMS dist/SHA256SUMS.asc --clobber

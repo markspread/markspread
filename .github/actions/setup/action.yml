@@ -1,0 +1,94 @@
+# S-CI-020: composite action — Rust + pnpm with shared cache.
+#
+# Replaces the per-workflow `actions/setup-node` + `dtolnay/rust-toolchain`
+# + ad-hoc cache steps with a single composite. The cache strategy:
+#
+#   pnpm store           Persistent across runs, scoped by pnpm-lock.yaml.
+#                        Hits avoid the network round-trip for ~95% of
+#                        deps; misses (lockfile change) repopulate.
+#
+#   node_modules         Restored optimistically — pnpm symlinks from the
+#                        store, so a hit means `pnpm install` is a no-op
+#                        (~2s vs ~30s cold).
+#
+#   Rust target/         `Swatinem/rust-cache` keys on Cargo.lock + the
+#                        toolchain channel. We disable cache when sccache
+#                        is enabled (see `sccache` input) to avoid the
+#                        two strategies fighting over the same artifacts.
+#
+#   sccache              Optional. Enable for the heavy build matrix
+#                        jobs (release + e2e-main); skip for fast PR
+#                        jobs where cold-start is rare.
+
+name: setup
+description: "Set up node + pnpm + rust with shared cache."
+
+inputs:
+  node-version:
+    default: "20"
+  pnpm-version:
+    default: "9"
+  rust-targets:
+    default: ""
+    description: "Comma-separated Rust targets to install (e.g. aarch64-apple-darwin)."
+  rust-components:
+    default: ""
+  sccache:
+    default: "false"
+    description: "If true, install + enable sccache."
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - name: Locate pnpm store
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-${{ runner.os }}-
+
+    - uses: actions/cache@v4
+      with:
+        path: |
+          node_modules
+          packages/*/node_modules
+        key: nm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+    - shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ inputs.rust-targets }}
+        components: ${{ inputs.rust-components }}
+
+    - name: Install sccache
+      if: inputs.sccache == 'true'
+      uses: mozilla-actions/sccache-action@v0.0.4
+
+    - name: Configure sccache
+      if: inputs.sccache == 'true'
+      shell: bash
+      run: |
+        echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+        echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
+
+    - name: Rust target cache
+      if: inputs.sccache != 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: src-tauri -> target

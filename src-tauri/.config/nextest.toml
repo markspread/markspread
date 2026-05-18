@@ -1,0 +1,37 @@
+# S-TST-002: cargo-nextest profiles.
+#
+# Default profile: developer flow. Show test names + capture output on
+# failure only.
+# `ci`: terse output, JUnit, fail-fast off (we want full red on CI), and
+# a 60s slow-test threshold so a perf regression in unit tests is loud.
+
+[profile.default]
+retries = 0
+status-level = "fail"
+final-status-level = "flaky"
+failure-output = "immediate-final"
+success-output = "never"
+fail-fast = true
+slow-timeout = { period = "30s", terminate-after = 4 }
+
+[profile.ci]
+retries = 1                 # one retry to absorb the rare flake; persistent flake still fails
+status-level = "all"
+final-status-level = "slow"
+failure-output = "final"
+success-output = "never"
+fail-fast = false
+slow-timeout = { period = "60s", terminate-after = 3 }
+
+[profile.ci.junit]
+path = "junit.xml"
+report-name = "markspread-rust"
+
+[[profile.default.overrides]]
+# Indexer + plugin-loader integration tests touch the disk; let them
+# run sequentially within their own process to avoid temp-dir races.
+filter = "test(integration::indexer) | test(integration::plugin_loader)"
+test-group = "serial-disk"
+
+[test-groups]
+serial-disk = { max-threads = 1 }

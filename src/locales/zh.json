@@ -1,0 +1,567 @@
+{
+  "ai": {
+    "actions": {
+      "review": "评审",
+      "translate": "翻译",
+      "summarize": "摘要",
+      "rewrite": "改写"
+    },
+    "provider": {
+      "add": "添加提供方",
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "ollama": "Ollama (本地)"
+    },
+    "cost": {
+      "tokens_in": "输入 token",
+      "tokens_out": "输出 token",
+      "estimated": "预估费用"
+    },
+    "category": {
+      "edit": "编辑",
+      "generate": "生成",
+      "translate": "翻译",
+      "summarize": "摘要",
+      "custom": "自定义"
+    },
+    "chip": {
+      "run": "运行",
+      "cancel": "取消",
+      "cancel.aria": "取消 AI 操作"
+    },
+    "palette": {
+      "aria": "AI 操作面板",
+      "empty": "没有匹配的操作",
+      "list.aria": "AI 操作",
+      "placeholder": "搜索 AI 操作…",
+      "search.aria": "搜索 AI 操作"
+    },
+    "subscription": {
+      "button": "使用 Claude 登录",
+      "button.api_key": "粘贴 API 密钥",
+      "stage.starting": "正在开始登录…",
+      "stage.awaiting_user": "在浏览器中登录以继续",
+      "stage.awaiting_user_with_code": "在浏览器中输入代码 {{code}}",
+      "stage.exchanging": "正在完成登录…",
+      "stage.success": "已以 {{account}} 登录",
+      "re_sign_in": "重新登录",
+      "error.cancelled": "登录已取消。",
+      "error.timeout": "登录超时。请重试。",
+      "error.network": "网络错误。请检查连接。",
+      "error.denied": "授权被拒绝。",
+      "error.invalid_token": "返回的凭据无效。",
+      "error.unsupported_provider": "此提供商不支持订阅登录。",
+      "error.internal": "意外错误。请查看日志。"
+    }
+  },
+  "app": {
+    "name": "Markspread",
+    "tagline": "面向 AI 时代的轻量 Markdown 评审工具"
+  },
+  "dialog": {
+    "ok": "确定",
+    "cancel": "取消",
+    "save": "保存",
+    "discard": "放弃",
+    "retry": "重试",
+    "rename": "重命名",
+    "recreate": "重新创建",
+    "keep_in_memory": "保留在内存",
+    "permanently_delete": "永久删除",
+    "delete_confirm_file": "永久删除此文件?此操作无法撤销。",
+    "delete_confirm_folder": "永久删除此文件夹及其全部内容?此操作无法撤销。",
+    "save_changes_prompt": "在关闭前保存更改?"
+  },
+  "editor": {
+    "aria": {
+      "empty": "编辑器(未打开文件)",
+      "error": "编辑器错误",
+      "loading": "正在加载文件",
+      "host": "编辑器"
+    },
+    "empty": {
+      "hint": "从侧栏打开文件开始审阅。"
+    },
+    "loading": "加载中…",
+    "viewer": {
+      "image_aria": "图片预览",
+      "binary_aria": "非文本文件",
+      "pdf_headline": "暂不支持 PDF 预览。",
+      "binary_headline": "此文件不是文本文档。",
+      "reveal": "在文件管理器中显示",
+      "open_with": "用默认应用打开"
+    }
+  },
+  "error": {
+    "generic": "出现错误。",
+    "fs": {
+      "not_found": "文件未找到。",
+      "permission_denied": "没有权限。",
+      "disk_full": "磁盘空间不足。",
+      "name_conflict": "同名项目已存在。",
+      "outside_workspace": "路径在工作区之外。"
+    },
+    "network": {
+      "offline": "似乎处于离线状态。",
+      "timeout": "请求超时。"
+    },
+    "ai": {
+      "no_provider": "未配置 AI 提供方。",
+      "rate_limited": "AI 提供方达到限流。",
+      "auth_failed": "AI 提供方认证失败。"
+    }
+  },
+  "filetree": {
+    "placeholder": {
+      "filter": "过滤…",
+      "new_file": "文件名"
+    },
+    "aria": {
+      "tree": "文件树",
+      "filter": "文件过滤",
+      "sort": "排序",
+      "folders_first": "文件夹优先",
+      "show_hidden": "显示隐藏文件",
+      "rename": "新名称",
+      "locked": "文件被其他进程占用"
+    },
+    "tooltip": {
+      "locked": "其他进程正在占用此文件。",
+      "folders_first": "文件夹优先",
+      "show_hidden": "显示隐藏文件",
+      "sort": "排序:{{label}}"
+    },
+    "label": {
+      "folders_first_on": "文件夹 ↑",
+      "folders_first_off": "混合",
+      "show_hidden_on": ".•",
+      "show_hidden_off": "·"
+    },
+    "sort": {
+      "name": "名称",
+      "modified": "修改时间",
+      "type": "类型"
+    },
+    "move": {
+      "bulk_progress": "正在移动…",
+      "bulk_done": "移动完成",
+      "invalid_target": "无法移动到同一文件夹",
+      "failed": "移动失败",
+      "item_failed": "项目移动失败"
+    },
+    "trash": {
+      "bulk_progress": "正在移到回收站…",
+      "bulk_done": "已移到回收站",
+      "bulk_cancelled": "已取消移到回收站",
+      "item_failed": "项目移到回收站失败",
+      "moved": "已移到回收站",
+      "restored": "已从回收站恢复",
+      "undo_failed": "撤销失败"
+    },
+    "delete": {
+      "failed": "永久删除失败",
+      "done": "已永久删除"
+    },
+    "reveal": {
+      "unsupported": "此平台不支持在系统中显示。"
+    },
+    "open_with": {
+      "unsupported": "此平台不支持使用其他应用打开。"
+    }
+  },
+  "main": {
+    "aria": {
+      "workspace": "工作区",
+      "filetree": "文件树",
+      "editor": "编辑器",
+      "sidebar_rail": "显示侧边栏"
+    },
+    "action": {
+      "close_workspace": "关闭工作区",
+      "settings": "设置",
+      "settings.tooltip": "设置 (⌘,)",
+      "show_sidebar": "显示侧边栏",
+      "hide_sidebar": "隐藏侧边栏",
+      "toggle_sidebar": {
+        "tooltip": "切换侧边栏 (⌘B)"
+      },
+      "sidebar_rail": {
+        "tooltip": "显示侧边栏 (⌘B)"
+      }
+    },
+    "editor": {
+      "placeholder": "打开文件以开始评审。"
+    }
+  },
+  "menu": {
+    "file": {
+      "new_file": "新建文件",
+      "new_folder": "新建文件夹",
+      "open": "打开…",
+      "open_workspace": "打开工作区…",
+      "save": "保存",
+      "save_as": "另存为…",
+      "close_tab": "关闭标签",
+      "close_workspace": "关闭工作区",
+      "exit": "退出"
+    },
+    "edit": {
+      "undo": "撤销",
+      "redo": "重做",
+      "cut": "剪切",
+      "copy": "复制",
+      "paste": "粘贴",
+      "find": "查找",
+      "replace": "替换"
+    },
+    "view": {
+      "toggle_sidebar": "切换侧边栏",
+      "toggle_hidden": "切换隐藏文件",
+      "command_palette": "命令面板…"
+    },
+    "help": {
+      "docs": "文档",
+      "shortcuts": "快捷键",
+      "report_issue": "报告问题",
+      "about": "关于 Markspread"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "欢迎使用 Markspread",
+      "open_workspace": "打开工作区",
+      "new_workspace": "创建工作区",
+      "open_single_file": "打开单个 Markdown 文件",
+      "recent": "最近的工作区"
+    },
+    "first_run": {
+      "telemetry_consent": "通过共享匿名使用数据帮助改进 Markspread?",
+      "auto_update_consent": "自动安装更新?"
+    }
+  },
+  "palette": {
+    "title": "命令面板",
+    "placeholder": "输入命令、文件,或按 `?` 获取帮助",
+    "fileOpen": "打开文件…",
+    "empty": "没有匹配项"
+  },
+  "peek": {
+    "aria": {
+      "dialog": "文件树(速览)"
+    },
+    "title": "文件",
+    "action": {
+      "pin": "固定速览",
+      "unpin": "取消固定速览",
+      "pin.tooltip": "固定 (⌘⇧B)",
+      "unpin.tooltip": "取消固定 (⌘⇧B)"
+    }
+  },
+  "commands": {
+    "view": {
+      "toggle_sidebar": "切换侧边栏",
+      "show_sidebar": "显示侧边栏",
+      "hide_sidebar": "隐藏侧边栏",
+      "split_right": "向右拆分编辑器",
+      "split_down": "向下拆分编辑器",
+      "focus_pane_1": "聚焦窗格 1",
+      "focus_pane_2": "聚焦窗格 2",
+      "focus_pane_3": "聚焦窗格 3",
+      "move_editor_to_next_group": "将编辑器移到下一组"
+    },
+    "tabs": {
+      "close_active": "关闭编辑器"
+    }
+  },
+  "settings": {
+    "sheet": {
+      "title": "设置",
+      "close": "关闭设置"
+    },
+    "theme": {
+      "title": "主题",
+      "mode": {
+        "system": "跟随系统",
+        "light": "浅色",
+        "dark": "深色"
+      }
+    },
+    "appearance": {
+      "title": "外观",
+      "font": {
+        "ui": "界面字体",
+        "editor": "编辑器字体",
+        "size": "字号",
+        "weight": "字重",
+        "default": "默认"
+      },
+      "line_height": "行距",
+      "letter_spacing": "字距",
+      "reset": "重置"
+    },
+    "layout": {
+      "title": "布局",
+      "collapsed_mode": {
+        "label": "侧边栏折叠时",
+        "rail": "细栏",
+        "hidden": "完全隐藏"
+      }
+    },
+    "diagnostics": {
+      "title": "诊断",
+      "description": "仅在本地统计文件访问策略的拒绝次数。数据不会离开本设备。",
+      "opt_in": "本地记录访问策略拒绝事件",
+      "window": "最近 30 天",
+      "refresh": "刷新",
+      "clear": "清空",
+      "empty": "尚无记录的拒绝事件。",
+      "disabled": "记录已停用。",
+      "col": {
+        "date": "日期",
+        "category": "类别",
+        "rule": "规则",
+        "count": "次数"
+      }
+    }
+  },
+  "shortcut_hint": {
+    "aria": "快捷键提示",
+    "message": "按下以打开命令面板",
+    "dismiss": "知道了",
+    "dismiss_aria": "关闭快捷键提示"
+  },
+  "tabs": {
+    "aria": {
+      "bar": "已打开文件"
+    },
+    "close": "关闭标签页",
+    "orphaned": "磁盘上不存在该文件",
+    "pin": "固定标签页",
+    "unpin": "取消固定标签页",
+    "pinned": "已固定"
+  },
+  "auto_update": {
+    "aria": "自动更新同意",
+    "headline": "启用自动更新?",
+    "body": "新版本将在后台下载并安装。可随时在设置中关闭。",
+    "deny": "拒绝",
+    "allow": "允许"
+  },
+  "error_boundary": {
+    "headline": "此视图发生错误。",
+    "retry": "重试"
+  },
+  "telemetry": {
+    "aria": "匿名使用统计同意",
+    "headline": "发送匿名使用统计?",
+    "body": "我们会收集不含个人信息的使用模式以改进 Markspread。可随时在设置中关闭。",
+    "sample": "查看示例报告",
+    "disable": "不发送",
+    "enable": "发送"
+  },
+  "welcome": {
+    "aria": {
+      "main": "欢迎屏幕",
+      "brand": "品牌",
+      "actions": "开始使用"
+    },
+    "action": {
+      "open_workspace": "打开工作区",
+      "new_workspace": "新建工作区",
+      "single_file": "打开单个 Markdown 文件"
+    },
+    "recent": {
+      "heading": "最近的工作区",
+      "list": {
+        "aria": "最近的工作区"
+      },
+      "empty": {
+        "aria": "空",
+        "label": "暂无最近打开的工作区"
+      },
+      "remove": "从最近项中移除",
+      "remove.aria": "从最近项中移除",
+      "title_missing": "{{path}} (未找到)",
+      "title_unmounted": "{{path}} (驱动器未挂载)",
+      "missing_prompt": "此路径已无法找到。是否从最近项中移除?",
+      "unmounted_prompt": "此工作区的驱动器未连接。请挂载后重试。"
+    }
+  },
+  "welcome_banner": {
+    "aria": "欢迎横幅",
+    "title": "欢迎使用 Markspread",
+    "subtitle": "进行快速导览或配置 AI 提供方以开始使用。",
+    "action": {
+      "tour": "开始导览",
+      "setup_ai": "配置 AI",
+      "dismiss": "关闭",
+      "dismiss_aria": "关闭欢迎横幅"
+    }
+  },
+  "layout": {
+    "aria": {
+      "sidebar_resize": "调整侧边栏大小"
+    }
+  },
+  "single_file": {
+    "aria": {
+      "main": "单文件视图",
+      "editor": "编辑器"
+    },
+    "banner": {
+      "aria": "单文件横幅",
+      "message": "正在工作区外编辑单个文件。"
+    },
+    "action": {
+      "close": "关闭",
+      "convert_to_workspace": "将文件夹转换为工作区"
+    },
+    "editor": {
+      "aria": "文件内容"
+    },
+    "status": {
+      "unsaved": "未保存"
+    }
+  },
+  "toasts": {
+    "aria": "通知",
+    "dismiss.aria": "关闭通知"
+  },
+  "errors": {
+    "posix": {
+      "isdir": "此路径是文件夹，不是文件。",
+      "enoent": "找不到文件。可能已被移动或删除。",
+      "eacces": "权限不足。请检查文件的读取权限。",
+      "enospc": "磁盘空间不足。",
+      "outside_workspace": "此路径在当前工作区之外。",
+      "enotutf8": "无法将此文件的编码解析为文本。",
+      "einval": "请求无效。",
+      "eio": "无法读取此文件。"
+    },
+    "access": {
+      "category": {
+        "sec": "安全拦截",
+        "bnd": "工作区边界",
+        "prm": "权限拦截",
+        "pol": "策略拦截",
+        "prf": "性能拦截",
+        "fmt": "格式",
+        "io": "其他"
+      },
+      "action": {
+        "open_settings": "打开设置",
+        "edit_allowlist": "编辑允许列表",
+        "add_workspace": "添加工作区",
+        "open_anyway": "仍然打开",
+        "force_text": "以文本查看",
+        "retry": "重试",
+        "copy_diagnostics": "复制诊断信息",
+        "learn_more": "了解更多",
+        "show_in_tree": "在文件树中显示",
+        "open_image_viewer": "用图像查看器打开"
+      },
+      "rule": {
+        "sec_null_byte": {
+          "title": "已被安全策略拦截",
+          "body": "路径中包含 NUL 字节，可能伪造系统调用。安全策略不允许此操作，且无法在设置中放行。",
+          "learn_more": "安全拦截指南"
+        },
+        "sec_path_traversal": {
+          "title": "已被安全策略拦截",
+          "body": "路径中包含试图越出工作区的模式。安全策略不允许此操作，且无法在设置中放行。",
+          "learn_more": "安全拦截指南"
+        },
+        "sec_symlink_escape": {
+          "title": "符号链接指向工作区外部",
+          "body": "此符号链接的目标在工作区外。安全策略不允许跟随它，请将目标文件复制到工作区内再打开。",
+          "learn_more": "符号链接策略"
+        },
+        "bnd_outside_workspace": {
+          "title": "路径在工作区外",
+          "body": "此路径在当前工作区之外，无法打开。请添加该位置为工作区，或将文件移入当前工作区。",
+          "learn_more": "工作区边界说明"
+        },
+        "prm_os_eacces": {
+          "title": "操作系统拒绝权限",
+          "body": "操作系统拒绝了此文件的读取权限。请检查文件所有者和读取权限后重试。",
+          "learn_more": "操作系统权限指南"
+        },
+        "pol_vcs_internal": {
+          "title": "VCS 内部文件默认受保护",
+          "body": ".git、.hg、.svn 等版本控制内部文件默认受保护。如确需编辑，请在允许列表中添加。",
+          "learn_more": "策略拦截与允许列表"
+        },
+        "pol_node_modules": {
+          "title": "node_modules 默认受保护",
+          "body": "node_modules 是自动生成的依赖，默认受保护。可在设置的允许列表中只放行特定包。",
+          "learn_more": "策略拦截与允许列表"
+        },
+        "pol_build_output": {
+          "title": "构建产物默认受保护",
+          "body": "dist、build、.next 等构建产物为自动生成，默认受保护。可在设置的允许列表中只放行特定路径。",
+          "learn_more": "策略拦截与允许列表"
+        },
+        "pol_lang_cache": {
+          "title": "语言缓存默认受保护",
+          "body": ".venv、__pycache__、.gradle 等语言运行时缓存默认受保护。可在设置的允许列表中只放行特定路径。",
+          "learn_more": "策略拦截与允许列表"
+        },
+        "pol_ide_internal": {
+          "title": "IDE 内部文件默认受保护",
+          "body": ".idea、.vscode、.cursor 等 IDE 元数据默认受保护。settings.json、规则文件等常被用户编辑的文件会被自动放行。",
+          "learn_more": "策略拦截与允许列表"
+        },
+        "pol_platform_cruft": {
+          "title": "平台临时文件默认受保护",
+          "body": ".DS_Store、Thumbs.db、desktop.ini 等系统临时文件几乎无需编辑，默认受保护。如确需打开，请加入允许列表。",
+          "learn_more": "策略拦截与允许列表"
+        },
+        "prf_file_size_limit": {
+          "title": "文件过大 ({{size}})",
+          "body": "此文件为 {{size}}，超过稳定性阈值 ({{limit}})，默认被拦截。点击「仍然打开」可一次性自担风险打开。",
+          "learn_more": "大文件处理指南"
+        },
+        "prf_file_size_warn": {
+          "title": "大文件警告 ({{size}})",
+          "body": "此文件为 {{size}}，比通常更大但仍会照常打开。若输入有明显延迟，请换用其他查看器。",
+          "learn_more": "大文件处理指南"
+        },
+        "prf_dir_node_count": {
+          "title": "文件夹条目过多 ({{count}} 项)",
+          "body": "单层下的条目数为 {{count}}，超过阈值 ({{limit}})，默认会分页显示。请用搜索或筛选缩小范围。",
+          "learn_more": "大目录处理指南"
+        },
+        "fmt_not_utf8": {
+          "title": "编码无法解析为文本",
+          "body": "此文件不是有效的 UTF-8。请用其他查看器打开，或尝试「以文本查看」强制解码。",
+          "learn_more": "支持的编码"
+        },
+        "fmt_is_directory": {
+          "title": "此路径是文件夹",
+          "body": "它是文件夹而非文件，编辑器无法打开。请在文件树中展开文件夹并选择内部文件。",
+          "learn_more": ""
+        },
+        "fmt_binary_sniff": {
+          "title": "已识别为二进制文件",
+          "body": "文件开头包含 NUL 字节，被判定为二进制。请用图像或 PDF 查看器打开；若确为文本，可使用「以文本查看」。",
+          "learn_more": "二进制识别策略"
+        },
+        "io_disk_full": {
+          "title": "磁盘空间不足",
+          "body": "由于磁盘空间不足，保存失败。请清理磁盘后重试。",
+          "learn_more": ""
+        },
+        "io_enoent": {
+          "title": "找不到文件",
+          "body": "此路径下找不到文件。可能已被其他工具移动或删除，请刷新文件树确认。",
+          "learn_more": ""
+        },
+        "io_unclassified": {
+          "title": "未知文件系统错误",
+          "body": "发生未分类的 I/O 错误 (代码: {{code}})。请稍后重试，或复制诊断信息提交反馈。",
+          "learn_more": ""
+        }
+      }
+    }
+  }
+}

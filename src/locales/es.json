@@ -1,0 +1,567 @@
+{
+  "ai": {
+    "actions": {
+      "review": "Revisar",
+      "translate": "Traducir",
+      "summarize": "Resumir",
+      "rewrite": "Reescribir"
+    },
+    "provider": {
+      "add": "Añadir proveedor",
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "ollama": "Ollama (local)"
+    },
+    "cost": {
+      "tokens_in": "Tokens de entrada",
+      "tokens_out": "Tokens de salida",
+      "estimated": "Coste estimado"
+    },
+    "category": {
+      "edit": "Editar",
+      "generate": "Generar",
+      "translate": "Traducir",
+      "summarize": "Resumir",
+      "custom": "Personalizado"
+    },
+    "chip": {
+      "run": "Ejecutar",
+      "cancel": "Cancelar",
+      "cancel.aria": "Cancelar acción de IA"
+    },
+    "palette": {
+      "aria": "Paleta de acciones de IA",
+      "empty": "Ninguna acción coincide",
+      "list.aria": "Acciones de IA",
+      "placeholder": "Buscar acciones de IA…",
+      "search.aria": "Buscar acciones de IA"
+    },
+    "subscription": {
+      "button": "Iniciar sesión con Claude",
+      "button.api_key": "Pegar clave de API",
+      "stage.starting": "Iniciando sesión…",
+      "stage.awaiting_user": "Inicia sesión en tu navegador para continuar",
+      "stage.awaiting_user_with_code": "Ingresa el código {{code}} en el navegador",
+      "stage.exchanging": "Finalizando inicio de sesión…",
+      "stage.success": "Sesión iniciada como {{account}}",
+      "re_sign_in": "Volver a iniciar sesión",
+      "error.cancelled": "Inicio de sesión cancelado.",
+      "error.timeout": "Tiempo de espera agotado. Inténtalo de nuevo.",
+      "error.network": "Error de red. Comprueba tu conexión.",
+      "error.denied": "Autorización denegada.",
+      "error.invalid_token": "Las credenciales devueltas no son válidas.",
+      "error.unsupported_provider": "Este proveedor no admite inicio de sesión por suscripción.",
+      "error.internal": "Error inesperado. Consulta el registro."
+    }
+  },
+  "app": {
+    "name": "Markspread",
+    "tagline": "Revisor ligero de Markdown para la era de la IA"
+  },
+  "dialog": {
+    "ok": "Aceptar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "discard": "Descartar",
+    "retry": "Reintentar",
+    "rename": "Renombrar",
+    "recreate": "Recrear",
+    "keep_in_memory": "Mantener en memoria",
+    "permanently_delete": "Eliminar permanentemente",
+    "delete_confirm_file": "¿Eliminar este archivo permanentemente? No se puede deshacer.",
+    "delete_confirm_folder": "¿Eliminar esta carpeta y todo su contenido permanentemente? No se puede deshacer.",
+    "save_changes_prompt": "¿Guardar los cambios antes de cerrar?"
+  },
+  "editor": {
+    "aria": {
+      "empty": "Editor (sin archivo abierto)",
+      "error": "Error del editor",
+      "loading": "Cargando archivo",
+      "host": "Editor"
+    },
+    "empty": {
+      "hint": "Abre un archivo desde la barra lateral para empezar a revisar."
+    },
+    "loading": "Cargando…",
+    "viewer": {
+      "image_aria": "Vista previa de imagen",
+      "binary_aria": "Archivo no textual",
+      "pdf_headline": "La vista previa de PDF aún no está soportada.",
+      "binary_headline": "Este archivo no es un documento de texto.",
+      "reveal": "Mostrar en el explorador",
+      "open_with": "Abrir con la app predeterminada"
+    }
+  },
+  "error": {
+    "generic": "Ha ocurrido un error.",
+    "fs": {
+      "not_found": "Archivo no encontrado.",
+      "permission_denied": "Permiso denegado.",
+      "disk_full": "Espacio insuficiente en el disco.",
+      "name_conflict": "Ya existe un elemento con ese nombre.",
+      "outside_workspace": "La ruta está fuera del área de trabajo."
+    },
+    "network": {
+      "offline": "Parece estar sin conexión.",
+      "timeout": "La solicitud ha agotado el tiempo de espera."
+    },
+    "ai": {
+      "no_provider": "No hay un proveedor de IA configurado.",
+      "rate_limited": "Se alcanzó el límite del proveedor de IA.",
+      "auth_failed": "La autenticación con el proveedor de IA falló."
+    }
+  },
+  "filetree": {
+    "placeholder": {
+      "filter": "Filtrar…",
+      "new_file": "Nombre del archivo"
+    },
+    "aria": {
+      "tree": "Árbol de archivos",
+      "filter": "Filtrar archivos",
+      "sort": "Modo de orden",
+      "folders_first": "Carpetas primero",
+      "show_hidden": "Mostrar archivos ocultos",
+      "rename": "Nuevo nombre",
+      "locked": "Archivo bloqueado por otro proceso"
+    },
+    "tooltip": {
+      "locked": "Otro proceso está utilizando este archivo.",
+      "folders_first": "Carpetas primero",
+      "show_hidden": "Mostrar archivos ocultos",
+      "sort": "Orden: {{label}}"
+    },
+    "label": {
+      "folders_first_on": "Carpetas ↑",
+      "folders_first_off": "Mixto",
+      "show_hidden_on": ".•",
+      "show_hidden_off": "·"
+    },
+    "sort": {
+      "name": "Nombre",
+      "modified": "Modificado",
+      "type": "Tipo"
+    },
+    "move": {
+      "bulk_progress": "Moviendo elementos…",
+      "bulk_done": "Movimiento completado",
+      "invalid_target": "No se puede mover a la misma carpeta",
+      "failed": "Error al mover",
+      "item_failed": "Error al mover un elemento"
+    },
+    "trash": {
+      "bulk_progress": "Enviando a la papelera…",
+      "bulk_done": "Enviados a la papelera",
+      "bulk_cancelled": "Envío a la papelera cancelado",
+      "item_failed": "Fallo al enviar a la papelera",
+      "moved": "Movido a la papelera",
+      "restored": "Restaurado desde la papelera",
+      "undo_failed": "Error al deshacer"
+    },
+    "delete": {
+      "failed": "Error al eliminar permanentemente",
+      "done": "Eliminado permanentemente"
+    },
+    "reveal": {
+      "unsupported": "Mostrar en el sistema no es compatible con esta plataforma."
+    },
+    "open_with": {
+      "unsupported": "Abrir con… no es compatible con esta plataforma."
+    }
+  },
+  "main": {
+    "aria": {
+      "workspace": "Área de trabajo",
+      "filetree": "Árbol de archivos",
+      "editor": "Editor",
+      "sidebar_rail": "Mostrar barra lateral"
+    },
+    "action": {
+      "close_workspace": "Cerrar espacio de trabajo",
+      "settings": "Ajustes",
+      "settings.tooltip": "Ajustes (⌘,)",
+      "show_sidebar": "Mostrar barra lateral",
+      "hide_sidebar": "Ocultar barra lateral",
+      "toggle_sidebar": {
+        "tooltip": "Alternar barra lateral (⌘B)"
+      },
+      "sidebar_rail": {
+        "tooltip": "Mostrar barra lateral (⌘B)"
+      }
+    },
+    "editor": {
+      "placeholder": "Abre un archivo para empezar a revisar."
+    }
+  },
+  "menu": {
+    "file": {
+      "new_file": "Nuevo archivo",
+      "new_folder": "Nueva carpeta",
+      "open": "Abrir…",
+      "open_workspace": "Abrir área de trabajo…",
+      "save": "Guardar",
+      "save_as": "Guardar como…",
+      "close_tab": "Cerrar pestaña",
+      "close_workspace": "Cerrar área de trabajo",
+      "exit": "Salir"
+    },
+    "edit": {
+      "undo": "Deshacer",
+      "redo": "Rehacer",
+      "cut": "Cortar",
+      "copy": "Copiar",
+      "paste": "Pegar",
+      "find": "Buscar",
+      "replace": "Reemplazar"
+    },
+    "view": {
+      "toggle_sidebar": "Alternar barra lateral",
+      "toggle_hidden": "Alternar archivos ocultos",
+      "command_palette": "Paleta de comandos…"
+    },
+    "help": {
+      "docs": "Documentación",
+      "shortcuts": "Atajos de teclado",
+      "report_issue": "Informar de un problema",
+      "about": "Acerca de Markspread"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Te damos la bienvenida a Markspread",
+      "open_workspace": "Abrir un área de trabajo",
+      "new_workspace": "Crear un área de trabajo",
+      "open_single_file": "Abrir un único archivo Markdown",
+      "recent": "Áreas de trabajo recientes"
+    },
+    "first_run": {
+      "telemetry_consent": "¿Compartir datos de uso anónimos para mejorar Markspread?",
+      "auto_update_consent": "¿Instalar actualizaciones automáticamente?"
+    }
+  },
+  "palette": {
+    "title": "Paleta de comandos",
+    "placeholder": "Escribe un comando, archivo, o `?` para ayuda",
+    "fileOpen": "Abrir archivo…",
+    "empty": "Sin coincidencias"
+  },
+  "peek": {
+    "aria": {
+      "dialog": "Árbol de archivos (vista rápida)"
+    },
+    "title": "Archivos",
+    "action": {
+      "pin": "Fijar vista rápida",
+      "unpin": "Desfijar vista rápida",
+      "pin.tooltip": "Fijar (⌘⇧B)",
+      "unpin.tooltip": "Desfijar (⌘⇧B)"
+    }
+  },
+  "commands": {
+    "view": {
+      "toggle_sidebar": "Alternar barra lateral",
+      "show_sidebar": "Mostrar barra lateral",
+      "hide_sidebar": "Ocultar barra lateral",
+      "split_right": "Dividir editor a la derecha",
+      "split_down": "Dividir editor hacia abajo",
+      "focus_pane_1": "Enfocar panel 1",
+      "focus_pane_2": "Enfocar panel 2",
+      "focus_pane_3": "Enfocar panel 3",
+      "move_editor_to_next_group": "Mover editor al siguiente grupo"
+    },
+    "tabs": {
+      "close_active": "Cerrar editor"
+    }
+  },
+  "settings": {
+    "sheet": {
+      "title": "Ajustes",
+      "close": "Cerrar ajustes"
+    },
+    "theme": {
+      "title": "Tema",
+      "mode": {
+        "system": "Sistema",
+        "light": "Claro",
+        "dark": "Oscuro"
+      }
+    },
+    "appearance": {
+      "title": "Apariencia",
+      "font": {
+        "ui": "Fuente de la interfaz",
+        "editor": "Fuente del editor",
+        "size": "Tamaño de la fuente",
+        "weight": "Grosor de la fuente",
+        "default": "Predeterminado"
+      },
+      "line_height": "Interlineado",
+      "letter_spacing": "Espaciado entre caracteres",
+      "reset": "Restablecer"
+    },
+    "layout": {
+      "title": "Diseño",
+      "collapsed_mode": {
+        "label": "Cuando la barra lateral está plegada",
+        "rail": "Carril estrecho",
+        "hidden": "Totalmente oculto"
+      }
+    },
+    "diagnostics": {
+      "title": "Diagnóstico",
+      "description": "Contadores solo locales de denegaciones de la política de acceso. Los datos no salen de este dispositivo.",
+      "opt_in": "Registrar denegaciones de la política de acceso localmente",
+      "window": "Últimos 30 días",
+      "refresh": "Actualizar",
+      "clear": "Borrar",
+      "empty": "Aún no hay denegaciones registradas.",
+      "disabled": "El registro está desactivado.",
+      "col": {
+        "date": "Fecha",
+        "category": "Categoría",
+        "rule": "Regla",
+        "count": "Recuento"
+      }
+    }
+  },
+  "shortcut_hint": {
+    "aria": "Sugerencia de atajo de teclado",
+    "message": "Pulsa para abrir la paleta de comandos",
+    "dismiss": "Entendido",
+    "dismiss_aria": "Descartar sugerencia de atajo"
+  },
+  "tabs": {
+    "aria": {
+      "bar": "Archivos abiertos"
+    },
+    "close": "Cerrar pestaña",
+    "orphaned": "El archivo ya no existe en el disco",
+    "pin": "Fijar pestaña",
+    "unpin": "Soltar pestaña",
+    "pinned": "Fijada"
+  },
+  "auto_update": {
+    "aria": "Consentimiento de actualización automática",
+    "headline": "¿Activar actualizaciones automáticas?",
+    "body": "Las nuevas versiones se descargarán e instalarán en segundo plano. Puedes desactivarlo en Ajustes en cualquier momento.",
+    "deny": "Rechazar",
+    "allow": "Permitir"
+  },
+  "error_boundary": {
+    "headline": "Algo salió mal en esta vista.",
+    "retry": "Intentar de nuevo"
+  },
+  "telemetry": {
+    "aria": "Consentimiento de estadísticas anónimas de uso",
+    "headline": "¿Enviar estadísticas anónimas de uso?",
+    "body": "Recopilamos patrones de uso sin información personal para mejorar Markspread. Puedes desactivarlo en Ajustes en cualquier momento.",
+    "sample": "Ver informe de ejemplo",
+    "disable": "No enviar",
+    "enable": "Enviar"
+  },
+  "welcome": {
+    "aria": {
+      "main": "Pantalla de bienvenida",
+      "brand": "Marca",
+      "actions": "Comenzar"
+    },
+    "action": {
+      "open_workspace": "Abrir espacio de trabajo",
+      "new_workspace": "Crear espacio de trabajo",
+      "single_file": "Abrir un archivo Markdown"
+    },
+    "recent": {
+      "heading": "Espacios de trabajo recientes",
+      "list": {
+        "aria": "Espacios de trabajo recientes"
+      },
+      "empty": {
+        "aria": "Vacío",
+        "label": "No hay espacios de trabajo abiertos recientemente"
+      },
+      "remove": "Quitar de recientes",
+      "remove.aria": "Quitar de recientes",
+      "title_missing": "{{path}} (no encontrado)",
+      "title_unmounted": "{{path}} (unidad no montada)",
+      "missing_prompt": "Esta ruta ya no se puede encontrar. ¿Quitar de Recientes?",
+      "unmounted_prompt": "La unidad de este espacio de trabajo no está conectada. Móntala y vuelve a intentarlo."
+    }
+  },
+  "welcome_banner": {
+    "aria": "Banner de bienvenida",
+    "title": "Te damos la bienvenida a Markspread",
+    "subtitle": "Realiza un breve recorrido o configura tu proveedor de IA para comenzar.",
+    "action": {
+      "tour": "Iniciar recorrido",
+      "setup_ai": "Configurar IA",
+      "dismiss": "Descartar",
+      "dismiss_aria": "Descartar banner de bienvenida"
+    }
+  },
+  "layout": {
+    "aria": {
+      "sidebar_resize": "Redimensionar barra lateral"
+    }
+  },
+  "single_file": {
+    "aria": {
+      "main": "Vista de archivo único",
+      "editor": "Editor"
+    },
+    "banner": {
+      "aria": "Banner de archivo único",
+      "message": "Editando un archivo fuera de un espacio de trabajo."
+    },
+    "action": {
+      "close": "Cerrar",
+      "convert_to_workspace": "Convertir carpeta en espacio de trabajo"
+    },
+    "editor": {
+      "aria": "Contenido del archivo"
+    },
+    "status": {
+      "unsaved": "Sin guardar"
+    }
+  },
+  "toasts": {
+    "aria": "Notificaciones",
+    "dismiss.aria": "Descartar notificación"
+  },
+  "errors": {
+    "posix": {
+      "isdir": "Esta ruta es una carpeta, no un archivo.",
+      "enoent": "Archivo no encontrado. Puede que se haya movido o eliminado.",
+      "eacces": "Permiso denegado. Comprueba los permisos de lectura del archivo.",
+      "enospc": "No hay suficiente espacio en disco.",
+      "outside_workspace": "Esta ruta está fuera del espacio de trabajo actual.",
+      "enotutf8": "No se pudo decodificar la codificación de este archivo como texto.",
+      "einval": "La solicitud no era válida.",
+      "eio": "No se pudo leer este archivo."
+    },
+    "access": {
+      "category": {
+        "sec": "Bloqueo de seguridad",
+        "bnd": "Límite del espacio de trabajo",
+        "prm": "Bloqueo de permisos",
+        "pol": "Bloqueo por política",
+        "prf": "Bloqueo por rendimiento",
+        "fmt": "Formato",
+        "io": "Otro"
+      },
+      "action": {
+        "open_settings": "Abrir ajustes",
+        "edit_allowlist": "Editar lista permitida",
+        "add_workspace": "Añadir espacio de trabajo",
+        "open_anyway": "Abrir de todas formas",
+        "force_text": "Ver como texto",
+        "retry": "Reintentar",
+        "copy_diagnostics": "Copiar diagnóstico",
+        "learn_more": "Más información",
+        "show_in_tree": "Mostrar en el árbol",
+        "open_image_viewer": "Abrir en visor de imágenes"
+      },
+      "rule": {
+        "sec_null_byte": {
+          "title": "Bloqueado por la política de seguridad",
+          "body": "La ruta contiene un byte NUL que puede falsificar llamadas al sistema. La política de seguridad no lo permite y no se puede anular en los ajustes.",
+          "learn_more": "Guía de bloqueos de seguridad"
+        },
+        "sec_path_traversal": {
+          "title": "Bloqueado por la política de seguridad",
+          "body": "La ruta contiene un patrón que intenta salir del espacio de trabajo. La política de seguridad no lo permite y no se puede anular en los ajustes.",
+          "learn_more": "Guía de bloqueos de seguridad"
+        },
+        "sec_symlink_escape": {
+          "title": "El enlace simbólico apunta fuera del espacio de trabajo",
+          "body": "Este enlace simbólico se resuelve fuera del espacio de trabajo. La política de seguridad no permite seguirlo; copia el archivo de destino dentro del espacio de trabajo y ábrelo allí.",
+          "learn_more": "Política de enlaces simbólicos"
+        },
+        "bnd_outside_workspace": {
+          "title": "La ruta está fuera del espacio de trabajo",
+          "body": "Esta ruta está fuera del espacio de trabajo actual y no se puede abrir. Añade la ubicación como espacio de trabajo o mueve el archivo dentro del actual.",
+          "learn_more": "Límite del espacio de trabajo"
+        },
+        "prm_os_eacces": {
+          "title": "El sistema operativo denegó el permiso",
+          "body": "El sistema operativo denegó el permiso de lectura para este archivo. Comprueba el propietario y los permisos de lectura y vuelve a intentarlo.",
+          "learn_more": "Guía de permisos del sistema"
+        },
+        "pol_vcs_internal": {
+          "title": "Los internos de VCS están protegidos por defecto",
+          "body": "Los internos de control de versiones como .git, .hg y .svn están protegidos por defecto. Si realmente necesitas editarlos, añádelos a la lista permitida.",
+          "learn_more": "Bloqueos por política y lista permitida"
+        },
+        "pol_node_modules": {
+          "title": "node_modules está protegido por defecto",
+          "body": "node_modules es contenido de dependencias generado automáticamente y está protegido por defecto. Usa la lista permitida en los ajustes para exponer paquetes concretos.",
+          "learn_more": "Bloqueos por política y lista permitida"
+        },
+        "pol_build_output": {
+          "title": "Los artefactos de compilación están protegidos por defecto",
+          "body": "Artefactos como dist, build y .next se generan automáticamente y están protegidos por defecto. Usa la lista permitida en los ajustes para exponer rutas concretas.",
+          "learn_more": "Bloqueos por política y lista permitida"
+        },
+        "pol_lang_cache": {
+          "title": "Las cachés de lenguajes están protegidas por defecto",
+          "body": "Cachés de runtime como .venv, __pycache__ y .gradle están protegidas por defecto. Usa la lista permitida en los ajustes para exponer rutas concretas.",
+          "learn_more": "Bloqueos por política y lista permitida"
+        },
+        "pol_ide_internal": {
+          "title": "Los internos de IDE están protegidos por defecto",
+          "body": "Carpetas de metadatos como .idea, .vscode y .cursor están protegidas por defecto. Archivos que sueles editar (settings.json, archivos de reglas) se permiten automáticamente.",
+          "learn_more": "Bloqueos por política y lista permitida"
+        },
+        "pol_platform_cruft": {
+          "title": "Los archivos basura del sistema están protegidos por defecto",
+          "body": "Archivos como .DS_Store, Thumbs.db y desktop.ini rara vez necesitan edición y están protegidos por defecto. Añádelos a la lista permitida si realmente necesitas abrirlos.",
+          "learn_more": "Bloqueos por política y lista permitida"
+        },
+        "prf_file_size_limit": {
+          "title": "El archivo es demasiado grande ({{size}})",
+          "body": "Este archivo pesa {{size}}, supera el límite de estabilidad ({{limit}}) y se bloquea por defecto. Elige «Abrir de todas formas» para abrirlo una vez bajo tu responsabilidad.",
+          "learn_more": "Gestión de archivos grandes"
+        },
+        "prf_file_size_warn": {
+          "title": "Aviso de archivo grande ({{size}})",
+          "body": "Este archivo pesa {{size}}, más de lo habitual, pero se abrirá igualmente. Si notas retraso al escribir, prueba con otro visor.",
+          "learn_more": "Gestión de archivos grandes"
+        },
+        "prf_dir_node_count": {
+          "title": "La carpeta tiene demasiadas entradas ({{count}})",
+          "body": "Esta carpeta tiene {{count}} entradas directas, supera el límite ({{limit}}) y se pagina por defecto. Acota la vista con búsqueda o filtros.",
+          "learn_more": "Gestión de directorios grandes"
+        },
+        "fmt_not_utf8": {
+          "title": "La codificación no se puede leer como texto",
+          "body": "Este archivo no es UTF-8 válido. Ábrelo con otro visor o usa «Ver como texto» para forzar la decodificación.",
+          "learn_more": "Codificaciones soportadas"
+        },
+        "fmt_is_directory": {
+          "title": "Esta ruta es una carpeta",
+          "body": "Es una carpeta, no un archivo, así que el editor no puede abrirla. Despliega la carpeta en el árbol y elige un archivo de su interior.",
+          "learn_more": ""
+        },
+        "fmt_binary_sniff": {
+          "title": "Detectado como archivo binario",
+          "body": "Los primeros bytes contienen NUL, así que parece binario. Ábrelo con un visor de imágenes o PDF, o usa «Ver como texto» si estás seguro de que es texto.",
+          "learn_more": "Política de detección binaria"
+        },
+        "io_disk_full": {
+          "title": "Disco lleno",
+          "body": "El guardado falló porque el disco está lleno. Libera espacio y vuelve a intentarlo.",
+          "learn_more": ""
+        },
+        "io_enoent": {
+          "title": "Archivo no encontrado",
+          "body": "Falta el archivo en esta ruta. Otra herramienta puede haberlo movido o eliminado; actualiza el árbol para confirmarlo.",
+          "learn_more": ""
+        },
+        "io_unclassified": {
+          "title": "Error de sistema de archivos desconocido",
+          "body": "Ocurrió un error de E/S sin clasificar (código: {{code}}). Reintenta en breve o copia el diagnóstico para reportarlo.",
+          "learn_more": ""
+        }
+      }
+    }
+  }
+}

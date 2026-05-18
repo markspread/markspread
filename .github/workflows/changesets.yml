@@ -1,0 +1,65 @@
+# S-CI-018: Changesets gate + Version Packages PR.
+#
+# Two jobs:
+#   - `gate`     PR-time check that a changeset file is present unless the
+#                PR carries the `no-release-impact` label. Fails the PR
+#                otherwise.
+#   - `version`  on push to main, opens or updates the Version Packages
+#                PR via the official changesets/action. Merging that PR
+#                tags the repo (S-CI-019).
+
+name: changesets
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Skip when label is set
+        if: contains(github.event.pull_request.labels.*.name, 'no-release-impact')
+        run: echo "PR carries no-release-impact — skipping changeset gate."
+
+      - name: Require a changeset
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-release-impact') }}
+        run: |
+          ADDED=$(git diff --name-only --diff-filter=A origin/${{ github.base_ref }}...HEAD -- '.changeset/*.md' | grep -v '^.changeset/README.md$' || true)
+          if [ -z "$ADDED" ]; then
+            echo "::error::No changeset added. Run \`pnpm changeset\` or attach the 'no-release-impact' label."
+            exit 1
+          fi
+          echo "Found changeset(s): $ADDED"
+
+  version:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - run: corepack enable && pnpm install --frozen-lockfile
+
+      - name: Open / update Version Packages PR
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          publish: pnpm changeset tag
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

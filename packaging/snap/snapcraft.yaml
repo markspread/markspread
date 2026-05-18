@@ -1,0 +1,59 @@
+name: markspread
+title: Markspread
+base: core22
+version: "0.1.0"
+summary: Lightweight markdown reviewer for the AI era
+description: |
+  Markspread is an offline-first markdown reviewer focused on review/diff
+  workflows for AI-era documentation. BYOK AI, plugin-first, open source.
+
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: amd64
+
+apps:
+  markspread:
+    command: usr/bin/markspread
+    extensions: [gnome]
+    plugs:
+      - home
+      - removable-media
+      - network
+      - desktop
+      - desktop-legacy
+      - wayland
+      - x11
+      - opengl
+      - audio-playback
+      - password-manager-service
+    desktop: usr/share/applications/markspread.desktop
+
+parts:
+  markspread:
+    plugin: nil
+    source: ../..
+    build-packages:
+      - curl
+      - libwebkit2gtk-4.1-dev
+      - libgtk-3-dev
+      - libayatana-appindicator3-dev
+      - librsvg2-dev
+      - libssl-dev
+      - patchelf
+      - file
+      - pkg-config
+    stage-packages:
+      - libwebkit2gtk-4.1-0
+      - libayatana-appindicator3-1
+    override-build: |
+      set -euo pipefail
+      curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+      . "$HOME/.cargo/env"
+      curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=9 sh -
+      export PATH="$HOME/.local/share/pnpm:$PATH"
+      pnpm install --frozen-lockfile
+      pnpm tauri build --bundles deb
+      install -Dm755 src-tauri/target/release/markspread \
+        "$CRAFT_PART_INSTALL/usr/bin/markspread"

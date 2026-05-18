@@ -1,0 +1,115 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Markspread",
+  "version": "0.1.0",
+  "identifier": "dev.markspread.app",
+  "build": {
+    "beforeDevCommand": "node node_modules/vite/bin/vite.js",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "node node_modules/vite/bin/vite.js build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Markspread",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 500,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob: asset:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdx"],
+        "name": "Markdown Document",
+        "description": "Markdown source file",
+        "role": "Editor",
+        "mimeType": "text/markdown"
+      }
+    ],
+    "category": "Productivity",
+    "resources": ["licenses/licenses.json"],
+    "shortDescription": "Lightweight markdown reviewer",
+    "longDescription": "Markspread — lightweight markdown reviewer for the AI era. BYOK AI, plugin-first, open source.",
+    "copyright": "© Markspread Contributors",
+    "publisher": "Markspread",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "12.0",
+      "entitlements": "Entitlements.plist",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "infoPlist": "Info.plist"
+    },
+    "windows": {
+      "wix": {
+        "language": ["en-US", "ko-KR"]
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English", "Korean"],
+        "installerHooks": "installer/nsis-context-menu.nsh"
+      }
+    },
+    "createUpdaterArtifacts": "v1Compatible",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0",
+          "libayatana-appindicator3-1 | libappindicator3-1"
+        ],
+        "section": "utils",
+        "priority": "optional",
+        "desktopTemplate": "installer/markspread.desktop"
+      },
+      "rpm": {
+        "depends": [
+          "webkit2gtk4.1",
+          "gtk3",
+          "libappindicator-gtk3"
+        ],
+        "release": "1",
+        "desktopTemplate": "installer/markspread.desktop"
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://releases.markspread.app/latest.json",
+        "https://releases.markspread.app/latest-{{target}}-{{arch}}.json"
+      ],
+      "dialog": false,
+      "pubkey": "${MARKSPREAD_UPDATER_PUBKEY}"
+    }
+  }
+}

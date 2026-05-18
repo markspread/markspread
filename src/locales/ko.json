@@ -1,0 +1,567 @@
+{
+  "ai": {
+    "actions": {
+      "review": "리뷰",
+      "translate": "번역",
+      "summarize": "요약",
+      "rewrite": "다시 쓰기"
+    },
+    "category": {
+      "edit": "편집",
+      "generate": "생성",
+      "translate": "번역",
+      "summarize": "요약",
+      "custom": "사용자 정의"
+    },
+    "chip": {
+      "run": "실행",
+      "cancel": "취소",
+      "cancel.aria": "AI 작업 취소"
+    },
+    "palette": {
+      "aria": "AI 액션 팔레트",
+      "empty": "일치하는 액션이 없습니다",
+      "list.aria": "AI 액션",
+      "placeholder": "AI 액션 검색…",
+      "search.aria": "AI 액션 검색"
+    },
+    "provider": {
+      "add": "프로바이더 추가",
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "ollama": "Ollama (로컬)"
+    },
+    "cost": {
+      "tokens_in": "입력 토큰",
+      "tokens_out": "출력 토큰",
+      "estimated": "예상 비용"
+    },
+    "subscription": {
+      "button": "Claude로 로그인",
+      "button.api_key": "API 키 붙여넣기",
+      "stage.starting": "로그인 시작 중…",
+      "stage.awaiting_user": "브라우저에서 로그인하여 계속하세요",
+      "stage.awaiting_user_with_code": "브라우저에 코드 {{code}}를 입력하세요",
+      "stage.exchanging": "로그인 마무리 중…",
+      "stage.success": "{{account}}로 로그인됨",
+      "re_sign_in": "다시 로그인",
+      "error.cancelled": "로그인이 취소되었습니다.",
+      "error.timeout": "로그인 시간이 초과되었습니다. 다시 시도하세요.",
+      "error.network": "네트워크 오류. 연결을 확인하고 다시 시도하세요.",
+      "error.denied": "권한 부여가 거부되었습니다.",
+      "error.invalid_token": "반환된 자격 증명이 잘못되었습니다.",
+      "error.unsupported_provider": "이 공급자는 구독 로그인을 지원하지 않습니다.",
+      "error.internal": "예기치 못한 오류. 로그를 확인하세요."
+    }
+  },
+  "app": {
+    "name": "Markspread",
+    "tagline": "AI 시대를 위한 가벼운 마크다운 리뷰어"
+  },
+  "dialog": {
+    "ok": "확인",
+    "cancel": "취소",
+    "save": "저장",
+    "discard": "취소(변경 버리기)",
+    "retry": "다시 시도",
+    "rename": "이름 변경",
+    "recreate": "다시 만들기",
+    "keep_in_memory": "메모리에 유지",
+    "permanently_delete": "영구 삭제",
+    "delete_confirm_file": "이 파일을 영구 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "delete_confirm_folder": "이 폴더와 내부 파일을 모두 영구 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "save_changes_prompt": "닫기 전에 변경 사항을 저장할까요?"
+  },
+  "editor": {
+    "aria": {
+      "empty": "에디터 (열린 파일 없음)",
+      "error": "에디터 오류",
+      "loading": "파일 불러오는 중",
+      "host": "에디터"
+    },
+    "empty": {
+      "hint": "사이드바에서 파일을 열어 리뷰를 시작하세요."
+    },
+    "loading": "불러오는 중…",
+    "viewer": {
+      "image_aria": "이미지 미리보기",
+      "binary_aria": "텍스트가 아닌 파일",
+      "pdf_headline": "PDF 미리보기는 아직 지원되지 않습니다.",
+      "binary_headline": "이 파일은 텍스트 문서가 아닙니다.",
+      "reveal": "파일 탐색기에서 보기",
+      "open_with": "기본 앱으로 열기"
+    }
+  },
+  "error": {
+    "generic": "문제가 발생했습니다.",
+    "fs": {
+      "not_found": "파일을 찾을 수 없습니다.",
+      "permission_denied": "권한이 없습니다.",
+      "disk_full": "디스크 공간이 부족합니다.",
+      "name_conflict": "같은 이름의 항목이 이미 있습니다.",
+      "outside_workspace": "워크스페이스 밖의 경로입니다."
+    },
+    "network": {
+      "offline": "오프라인 상태입니다.",
+      "timeout": "요청 시간이 초과되었습니다."
+    },
+    "ai": {
+      "no_provider": "AI 프로바이더가 설정되지 않았습니다.",
+      "rate_limited": "AI 프로바이더 요청 한도에 도달했습니다.",
+      "auth_failed": "AI 프로바이더 인증에 실패했습니다."
+    }
+  },
+  "filetree": {
+    "placeholder": {
+      "filter": "필터…",
+      "new_file": "파일명"
+    },
+    "aria": {
+      "tree": "파일 트리",
+      "filter": "파일 필터",
+      "sort": "정렬 모드",
+      "folders_first": "폴더 우선",
+      "show_hidden": "숨김 파일 보기",
+      "rename": "새 이름",
+      "locked": "다른 프로세스가 점유 중인 파일입니다"
+    },
+    "tooltip": {
+      "locked": "다른 프로세스가 이 파일을 사용 중입니다.",
+      "folders_first": "폴더 우선",
+      "show_hidden": "숨김 파일 보기",
+      "sort": "정렬: {{label}}"
+    },
+    "label": {
+      "folders_first_on": "폴더 ↑",
+      "folders_first_off": "혼합",
+      "show_hidden_on": ".•",
+      "show_hidden_off": "·"
+    },
+    "sort": {
+      "name": "이름",
+      "modified": "수정일",
+      "type": "유형"
+    },
+    "move": {
+      "bulk_progress": "이동 중…",
+      "bulk_done": "이동 완료",
+      "invalid_target": "같은 폴더로 이동할 수 없습니다",
+      "failed": "이동 실패",
+      "item_failed": "항목 이동 실패"
+    },
+    "trash": {
+      "bulk_progress": "휴지통으로 이동 중…",
+      "bulk_done": "휴지통으로 이동했습니다",
+      "bulk_cancelled": "휴지통 이동을 취소했습니다",
+      "item_failed": "항목 이동 실패",
+      "moved": "휴지통으로 이동",
+      "restored": "휴지통에서 복원했습니다",
+      "undo_failed": "되돌리기 실패"
+    },
+    "delete": {
+      "failed": "영구 삭제 실패",
+      "done": "영구 삭제 완료"
+    },
+    "reveal": {
+      "unsupported": "현재 플랫폼에서는 OS에서 보기를 지원하지 않습니다."
+    },
+    "open_with": {
+      "unsupported": "현재 플랫폼에서는 다른 앱으로 열기를 지원하지 않습니다."
+    }
+  },
+  "main": {
+    "aria": {
+      "workspace": "워크스페이스",
+      "filetree": "파일 트리",
+      "editor": "에디터",
+      "sidebar_rail": "사이드바 표시"
+    },
+    "action": {
+      "close_workspace": "워크스페이스 닫기",
+      "settings": "환경설정",
+      "settings.tooltip": "환경설정 (⌘,)",
+      "show_sidebar": "사이드바 표시",
+      "hide_sidebar": "사이드바 숨기기",
+      "toggle_sidebar": {
+        "tooltip": "사이드바 토글 (⌘B)"
+      },
+      "sidebar_rail": {
+        "tooltip": "사이드바 표시 (⌘B)"
+      }
+    },
+    "editor": {
+      "placeholder": "검토를 시작하려면 파일을 여세요."
+    }
+  },
+  "menu": {
+    "file": {
+      "new_file": "새 파일",
+      "new_folder": "새 폴더",
+      "open": "열기…",
+      "open_workspace": "워크스페이스 열기…",
+      "save": "저장",
+      "save_as": "다른 이름으로 저장…",
+      "close_tab": "탭 닫기",
+      "close_workspace": "워크스페이스 닫기",
+      "exit": "종료"
+    },
+    "edit": {
+      "undo": "실행 취소",
+      "redo": "다시 실행",
+      "cut": "잘라내기",
+      "copy": "복사",
+      "paste": "붙여넣기",
+      "find": "찾기",
+      "replace": "바꾸기"
+    },
+    "view": {
+      "toggle_sidebar": "사이드바 토글",
+      "toggle_hidden": "숨김 파일 토글",
+      "command_palette": "명령 팔레트…"
+    },
+    "help": {
+      "docs": "문서",
+      "shortcuts": "단축키",
+      "report_issue": "이슈 신고",
+      "about": "Markspread 정보"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Markspread에 오신 것을 환영합니다",
+      "open_workspace": "워크스페이스 열기",
+      "new_workspace": "새 워크스페이스 만들기",
+      "open_single_file": "마크다운 파일 하나 열기",
+      "recent": "최근 워크스페이스"
+    },
+    "first_run": {
+      "telemetry_consent": "익명 사용 데이터를 공유해 Markspread 개선을 도와주시겠습니까?",
+      "auto_update_consent": "업데이트를 자동으로 설치하시겠습니까?"
+    }
+  },
+  "palette": {
+    "title": "명령 팔레트",
+    "placeholder": "명령, 파일을 입력하거나 `?`로 도움말",
+    "fileOpen": "파일 열기…",
+    "empty": "일치하는 항목이 없습니다"
+  },
+  "peek": {
+    "aria": {
+      "dialog": "파일 트리 (피크)"
+    },
+    "title": "파일",
+    "action": {
+      "pin": "피크 고정",
+      "unpin": "피크 고정 해제",
+      "pin.tooltip": "고정 (⌘⇧B)",
+      "unpin.tooltip": "고정 해제 (⌘⇧B)"
+    }
+  },
+  "commands": {
+    "view": {
+      "toggle_sidebar": "사이드바 토글",
+      "show_sidebar": "사이드바 표시",
+      "hide_sidebar": "사이드바 숨기기",
+      "split_right": "에디터 오른쪽으로 분할",
+      "split_down": "에디터 아래로 분할",
+      "focus_pane_1": "1번 페인 포커스",
+      "focus_pane_2": "2번 페인 포커스",
+      "focus_pane_3": "3번 페인 포커스",
+      "move_editor_to_next_group": "에디터를 다음 그룹으로 이동"
+    },
+    "tabs": {
+      "close_active": "에디터 닫기"
+    }
+  },
+  "layout": {
+    "aria": {
+      "sidebar_resize": "사이드바 크기 조정"
+    }
+  },
+  "settings": {
+    "sheet": {
+      "title": "환경설정",
+      "close": "환경설정 닫기"
+    },
+    "theme": {
+      "title": "테마",
+      "mode": {
+        "system": "시스템",
+        "light": "라이트",
+        "dark": "다크"
+      }
+    },
+    "appearance": {
+      "title": "모양",
+      "font": {
+        "ui": "UI 폰트",
+        "editor": "에디터 폰트",
+        "size": "글자 크기",
+        "weight": "글자 두께",
+        "default": "기본값"
+      },
+      "line_height": "줄 간격",
+      "letter_spacing": "글자 간격",
+      "reset": "초기화"
+    },
+    "layout": {
+      "title": "레이아웃",
+      "collapsed_mode": {
+        "label": "사이드바를 접었을 때",
+        "rail": "슬림 레일",
+        "hidden": "완전히 숨김"
+      }
+    },
+    "diagnostics": {
+      "title": "진단",
+      "description": "파일 접근 정책 차단을 로컬에만 기록합니다. 데이터는 이 기기를 떠나지 않습니다.",
+      "opt_in": "접근 정책 차단 기록 활성화",
+      "window": "최근 30일",
+      "refresh": "새로고침",
+      "clear": "비우기",
+      "empty": "기록된 차단이 없습니다.",
+      "disabled": "기록이 비활성화되어 있습니다.",
+      "col": {
+        "date": "날짜",
+        "category": "분류",
+        "rule": "규칙",
+        "count": "횟수"
+      }
+    }
+  },
+  "single_file": {
+    "aria": {
+      "main": "단일 파일 보기",
+      "editor": "에디터"
+    },
+    "banner": {
+      "aria": "단일 파일 배너",
+      "message": "워크스페이스 밖에서 단일 파일을 편집 중입니다."
+    },
+    "action": {
+      "close": "닫기",
+      "convert_to_workspace": "폴더를 워크스페이스로 변환"
+    },
+    "editor": {
+      "aria": "파일 내용"
+    },
+    "status": {
+      "unsaved": "저장되지 않음"
+    }
+  },
+  "toasts": {
+    "aria": "알림",
+    "dismiss.aria": "알림 닫기"
+  },
+  "shortcut_hint": {
+    "aria": "단축키 힌트",
+    "message": "명령 팔레트를 열려면 누르세요",
+    "dismiss": "확인",
+    "dismiss_aria": "단축키 힌트 닫기"
+  },
+  "tabs": {
+    "aria": {
+      "bar": "열린 파일"
+    },
+    "close": "탭 닫기",
+    "orphaned": "디스크에 파일이 더 이상 존재하지 않습니다",
+    "pin": "탭 고정",
+    "unpin": "탭 고정 해제",
+    "pinned": "고정됨"
+  },
+  "auto_update": {
+    "aria": "자동 업데이트 동의",
+    "headline": "자동 업데이트를 사용하시겠어요?",
+    "body": "새 버전이 출시되면 백그라운드에서 자동으로 받아 설치합니다. 언제든 설정에서 끌 수 있습니다.",
+    "deny": "거부",
+    "allow": "허용"
+  },
+  "error_boundary": {
+    "headline": "이 화면에서 문제가 발생했습니다.",
+    "retry": "다시 시도"
+  },
+  "telemetry": {
+    "aria": "익명 사용 통계 동의",
+    "headline": "익명 사용 통계를 보내시겠어요?",
+    "body": "개인정보가 포함되지 않는 사용 패턴을 익명으로 수집해 Markspread 개선에 활용합니다. 언제든 설정에서 끌 수 있습니다.",
+    "sample": "전송 데이터 예시 보기",
+    "disable": "보내지 않음",
+    "enable": "보내기"
+  },
+  "welcome": {
+    "aria": {
+      "main": "환영 화면",
+      "brand": "브랜드",
+      "actions": "작업 시작"
+    },
+    "action": {
+      "open_workspace": "워크스페이스 열기",
+      "new_workspace": "새 워크스페이스 만들기",
+      "single_file": "단일 마크다운 파일 열기"
+    },
+    "recent": {
+      "heading": "최근 워크스페이스",
+      "list": {
+        "aria": "최근 워크스페이스"
+      },
+      "empty": {
+        "aria": "비어 있음",
+        "label": "최근에 연 워크스페이스가 없습니다"
+      },
+      "remove": "최근 항목에서 제거",
+      "remove.aria": "최근 항목에서 제거",
+      "title_missing": "{{path}} (찾을 수 없음)",
+      "title_unmounted": "{{path}} (드라이브 연결 안 됨)",
+      "missing_prompt": "이 경로를 더 이상 찾을 수 없습니다. Recent에서 제거하시겠습니까?",
+      "unmounted_prompt": "이 워크스페이스의 드라이브가 연결되어 있지 않습니다. 마운트 후 다시 시도해주세요."
+    }
+  },
+  "welcome_banner": {
+    "aria": "환영 배너",
+    "title": "Markspread에 오신 것을 환영합니다",
+    "subtitle": "둘러보기를 진행하거나 AI 프로바이더를 설정해 시작하세요.",
+    "action": {
+      "tour": "둘러보기 시작",
+      "setup_ai": "AI 설정",
+      "dismiss": "닫기",
+      "dismiss_aria": "환영 배너 닫기"
+    }
+  },
+  "errors": {
+    "posix": {
+      "isdir": "이 경로는 파일이 아니라 폴더입니다.",
+      "enoent": "파일을 찾을 수 없습니다. 이동되거나 삭제되었을 수 있습니다.",
+      "eacces": "권한이 없습니다. 파일의 읽기 권한을 확인하세요.",
+      "enospc": "디스크 공간이 부족합니다.",
+      "outside_workspace": "현재 워크스페이스 밖의 경로입니다.",
+      "enotutf8": "이 파일의 인코딩을 텍스트로 해석할 수 없습니다.",
+      "einval": "요청이 유효하지 않습니다.",
+      "eio": "이 파일을 읽을 수 없습니다."
+    },
+    "access": {
+      "category": {
+        "sec": "보안차단",
+        "bnd": "워크스페이스 경계",
+        "prm": "권한차단",
+        "pol": "정책차단",
+        "prf": "성능차단",
+        "fmt": "형식",
+        "io": "기타"
+      },
+      "action": {
+        "open_settings": "설정 열기",
+        "edit_allowlist": "허용 목록 편집",
+        "add_workspace": "워크스페이스 추가",
+        "open_anyway": "그래도 열기",
+        "force_text": "텍스트로 보기",
+        "retry": "재시도",
+        "copy_diagnostics": "진단 정보 복사",
+        "learn_more": "자세히 보기",
+        "show_in_tree": "파일 트리에서 보기",
+        "open_image_viewer": "이미지 뷰어로 열기"
+      },
+      "rule": {
+        "sec_null_byte": {
+          "title": "보안 정책으로 차단됨",
+          "body": "경로에 NUL 바이트가 포함되어 시스템 호출이 변조될 수 있습니다. 보안 정책상 허용되지 않으며 사용자 설정으로 해제할 수 없습니다.",
+          "learn_more": "보안 차단 가이드"
+        },
+        "sec_path_traversal": {
+          "title": "보안 정책으로 차단됨",
+          "body": "경로에 워크스페이스를 벗어나려는 패턴이 포함되어 있습니다. 보안 정책상 허용되지 않으며 사용자 설정으로 해제할 수 없습니다.",
+          "learn_more": "보안 차단 가이드"
+        },
+        "sec_symlink_escape": {
+          "title": "워크스페이스 밖을 가리키는 심볼릭 링크",
+          "body": "이 심볼릭 링크의 대상이 워크스페이스 밖에 있습니다. 보안 정책상 허용되지 않으며 대상 파일을 워크스페이스 안으로 복사해 열어주세요.",
+          "learn_more": "심볼릭 링크 정책"
+        },
+        "bnd_outside_workspace": {
+          "title": "워크스페이스 밖 경로",
+          "body": "이 경로는 현재 워크스페이스 밖에 있어 열 수 없습니다. 워크스페이스를 추가하거나 파일을 워크스페이스 안으로 옮겨주세요.",
+          "learn_more": "워크스페이스 경계 안내"
+        },
+        "prm_os_eacces": {
+          "title": "OS가 권한을 거부함",
+          "body": "운영체제가 이 파일의 읽기 권한을 거부했습니다. 파일 소유자와 권한 설정을 확인한 뒤 다시 시도하세요.",
+          "learn_more": "OS 권한 해결 가이드"
+        },
+        "pol_vcs_internal": {
+          "title": "VCS 내부 파일은 기본 보호 영역",
+          "body": ".git·.hg·.svn 같은 버전 관리 내부 파일은 기본 보호됩니다. 정말 편집해야 한다면 설정에서 허용 목록에 추가하세요.",
+          "learn_more": "정책 차단과 허용 목록"
+        },
+        "pol_node_modules": {
+          "title": "node_modules는 기본 보호 영역",
+          "body": "node_modules는 자동 생성되는 의존성이라 기본 보호됩니다. 설정의 허용 목록에서 특정 패키지만 풀어 열 수 있습니다.",
+          "learn_more": "정책 차단과 허용 목록"
+        },
+        "pol_build_output": {
+          "title": "빌드 산출물은 기본 보호 영역",
+          "body": "dist·build·.next 같은 빌드 산출물은 자동 생성이라 기본 보호됩니다. 설정의 허용 목록에서 특정 경로만 풀어 열 수 있습니다.",
+          "learn_more": "정책 차단과 허용 목록"
+        },
+        "pol_lang_cache": {
+          "title": "언어 캐시는 기본 보호 영역",
+          "body": ".venv·__pycache__·.gradle 같은 언어 런타임 캐시는 기본 보호됩니다. 설정의 허용 목록에서 특정 경로만 풀어 열 수 있습니다.",
+          "learn_more": "정책 차단과 허용 목록"
+        },
+        "pol_ide_internal": {
+          "title": "IDE 내부 파일은 기본 보호 영역",
+          "body": ".idea·.vscode·.cursor 같은 IDE 메타 파일은 기본 보호됩니다. settings.json·룰 파일 등 일부 사용자 편집 대상은 자동으로 허용됩니다.",
+          "learn_more": "정책 차단과 허용 목록"
+        },
+        "pol_platform_cruft": {
+          "title": "플랫폼 임시 파일은 기본 보호 영역",
+          "body": ".DS_Store·Thumbs.db·desktop.ini 같은 OS 임시 파일은 편집할 필요가 거의 없어 기본 보호됩니다. 정말 열려면 허용 목록에 추가하세요.",
+          "learn_more": "정책 차단과 허용 목록"
+        },
+        "prf_file_size_limit": {
+          "title": "파일이 너무 큽니다 ({{size}})",
+          "body": "이 파일은 {{size}}로 안정성 임계({{limit}})를 넘어 기본 차단됩니다. '그래도 열기'를 누르면 1회 한정으로 위험을 감수하고 열 수 있습니다.",
+          "learn_more": "큰 파일 처리 가이드"
+        },
+        "prf_file_size_warn": {
+          "title": "큰 파일 경고 ({{size}})",
+          "body": "이 파일은 {{size}}로 평소보다 크지만 그대로 엽니다. 입력 지연이 느껴진다면 다른 뷰어를 사용해보세요.",
+          "learn_more": "큰 파일 처리 가이드"
+        },
+        "prf_dir_node_count": {
+          "title": "폴더 항목이 너무 많습니다 ({{count}}개)",
+          "body": "한 단계 안의 항목 수가 {{count}}개로 임계({{limit}})를 넘어 기본 페이지네이션됩니다. 검색이나 필터로 범위를 좁혀 탐색하세요.",
+          "learn_more": "큰 디렉토리 처리 가이드"
+        },
+        "fmt_not_utf8": {
+          "title": "텍스트로 해석할 수 없는 인코딩",
+          "body": "이 파일은 UTF-8로 해석되지 않습니다. 다른 뷰어로 열거나 강제 텍스트 보기를 시도해보세요.",
+          "learn_more": "지원 인코딩 안내"
+        },
+        "fmt_is_directory": {
+          "title": "이 경로는 폴더입니다",
+          "body": "파일이 아닌 폴더이므로 에디터에서 열 수 없습니다. 파일 트리에서 폴더를 펼쳐 안의 파일을 선택하세요.",
+          "learn_more": ""
+        },
+        "fmt_binary_sniff": {
+          "title": "바이너리 파일로 감지됨",
+          "body": "파일 앞부분에 NUL 바이트가 있어 바이너리로 판단됩니다. 이미지·PDF 뷰어로 열거나, 정말 텍스트라면 강제 텍스트 보기를 사용하세요.",
+          "learn_more": "바이너리 감지 정책"
+        },
+        "io_disk_full": {
+          "title": "디스크 공간 부족",
+          "body": "디스크 공간이 부족해 저장에 실패했습니다. 디스크를 정리한 뒤 다시 시도하세요.",
+          "learn_more": ""
+        },
+        "io_enoent": {
+          "title": "파일을 찾을 수 없음",
+          "body": "이 경로의 파일이 보이지 않습니다. 다른 도구에서 이동·삭제되었을 수 있으니 파일 트리를 새로고침해 보세요.",
+          "learn_more": ""
+        },
+        "io_unclassified": {
+          "title": "알 수 없는 파일 시스템 오류",
+          "body": "분류되지 않은 입출력 오류가 발생했습니다 (코드: {{code}}). 잠시 후 재시도하거나 진단 정보를 복사해 보고해주세요.",
+          "learn_more": ""
+        }
+      }
+    }
+  }
+}

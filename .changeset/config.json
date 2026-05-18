@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3/schema.json",
+  "_": "S-CI-018: Changesets configuration. Every PR that touches user-visible behaviour drops a markdown file under .changeset/ declaring the bump (major / minor / patch). The aggregator job (release-please-style) reads the directory on `main`, computes the next version, opens a 'Version Packages' PR, and on merge tags the repo + triggers the release pipeline.",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "markspread/markspread" }
+  ],
+  "commit": false,
+  "fixed": [["markspread", "@markspread/sdk", "@markspread/cli"]],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": ["@markspread-fixtures/*"],
+  "snapshot": {
+    "useCalculatedVersion": true,
+    "prereleaseTemplate": "0.0.0-canary-{tag}"
+  },
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
+}

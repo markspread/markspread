@@ -1,0 +1,65 @@
+/* S-PR-021: print-friendly preview CSS.
+ *
+ * Goals:
+ *   - hide chrome (sidebar, toolbar, tabs) — only the preview body
+ *     should print
+ *   - encourage page breaks before <h1>/<h2> so chapters don't
+ *     straddle pages
+ *   - prevent tables/code blocks from being split mid-row
+ *   - render link href in parentheses after the link text (so
+ *     printed pages aren't dead-end references)
+ *   - widen content to the full page width
+ *   - drop background color so toner usage stays sane
+ */
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .ms-app-shell > :not(.ms-preview) {
+    display: none !important;
+  }
+  .ms-preview {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  .ms-preview pre,
+  .ms-preview blockquote,
+  .ms-preview table {
+    page-break-inside: avoid;
+  }
+  .ms-preview h1,
+  .ms-preview h2 {
+    page-break-before: auto;
+    page-break-after: avoid;
+  }
+  .ms-preview h3,
+  .ms-preview h4,
+  .ms-preview h5,
+  .ms-preview h6 {
+    page-break-after: avoid;
+  }
+  .ms-preview a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    color: #444;
+  }
+  .ms-preview img {
+    max-width: 100%;
+    page-break-inside: avoid;
+  }
+  /* Hide editor-only widgets that may have leaked into the
+   * preview tree (copy buttons, etc.) */
+  .ms-code-copy,
+  .ms-code-block button,
+  .ms-link-suggestions {
+    display: none !important;
+  }
+}
+
+@page {
+  margin: 18mm 16mm;
+}

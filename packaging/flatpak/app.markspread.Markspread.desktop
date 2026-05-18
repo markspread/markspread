@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Markspread
+GenericName=Markdown Editor
+Comment=Markdown reviewer with side-by-side spread pane and AI assistance
+Exec=markspread %F
+Icon=app.markspread.Markspread
+Type=Application
+Terminal=false
+Categories=Office;WordProcessor;TextEditor;
+MimeType=text/markdown;text/x-markdown;
+Keywords=markdown;notes;editor;
+StartupWMClass=Markspread

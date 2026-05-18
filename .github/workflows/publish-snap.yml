@@ -1,0 +1,46 @@
+# S-REL-007: build + publish to the Snap Store after a tagged release.
+#
+# Builds via the official `snapcore/action-build` (snapcraft in LXD)
+# then pushes to the `stable` channel via `snapcore/action-publish`.
+# The token is a `snapcraft export-login` secret with publish-rights
+# on the `markspread` snap name (registered manually beforehand).
+
+name: publish-snap
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp version into snapcraft.yaml
+        working-directory: packaging/snap
+        run: |
+          tag="${{ github.event.workflow_run.head_branch }}"
+          ver="${tag#v}"
+          sed -i "s/^version: .*/version: \"${ver}\"/" snapcraft.yaml
+
+      - name: snapcraft pack
+        id: build
+        uses: snapcore/action-build@2096f2a98401c439ddf3651dd97c7c11a4c6e1aa # v1.3.0
+        with:
+          path: packaging/snap
+
+      - name: Push to Snap Store
+        uses: snapcore/action-publish@214b86e5ca036ead1668c79afb81e550e6c54d40 # v1.2.0
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: stable

@@ -1,0 +1,56 @@
+# S-CI-004: PR e2e — representative scenarios only, ≤ 5 minutes.
+#
+# This is the e2e gate that runs on every PR. We pick the three highest-
+# signal flows:
+#   - first-launch wizard (renderer-only, no tauri build)
+#   - workspace authoring (covers tree, editor, preview surface)
+#   - AI mock action     (provides reactive coverage for the AI bus)
+#
+# The full OS matrix + plugin lifecycle + updater + visual checks live
+# in `test.yml` (smoke gate) and `e2e-main.yml` (post-merge). Keeping
+# the PR e2e tight (~3 min in CI) is what makes the gate viable.
+
+name: e2e-pr
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "e2e/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - name: Install Playwright (chromium only)
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run representative e2e
+        env:
+          MARKSPREAD_AI_MOCK: "1"
+        run: |
+          pnpm exec playwright test \
+            --project=renderer \
+            --grep "first-launch|workspace-authoring|AI actions \(mock\)"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-pr-failure
+          path: |
+            test-results/
+            playwright-report/

@@ -1,0 +1,44 @@
+# S-CI-006: PR licence check.
+#
+# Runs the SPDX allow-list scanner on every PR, separate from the
+# security workflow so the PR status check label is unambiguous
+# ("licence" rather than buried inside "security/licences"). The script
+# is shared with `security.yml` (full-tree audit on main).
+
+name: licence
+
+on:
+  pull_request:
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/Cargo.lock"
+      - "scripts/check-licences.mjs"
+      - "src/lib/security/licence-check.ts"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - run: corepack enable && pnpm install --frozen-lockfile
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@cargo-deny
+
+      - name: Node licences
+        run: node scripts/check-licences.mjs
+
+      - name: Cargo licences
+        working-directory: src-tauri
+        run: cargo deny check licenses

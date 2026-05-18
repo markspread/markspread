@@ -1,0 +1,62 @@
+# S-CI-001: PR lint job — biome (web/cli/sdk) + cargo clippy.
+#
+# Runs on every PR; both halves must pass before review. We use one
+# workflow with two jobs so the matrix view in the GitHub UI shows
+# "biome" / "clippy" side-by-side rather than nesting steps. Caching is
+# done by the Rust + pnpm toolchain actions; the biome step finishes in
+# ~10 s on a warm cache.
+
+name: lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  biome:
+    name: biome (web + cli + sdk)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - name: Biome — check
+        run: pnpm biome ci . --reporter github
+      - name: Format — verify
+        run: pnpm biome format . --write=false
+
+  # S-CI-023: assert third-party actions are SHA-pinned. Cheap (~5s) and
+  # fails fast so a careless `uses: vendor/action@v1` doesn't slip in.
+  pinned-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node scripts/ci/check-pinned-actions.mjs
+
+  clippy:
+    name: cargo clippy --deny warnings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: clippy }
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: src-tauri -> target }
+      - name: Linux runtime deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+      - name: Clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: rustfmt
+        working-directory: src-tauri
+        run: cargo fmt --all -- --check

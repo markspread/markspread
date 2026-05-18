@@ -1,0 +1,52 @@
+# S-PF-002 / S-PF-019: performance + bundle-size CI.
+#
+# Runs the renderer cold-start probe, the Rust indexer benchmark, and a
+# bundle-size analyser on every PR. Failures here block merge — perf
+# regressions tend to compound, and treating them as build errors keeps
+# the budget honest.
+
+name: perf
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cold-start:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-14, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm tauri build --debug
+      - name: Probe cold-start
+        run: node scripts/perf/cold-start-probe.mjs --runs 5 --report perf-stats.jsonl
+      - name: Compare against budgets
+        run: node scripts/perf/check-budgets.mjs perf-stats.jsonl
+      - uses: actions/upload-artifact@v4
+        with: { name: perf-stats-${{ matrix.os }}, path: perf-stats.jsonl }
+
+  bundle-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm vite build --mode production
+      - name: Treemap report
+        run: pnpm rollup-plugin-visualizer --output bundle-treemap.html
+      - name: Enforce bundle ceilings
+        run: node scripts/perf/check-bundle.mjs
+      - uses: actions/upload-artifact@v4
+        with: { name: bundle-treemap, path: bundle-treemap.html }

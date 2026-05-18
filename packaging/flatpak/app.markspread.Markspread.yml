@@ -1,0 +1,58 @@
+# S-REL-006: Flathub manifest for Markspread.
+#
+# Submission flow:
+#   1. Fork github.com/flathub/flathub, create branch `markspread`
+#   2. Drop this file in as `app.markspread.Markspread.yml` plus the
+#      MetaInfo (.appdata.xml) and the .desktop file siblings
+#   3. Open a "new app" PR — Flathub reviewers will run flatpak-builder
+#      against the manifest and check sandbox permissions
+#   4. After merge, Flathub's CI builds + publishes for x86_64 + aarch64
+#
+# We bundle from the released .deb because it's already built, signed,
+# and includes the bundled WebKit + libraries. Building from source
+# inside flatpak-builder requires the GNOME SDK, which adds a 1.5 GB
+# layer for marginal gain.
+
+app-id: app.markspread.Markspread
+runtime: org.freedesktop.Platform
+runtime-version: "23.08"
+sdk: org.freedesktop.Sdk
+
+command: markspread
+
+finish-args:
+  # Wayland + X11 fallback — Tauri/WebKitGTK works on both.
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Networking — required for AI providers + auto-update check.
+  - --share=network
+  # Filesystem — let user open arbitrary workspaces. xdg-documents +
+  # xdg-download cover the common case; `host` is a deliberate broaden
+  # because users frequently keep notes outside ~/Documents.
+  - --filesystem=host:rw
+  # Settings + AI key store live under XDG_CONFIG_HOME, which is
+  # already inside the sandbox.
+
+modules:
+  - name: markspread
+    buildsystem: simple
+    sources:
+      - type: archive
+        url: https://github.com/markspread/markspread/releases/download/v0.0.0/Markspread_0.0.0_amd64.deb
+        sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+        # x-checker-data lets Flathub's bot auto-bump the URL+SHA when
+        # we tag a new release.
+        x-checker-data:
+          type: html
+          url: https://api.github.com/repos/markspread/markspread/releases/latest
+          version-pattern: '"tag_name":\s*"v([\d.]+)"'
+          url-template: https://github.com/markspread/markspread/releases/download/v$version/Markspread_${version}_amd64.deb
+    build-commands:
+      # The .deb is data.tar.* + control.tar.* inside an `ar` archive.
+      - ar -x *.deb
+      - mkdir -p extracted && tar -C extracted -xf data.tar.*
+      - cp -r extracted/usr/* /app/
+      - install -Dm644 ../app.markspread.Markspread.metainfo.xml /app/share/metainfo/app.markspread.Markspread.metainfo.xml
+      - install -Dm644 ../app.markspread.Markspread.desktop      /app/share/applications/app.markspread.Markspread.desktop

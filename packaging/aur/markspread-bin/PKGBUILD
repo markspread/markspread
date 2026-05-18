@@ -1,0 +1,55 @@
+# S-REL-008: AUR -bin PKGBUILD.
+#
+# Two AUR submissions are conventional for prebuilt-binary upstreams:
+#   * `markspread-bin`     — installs the official .deb-extracted binary
+#   * `markspread`         — builds from source (added later, optional)
+#
+# This file is the -bin variant. The `pkgver()` function lets `aur-bumper`
+# style helpers detect new upstream tags. Maintainers (the AUR "owner")
+# push updates with `makepkg --printsrcinfo > .SRCINFO && git push`.
+
+# Maintainer: Markspread <ops@markspread.app>
+pkgname=markspread-bin
+_pkgname=markspread
+pkgver=0.0.0
+pkgrel=1
+pkgdesc="Markdown reviewer with synchronized spread pane and AI assistance (binary release)"
+arch=('x86_64' 'aarch64')
+url="https://markspread.app"
+license=('Apache')
+depends=(
+  'webkit2gtk-4.1'
+  'gtk3'
+  'libayatana-appindicator'
+  'librsvg'
+)
+optdepends=(
+  'libnotify: desktop notifications'
+)
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+options=('!strip' '!emptydirs')
+install="${_pkgname}.install"
+
+source_x86_64=(
+  "${_pkgname}-${pkgver}-x86_64.deb::https://github.com/markspread/markspread/releases/download/v${pkgver}/Markspread_${pkgver}_amd64.deb"
+)
+source_aarch64=(
+  "${_pkgname}-${pkgver}-aarch64.deb::https://github.com/markspread/markspread/releases/download/v${pkgver}/Markspread_${pkgver}_arm64.deb"
+)
+sha256sums_x86_64=('SKIP')   # bumped by maintainer per release
+sha256sums_aarch64=('SKIP')
+
+package() {
+  local deb
+  case "$CARCH" in
+    x86_64)  deb="${_pkgname}-${pkgver}-x86_64.deb"  ;;
+    aarch64) deb="${_pkgname}-${pkgver}-aarch64.deb" ;;
+  esac
+  bsdtar -xf "$deb" -C "$srcdir"
+  bsdtar -xf "$srcdir/data.tar."* -C "$pkgdir"
+  # The Tauri .deb writes copyright + control files we don't need on Arch.
+  rm -rf "${pkgdir}/usr/share/doc/${_pkgname}/copyright"
+  install -Dm644 "${srcdir}/data/usr/share/applications/${_pkgname}.desktop" \
+    "${pkgdir}/usr/share/applications/${_pkgname}.desktop" 2>/dev/null || true
+}

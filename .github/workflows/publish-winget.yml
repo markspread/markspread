@@ -1,0 +1,39 @@
+# S-REL-005: open a PR against microsoft/winget-pkgs adding/updating
+# the `Markspread.Markspread` manifest.
+#
+# Uses `vedantmgoyal9/winget-releaser` which is the canonical action
+# Microsoft references in their own publishing guidance. It pulls the
+# .msi URL + SHA from the GitHub Release we just published and crafts
+# the YAML manifest tree winget-pkgs expects.
+#
+# Required secret:
+#   WINGET_PUBLISHER_PAT — fine-grained PAT with `public_repo` on the
+#                          maintainer's fork of microsoft/winget-pkgs.
+
+name: publish-winget
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: windows-latest
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@4ec1e6dadc1cca8def4c3d4fa6f59c64374f6c01 # v2
+        with:
+          identifier: Markspread.Markspread
+          version: ${{ github.event.workflow_run.head_branch }}
+          installers-regex: '\.msi$'
+          token: ${{ secrets.WINGET_PUBLISHER_PAT }}
+          release-tag: ${{ github.event.workflow_run.head_branch }}
+          # winget-pkgs reviewers prefer one PR per architecture rolled
+          # together — the action handles x64 + arm64 in the same PR
+          # when both .msi files are present in the Release.

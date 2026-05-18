@@ -1,0 +1,95 @@
+# S-CI-016 + S-REL-014: publish latest.json after release.yml finishes.
+#
+# We split this off the main release pipeline so a hotfix that re-runs
+# only the publish step (S-CI-021) doesn't need to rebuild every
+# platform. Triggered after `Release` completes successfully on a
+# tagged build.
+#
+# Channel routing (S-REL-014):
+#   v1.2.3              → published to /latest.json AND /stable/latest.json
+#   v1.2.3-beta.1       → published to /beta/latest.json only
+#   v1.2.3-alpha.1      → published to /alpha/latest.json only
+# The Tauri updater's `endpoints` template includes the channel slug,
+# so a beta-channel client reads `/beta/latest.json`. Stable clients
+# never see a pre-release manifest. Promotion from beta → stable means
+# tagging a non-prerelease version that points at the same artifacts.
+
+name: publish-update-feed
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: ${{ github.event.workflow_run.head_branch }} }
+
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          path: dist
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Resolve channel from tag
+        id: channel
+        run: |
+          tag="${{ github.event.workflow_run.head_branch }}"
+          case "$tag" in
+            *-alpha*) ch=alpha ;;
+            *-beta*)  ch=beta  ;;
+            *-rc*)    ch=beta  ;; # release candidates ride the beta channel
+            *)        ch=stable ;;
+          esac
+          echo "name=$ch" >> "$GITHUB_OUTPUT"
+
+      - name: Compose release notes (delegates to S-CI-019)
+        run: node scripts/release/compose-release-notes.mjs --tag ${{ github.event.workflow_run.head_branch }} --out release-notes.md
+
+      - name: Compose latest.json
+        run: |
+          node scripts/release/compose-latest-json.mjs \
+            --tag ${{ github.event.workflow_run.head_branch }} \
+            --channel ${{ steps.channel.outputs.name }} \
+            --dist dist \
+            --notes release-notes.md \
+            > latest.json
+
+      - name: Validate manifest is well-formed JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('latest.json'))"
+
+      - name: Publish to S3 + CloudFront
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.RELEASE_BUCKET_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.RELEASE_BUCKET_SECRET }}
+          AWS_DEFAULT_REGION: ${{ vars.RELEASE_REGION }}
+        run: |
+          set -euo pipefail
+          ch="${{ steps.channel.outputs.name }}"
+          tag="${{ github.event.workflow_run.head_branch }}"
+          # Upload binaries first so the manifest never points to a 404.
+          aws s3 sync dist "s3://markspread-releases/${tag}/" --acl public-read --cache-control "public, max-age=31536000, immutable"
+          # Per-channel manifest. The Tauri client subs `{{channel}}`.
+          aws s3 cp latest.json "s3://markspread-releases/${ch}/latest.json" \
+            --acl public-read --cache-control "public, max-age=300"
+          paths="/${ch}/latest.json"
+          # Stable releases also occupy the legacy unprefixed slot for
+          # back-compat with v0.x clients that pre-date channel routing.
+          if [ "$ch" = "stable" ]; then
+            aws s3 cp latest.json "s3://markspread-releases/latest.json" \
+              --acl public-read --cache-control "public, max-age=300"
+            paths="$paths /latest.json"
+          fi
+          aws cloudfront create-invalidation --distribution-id "${{ vars.RELEASE_CDN_ID }}" --paths $paths

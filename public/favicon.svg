@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Markspread app icon">
+  <defs>
+    <linearGradient id="ms-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b86e8"/>
+      <stop offset="1" stop-color="#7b5fe0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#ms-bg)"/>
+  <!-- Markdown "M": the twin peaks read as an open document spread. -->
+  <path d="M 270 769 L 270 290 L 512 562 L 754 290 L 754 769"
+        fill="none" stroke="#ffffff" stroke-width="130"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

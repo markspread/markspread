@@ -1,0 +1,118 @@
+# S-CI-021: hotfix workflow.
+#
+# When a critical fix lands on a release branch (`release/x.y`), this
+# workflow:
+#
+#   1. fast-forwards the release branch with the cherry-picked commit
+#      identified by `commit_sha` input
+#   2. bumps the patch version on that branch only — main keeps moving
+#   3. tags `vx.y.<patch+1>` and dispatches `release.yml`
+#   4. once the release publishes, opens a PR that cherry-picks the
+#      same commit back onto main (so the fix isn't lost)
+#
+# Inputs:
+#   release_branch  e.g. release/0.3
+#   commit_sha      the commit to cherry-pick from main
+#   reason          short description used in the changelog entry
+
+name: hotfix
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_branch:
+        type: string
+        required: true
+        description: "Release branch to hotfix (e.g. release/0.3)"
+      commit_sha:
+        type: string
+        required: true
+        description: "Commit on main to cherry-pick"
+      reason:
+        type: string
+        required: true
+        description: "Short reason — used in CHANGELOG entry"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: hotfix-${{ inputs.release_branch }}
+  cancel-in-progress: false   # never cancel a hotfix mid-flight
+
+jobs:
+  cherry-pick:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_branch }}
+          fetch-depth: 0
+
+      - name: Identity
+        run: |
+          git config user.name  "markspread-bot"
+          git config user.email "ci@markspread.app"
+
+      - name: Cherry-pick fix
+        run: |
+          git fetch origin main
+          git cherry-pick "${{ inputs.commit_sha }}"
+
+      - name: Bump patch + write changelog entry
+        id: bump
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          NEXT=$(node -e "const v=require('./package.json').version.split('.'); v[2]=+v[2]+1; console.log(v.join('.'))")
+          npm pkg set version="$NEXT"
+          (
+            echo "## $NEXT"; echo
+            echo "### Patch (hotfix)"; echo
+            echo "- ${{ inputs.reason }} (cherry-picked from ${{ inputs.commit_sha }})"; echo
+            echo
+            cat CHANGELOG.md 2>/dev/null
+          ) > CHANGELOG.md.new
+          mv CHANGELOG.md.new CHANGELOG.md
+          git add package.json CHANGELOG.md
+          git commit -m "chore(hotfix): release v$NEXT — ${{ inputs.reason }}"
+          echo "version=$NEXT" >> "$GITHUB_OUTPUT"
+
+      - id: tag
+        run: |
+          TAG="v${{ steps.bump.outputs.version }}"
+          git tag "$TAG"
+          git push origin "${{ inputs.release_branch }}" "$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: cherry-pick
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.cherry-pick.outputs.tag }}
+      channel: stable
+    secrets: inherit
+
+  back-port:
+    needs: [cherry-pick, release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Open back-port PR if commit isn't already on main
+        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        run: |
+          if git merge-base --is-ancestor "${{ inputs.commit_sha }}" origin/main; then
+            echo "Commit already on main — no back-port needed."
+            exit 0
+          fi
+          BRANCH="hotfix-backport/${{ inputs.commit_sha }}"
+          git checkout -b "$BRANCH" origin/main
+          git cherry-pick "${{ inputs.commit_sha }}"
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "hotfix: back-port ${{ inputs.commit_sha }} to main" \
+            --body "Hotfix shipped as ${{ needs.cherry-pick.outputs.tag }}.\nReason: ${{ inputs.reason }}\nThis PR keeps main in sync."

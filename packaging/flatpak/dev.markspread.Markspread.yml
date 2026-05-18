@@ -1,0 +1,47 @@
+app-id: dev.markspread.Markspread
+runtime: org.gnome.Platform
+runtime-version: "46"
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.node20
+command: markspread
+
+finish-args:
+  # Display & GPU
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  # AI providers, plugin marketplace, BYOK
+  - --share=network
+  # The user picks workspaces via the file portal — no broad host access.
+  - --filesystem=xdg-documents:rw
+  - --filesystem=xdg-download:ro
+  - --talk-name=org.freedesktop.portal.FileChooser
+  - --talk-name=org.freedesktop.secrets
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node20/bin
+  env:
+    CARGO_HOME: /run/build/markspread/cargo
+    RUSTFLAGS: "-C link-arg=-Wl,--as-needed"
+
+modules:
+  - name: markspread
+    buildsystem: simple
+    build-commands:
+      - npm config set prefix /app
+      - corepack enable
+      - pnpm install --frozen-lockfile --offline
+      - pnpm tauri build --bundles deb
+      - install -Dm755 src-tauri/target/release/markspread /app/bin/markspread
+      - install -Dm644 src-tauri/icons/128x128.png
+          /app/share/icons/hicolor/128x128/apps/dev.markspread.Markspread.png
+      - install -Dm644 packaging/flatpak/dev.markspread.Markspread.desktop
+          /app/share/applications/dev.markspread.Markspread.desktop
+      - install -Dm644 packaging/flatpak/dev.markspread.Markspread.metainfo.xml
+          /app/share/metainfo/dev.markspread.Markspread.metainfo.xml
+    sources:
+      - type: dir
+        path: ../..

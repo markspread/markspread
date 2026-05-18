@@ -1,0 +1,107 @@
+# S-CI-008: post-merge full e2e matrix.
+#
+# Every OS × every test spec, ≤ 1 hour wall-time. Runs on push to main
+# and when manually dispatched (handy when investigating a flake).
+# Failure here doesn't block the merge that already landed — but it
+# opens an issue (`auto-issue-on-failure`) so we don't lose the signal.
+#
+# We split into two jobs:
+#   - renderer-only specs run on the four OSes against vite preview
+#   - tauri shell specs run only on the OS that owns the platform-
+#     specific surface (macOS for menu / dock, Windows for jump-list,
+#     Ubuntu for everything else)
+
+name: e2e-main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  renderer-matrix:
+    name: renderer (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-13, windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Linux runtime deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev xvfb
+      - name: All renderer specs
+        env:
+          MARKSPREAD_AI_MOCK: "1"
+        run: pnpm exec playwright test --project=renderer
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-renderer-${{ matrix.os }}
+          path: |
+            test-results/
+            playwright-report/
+
+  tauri-shell:
+    name: tauri shell (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: src-tauri -> target }
+      - name: Linux runtime deps + tauri-driver
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev webkit2gtk-driver xvfb
+          cargo install tauri-driver
+      - name: macOS tauri-driver
+        if: runner.os == 'macOS'
+        run: cargo install tauri-driver
+      - name: Windows tauri-driver
+        if: runner.os == 'Windows'
+        run: cargo install tauri-driver
+      - name: Build debug bundle
+        run: pnpm tauri build --debug
+      - name: Tauri shell specs
+        run: pnpm exec playwright test --project=tauri
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-tauri-${{ matrix.os }}
+          path: |
+            test-results/
+            playwright-report/
+
+  open-issue-on-failure:
+    if: failure()
+    needs: [renderer-matrix, tauri-shell]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `e2e-main failure on ${context.sha.slice(0, 7)}`;
+            const body  = `Workflow: ${context.runId}\nCommit: ${context.sha}\nView: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({ ...context.repo, title, body, labels: ["ci-failure"] });

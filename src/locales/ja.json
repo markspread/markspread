@@ -1,0 +1,567 @@
+{
+  "ai": {
+    "actions": {
+      "review": "レビュー",
+      "translate": "翻訳",
+      "summarize": "要約",
+      "rewrite": "リライト"
+    },
+    "provider": {
+      "add": "プロバイダを追加",
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "ollama": "Ollama (ローカル)"
+    },
+    "cost": {
+      "tokens_in": "入力トークン",
+      "tokens_out": "出力トークン",
+      "estimated": "推定コスト"
+    },
+    "category": {
+      "edit": "編集",
+      "generate": "生成",
+      "translate": "翻訳",
+      "summarize": "要約",
+      "custom": "カスタム"
+    },
+    "chip": {
+      "run": "実行",
+      "cancel": "キャンセル",
+      "cancel.aria": "AI 操作をキャンセル"
+    },
+    "palette": {
+      "aria": "AI アクション パレット",
+      "empty": "一致するアクションがありません",
+      "list.aria": "AI アクション",
+      "placeholder": "AI アクションを検索…",
+      "search.aria": "AI アクションを検索"
+    },
+    "subscription": {
+      "button": "Claudeでサインイン",
+      "button.api_key": "APIキーを貼り付け",
+      "stage.starting": "サインインを開始しています…",
+      "stage.awaiting_user": "ブラウザでサインインして続行してください",
+      "stage.awaiting_user_with_code": "ブラウザにコード {{code}} を入力してください",
+      "stage.exchanging": "サインインを完了しています…",
+      "stage.success": "{{account}} としてサインイン済み",
+      "re_sign_in": "再サインイン",
+      "error.cancelled": "サインインがキャンセルされました。",
+      "error.timeout": "サインインがタイムアウトしました。再試行してください。",
+      "error.network": "ネットワークエラー。接続を確認してください。",
+      "error.denied": "認可が拒否されました。",
+      "error.invalid_token": "返された資格情報が無効です。",
+      "error.unsupported_provider": "このプロバイダーはサブスクリプションサインインをサポートしていません。",
+      "error.internal": "予期しないエラー。ログを確認してください。"
+    }
+  },
+  "app": {
+    "name": "Markspread",
+    "tagline": "AI 時代のための軽量 Markdown レビューア"
+  },
+  "dialog": {
+    "ok": "OK",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "discard": "破棄",
+    "retry": "再試行",
+    "rename": "名前を変更",
+    "recreate": "再作成",
+    "keep_in_memory": "メモリに保持",
+    "permanently_delete": "完全に削除",
+    "delete_confirm_file": "このファイルを完全に削除しますか?この操作は取り消せません。",
+    "delete_confirm_folder": "このフォルダと内部のすべての項目を完全に削除しますか?この操作は取り消せません。",
+    "save_changes_prompt": "閉じる前に変更を保存しますか?"
+  },
+  "editor": {
+    "aria": {
+      "empty": "エディタ (開いているファイルなし)",
+      "error": "エディタエラー",
+      "loading": "ファイルを読み込み中",
+      "host": "エディタ"
+    },
+    "empty": {
+      "hint": "サイドバーからファイルを開いてレビューを始めましょう。"
+    },
+    "loading": "読み込み中…",
+    "viewer": {
+      "image_aria": "画像プレビュー",
+      "binary_aria": "テキスト以外のファイル",
+      "pdf_headline": "PDF プレビューはまだ対応していません。",
+      "binary_headline": "このファイルはテキスト文書ではありません。",
+      "reveal": "ファイルマネージャーで表示",
+      "open_with": "既定のアプリで開く"
+    }
+  },
+  "error": {
+    "generic": "問題が発生しました。",
+    "fs": {
+      "not_found": "ファイルが見つかりません。",
+      "permission_denied": "権限がありません。",
+      "disk_full": "ディスクの空き容量が不足しています。",
+      "name_conflict": "同じ名前の項目が既に存在します。",
+      "outside_workspace": "ワークスペース外のパスです。"
+    },
+    "network": {
+      "offline": "オフラインのようです。",
+      "timeout": "リクエストがタイムアウトしました。"
+    },
+    "ai": {
+      "no_provider": "AI プロバイダが設定されていません。",
+      "rate_limited": "AI プロバイダのレート制限に達しました。",
+      "auth_failed": "AI プロバイダの認証に失敗しました。"
+    }
+  },
+  "filetree": {
+    "placeholder": {
+      "filter": "フィルタ…",
+      "new_file": "ファイル名"
+    },
+    "aria": {
+      "tree": "ファイルツリー",
+      "filter": "ファイルフィルタ",
+      "sort": "並び順",
+      "folders_first": "フォルダを先頭に",
+      "show_hidden": "隠しファイルを表示",
+      "rename": "新しい名前",
+      "locked": "別のプロセスがロック中のファイル"
+    },
+    "tooltip": {
+      "locked": "別のプロセスがこのファイルを保持しています。",
+      "folders_first": "フォルダを先頭に",
+      "show_hidden": "隠しファイルを表示",
+      "sort": "並び順: {{label}}"
+    },
+    "sort": {
+      "name": "名前",
+      "modified": "更新日時",
+      "type": "種類"
+    },
+    "label": {
+      "folders_first_on": "フォルダ ↑",
+      "folders_first_off": "混在",
+      "show_hidden_on": ".•",
+      "show_hidden_off": "·"
+    },
+    "move": {
+      "bulk_progress": "移動中…",
+      "bulk_done": "移動完了",
+      "invalid_target": "同じフォルダには移動できません",
+      "failed": "移動に失敗しました",
+      "item_failed": "項目の移動に失敗しました"
+    },
+    "trash": {
+      "bulk_progress": "ゴミ箱へ移動中…",
+      "bulk_done": "ゴミ箱に移動しました",
+      "bulk_cancelled": "ゴミ箱への移動を取り消しました",
+      "item_failed": "項目の移動に失敗しました",
+      "moved": "ゴミ箱に移動",
+      "restored": "ゴミ箱から復元しました",
+      "undo_failed": "取り消しに失敗しました"
+    },
+    "delete": {
+      "failed": "完全削除に失敗しました",
+      "done": "完全に削除しました"
+    },
+    "reveal": {
+      "unsupported": "このプラットフォームでは OS で表示はサポートされていません。"
+    },
+    "open_with": {
+      "unsupported": "このプラットフォームでは別のアプリで開くはサポートされていません。"
+    }
+  },
+  "main": {
+    "aria": {
+      "workspace": "ワークスペース",
+      "filetree": "ファイルツリー",
+      "editor": "エディタ",
+      "sidebar_rail": "サイドバーを表示"
+    },
+    "action": {
+      "close_workspace": "ワークスペースを閉じる",
+      "settings": "設定",
+      "settings.tooltip": "設定 (⌘,)",
+      "show_sidebar": "サイドバーを表示",
+      "hide_sidebar": "サイドバーを非表示",
+      "toggle_sidebar": {
+        "tooltip": "サイドバーを切り替え (⌘B)"
+      },
+      "sidebar_rail": {
+        "tooltip": "サイドバーを表示 (⌘B)"
+      }
+    },
+    "editor": {
+      "placeholder": "レビューを開始するにはファイルを開いてください。"
+    }
+  },
+  "menu": {
+    "file": {
+      "new_file": "新規ファイル",
+      "new_folder": "新規フォルダ",
+      "open": "開く…",
+      "open_workspace": "ワークスペースを開く…",
+      "save": "保存",
+      "save_as": "名前を付けて保存…",
+      "close_tab": "タブを閉じる",
+      "close_workspace": "ワークスペースを閉じる",
+      "exit": "終了"
+    },
+    "edit": {
+      "undo": "元に戻す",
+      "redo": "やり直す",
+      "cut": "切り取り",
+      "copy": "コピー",
+      "paste": "貼り付け",
+      "find": "検索",
+      "replace": "置換"
+    },
+    "view": {
+      "toggle_sidebar": "サイドバーを切り替え",
+      "toggle_hidden": "隠しファイルを切り替え",
+      "command_palette": "コマンドパレット…"
+    },
+    "help": {
+      "docs": "ドキュメント",
+      "shortcuts": "ショートカット",
+      "report_issue": "問題を報告",
+      "about": "Markspread について"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Markspread へようこそ",
+      "open_workspace": "ワークスペースを開く",
+      "new_workspace": "ワークスペースを作成",
+      "open_single_file": "Markdown ファイルを 1 つ開く",
+      "recent": "最近のワークスペース"
+    },
+    "first_run": {
+      "telemetry_consent": "匿名の利用データの共有で Markspread の改善に協力しますか?",
+      "auto_update_consent": "アップデートを自動でインストールしますか?"
+    }
+  },
+  "palette": {
+    "title": "コマンドパレット",
+    "placeholder": "コマンド、ファイルを入力、または `?` でヘルプ",
+    "fileOpen": "ファイルを開く…",
+    "empty": "一致する項目がありません"
+  },
+  "peek": {
+    "aria": {
+      "dialog": "ファイルツリー (ピーク)"
+    },
+    "title": "ファイル",
+    "action": {
+      "pin": "ピークをピン留め",
+      "unpin": "ピーク留めを解除",
+      "pin.tooltip": "ピン留め (⌘⇧B)",
+      "unpin.tooltip": "ピン解除 (⌘⇧B)"
+    }
+  },
+  "commands": {
+    "view": {
+      "toggle_sidebar": "サイドバーを切り替え",
+      "show_sidebar": "サイドバーを表示",
+      "hide_sidebar": "サイドバーを非表示",
+      "split_right": "エディタを右に分割",
+      "split_down": "エディタを下に分割",
+      "focus_pane_1": "ペイン 1 にフォーカス",
+      "focus_pane_2": "ペイン 2 にフォーカス",
+      "focus_pane_3": "ペイン 3 にフォーカス",
+      "move_editor_to_next_group": "エディタを次のグループへ移動"
+    },
+    "tabs": {
+      "close_active": "エディタを閉じる"
+    }
+  },
+  "settings": {
+    "sheet": {
+      "title": "設定",
+      "close": "設定を閉じる"
+    },
+    "theme": {
+      "title": "テーマ",
+      "mode": {
+        "system": "システム",
+        "light": "ライト",
+        "dark": "ダーク"
+      }
+    },
+    "appearance": {
+      "title": "外観",
+      "font": {
+        "ui": "UI フォント",
+        "editor": "エディタフォント",
+        "size": "フォントサイズ",
+        "weight": "フォントの太さ",
+        "default": "デフォルト"
+      },
+      "line_height": "行間",
+      "letter_spacing": "字間",
+      "reset": "リセット"
+    },
+    "layout": {
+      "title": "レイアウト",
+      "collapsed_mode": {
+        "label": "サイドバーを折りたたんだとき",
+        "rail": "細いレール",
+        "hidden": "完全に非表示"
+      }
+    },
+    "diagnostics": {
+      "title": "診断",
+      "description": "ファイルアクセスポリシーの拒否をローカルにのみ記録します。データは本端末から送信されません。",
+      "opt_in": "アクセスポリシーの拒否をローカルに記録",
+      "window": "過去30日間",
+      "refresh": "更新",
+      "clear": "クリア",
+      "empty": "記録された拒否はありません。",
+      "disabled": "記録は無効です。",
+      "col": {
+        "date": "日付",
+        "category": "カテゴリ",
+        "rule": "ルール",
+        "count": "件数"
+      }
+    }
+  },
+  "shortcut_hint": {
+    "aria": "ショートカットヒント",
+    "message": "コマンドパレットを開くには次を押してください",
+    "dismiss": "了解",
+    "dismiss_aria": "ショートカットヒントを閉じる"
+  },
+  "tabs": {
+    "aria": {
+      "bar": "開いているファイル"
+    },
+    "close": "タブを閉じる",
+    "orphaned": "ファイルがディスク上に存在しません",
+    "pin": "タブをピン留め",
+    "unpin": "タブのピンを解除",
+    "pinned": "ピン留め済み"
+  },
+  "auto_update": {
+    "aria": "自動更新の同意",
+    "headline": "自動更新を有効にしますか?",
+    "body": "新しいバージョンがリリースされるとバックグラウンドでダウンロードしてインストールします。設定からいつでもオフにできます。",
+    "deny": "拒否",
+    "allow": "許可"
+  },
+  "error_boundary": {
+    "headline": "この画面で問題が発生しました。",
+    "retry": "再試行"
+  },
+  "telemetry": {
+    "aria": "匿名利用統計の同意",
+    "headline": "匿名の利用統計を送信しますか?",
+    "body": "個人情報を含まない使用パターンを匿名で収集し、Markspread の改善に活用します。設定からいつでもオフにできます。",
+    "sample": "送信データの例を表示",
+    "disable": "送信しない",
+    "enable": "送信する"
+  },
+  "welcome": {
+    "aria": {
+      "main": "ようこそ画面",
+      "brand": "ブランド",
+      "actions": "作業を始める"
+    },
+    "action": {
+      "open_workspace": "ワークスペースを開く",
+      "new_workspace": "新しいワークスペースを作成",
+      "single_file": "単一の Markdown ファイルを開く"
+    },
+    "recent": {
+      "heading": "最近のワークスペース",
+      "list": {
+        "aria": "最近のワークスペース"
+      },
+      "empty": {
+        "aria": "なし",
+        "label": "最近開いたワークスペースはありません"
+      },
+      "remove": "最近の一覧から削除",
+      "remove.aria": "最近の一覧から削除",
+      "title_missing": "{{path}} (見つかりません)",
+      "title_unmounted": "{{path}} (ドライブが接続されていません)",
+      "missing_prompt": "このパスは見つからなくなりました。Recent から削除しますか?",
+      "unmounted_prompt": "このワークスペースのドライブが接続されていません。マウントしてからやり直してください。"
+    }
+  },
+  "welcome_banner": {
+    "aria": "ようこそバナー",
+    "title": "Markspread へようこそ",
+    "subtitle": "ツアーを試すか、AI プロバイダを設定して始めましょう。",
+    "action": {
+      "tour": "ツアーを開始",
+      "setup_ai": "AI を設定",
+      "dismiss": "閉じる",
+      "dismiss_aria": "ようこそバナーを閉じる"
+    }
+  },
+  "layout": {
+    "aria": {
+      "sidebar_resize": "サイドバーをリサイズ"
+    }
+  },
+  "single_file": {
+    "aria": {
+      "main": "単一ファイル ビュー",
+      "editor": "エディター"
+    },
+    "banner": {
+      "aria": "単一ファイル バナー",
+      "message": "ワークスペース外でファイルを編集中です。"
+    },
+    "action": {
+      "close": "閉じる",
+      "convert_to_workspace": "フォルダーをワークスペースに変換"
+    },
+    "editor": {
+      "aria": "ファイルの内容"
+    },
+    "status": {
+      "unsaved": "未保存"
+    }
+  },
+  "toasts": {
+    "aria": "通知",
+    "dismiss.aria": "通知を閉じる"
+  },
+  "errors": {
+    "posix": {
+      "isdir": "このパスはファイルではなくフォルダーです。",
+      "enoent": "ファイルが見つかりません。移動または削除された可能性があります。",
+      "eacces": "アクセス権がありません。ファイルの読み取り権限を確認してください。",
+      "enospc": "ディスクの空き容量が不足しています。",
+      "outside_workspace": "このパスは現在のワークスペースの外側にあります。",
+      "enotutf8": "このファイルのエンコーディングはテキストとして解釈できません。",
+      "einval": "リクエストが無効です。",
+      "eio": "このファイルを読み込めませんでした。"
+    },
+    "access": {
+      "category": {
+        "sec": "セキュリティブロック",
+        "bnd": "ワークスペース境界",
+        "prm": "権限ブロック",
+        "pol": "ポリシーブロック",
+        "prf": "パフォーマンスブロック",
+        "fmt": "形式",
+        "io": "その他"
+      },
+      "action": {
+        "open_settings": "設定を開く",
+        "edit_allowlist": "許可リストを編集",
+        "add_workspace": "ワークスペースを追加",
+        "open_anyway": "それでも開く",
+        "force_text": "テキストとして表示",
+        "retry": "再試行",
+        "copy_diagnostics": "診断情報をコピー",
+        "learn_more": "詳しく見る",
+        "show_in_tree": "ファイルツリーで表示",
+        "open_image_viewer": "画像ビューアで開く"
+      },
+      "rule": {
+        "sec_null_byte": {
+          "title": "セキュリティポリシーによりブロック",
+          "body": "パスに NUL バイトが含まれ、システム呼び出しが改ざんされる可能性があります。セキュリティポリシー上許可されず、設定でも解除できません。",
+          "learn_more": "セキュリティブロックガイド"
+        },
+        "sec_path_traversal": {
+          "title": "セキュリティポリシーによりブロック",
+          "body": "パスにワークスペース外へ抜け出そうとするパターンが含まれています。セキュリティポリシー上許可されず、設定でも解除できません。",
+          "learn_more": "セキュリティブロックガイド"
+        },
+        "sec_symlink_escape": {
+          "title": "ワークスペース外を指すシンボリックリンク",
+          "body": "このシンボリックリンクはワークスペース外を指しています。セキュリティポリシー上許可されないため、対象ファイルをワークスペース内にコピーしてから開いてください。",
+          "learn_more": "シンボリックリンクポリシー"
+        },
+        "bnd_outside_workspace": {
+          "title": "ワークスペース外のパス",
+          "body": "このパスは現在のワークスペース外にあり、開けません。ワークスペースを追加するか、ファイルをワークスペース内に移動してください。",
+          "learn_more": "ワークスペース境界について"
+        },
+        "prm_os_eacces": {
+          "title": "OS によって権限が拒否されました",
+          "body": "オペレーティングシステムがこのファイルの読み取り権限を拒否しました。所有者と権限設定を確認してから再試行してください。",
+          "learn_more": "OS 権限の解決ガイド"
+        },
+        "pol_vcs_internal": {
+          "title": "VCS 内部ファイルは既定で保護領域",
+          "body": ".git・.hg・.svn のようなバージョン管理内部ファイルは既定で保護されています。本当に編集が必要な場合は許可リストに追加してください。",
+          "learn_more": "ポリシーブロックと許可リスト"
+        },
+        "pol_node_modules": {
+          "title": "node_modules は既定で保護領域",
+          "body": "node_modules は自動生成される依存関係のため既定で保護されています。設定の許可リストから特定のパッケージのみ開放できます。",
+          "learn_more": "ポリシーブロックと許可リスト"
+        },
+        "pol_build_output": {
+          "title": "ビルド成果物は既定で保護領域",
+          "body": "dist・build・.next などのビルド成果物は自動生成のため既定で保護されています。設定の許可リストから特定パスのみ開放できます。",
+          "learn_more": "ポリシーブロックと許可リスト"
+        },
+        "pol_lang_cache": {
+          "title": "言語キャッシュは既定で保護領域",
+          "body": ".venv・__pycache__・.gradle のような言語ランタイムキャッシュは既定で保護されています。設定の許可リストから特定パスのみ開放できます。",
+          "learn_more": "ポリシーブロックと許可リスト"
+        },
+        "pol_ide_internal": {
+          "title": "IDE 内部ファイルは既定で保護領域",
+          "body": ".idea・.vscode・.cursor のような IDE メタファイルは既定で保護されます。settings.json やルールファイルなど、ユーザーが編集する一部のファイルは自動的に許可されます。",
+          "learn_more": "ポリシーブロックと許可リスト"
+        },
+        "pol_platform_cruft": {
+          "title": "プラットフォーム一時ファイルは既定で保護領域",
+          "body": ".DS_Store・Thumbs.db・desktop.ini など OS の一時ファイルは編集の必要がほぼないため既定で保護されています。どうしても開きたい場合は許可リストに追加してください。",
+          "learn_more": "ポリシーブロックと許可リスト"
+        },
+        "prf_file_size_limit": {
+          "title": "ファイルが大きすぎます ({{size}})",
+          "body": "このファイルは {{size}} で、安定性のしきい値 ({{limit}}) を超えるため既定でブロックされます。「それでも開く」を選ぶと、1 回限りリスクを承知で開けます。",
+          "learn_more": "大きなファイルの扱い"
+        },
+        "prf_file_size_warn": {
+          "title": "大きなファイルの警告 ({{size}})",
+          "body": "このファイルは {{size}} で通常より大きいですが、そのまま開きます。入力遅延が気になる場合は別のビューアを使用してください。",
+          "learn_more": "大きなファイルの扱い"
+        },
+        "prf_dir_node_count": {
+          "title": "フォルダの項目が多すぎます ({{count}} 件)",
+          "body": "1 階層あたりの項目数が {{count}} 件で、しきい値 ({{limit}}) を超えるため既定でページネーションされます。検索やフィルタで範囲を絞ってください。",
+          "learn_more": "大きなディレクトリの扱い"
+        },
+        "fmt_not_utf8": {
+          "title": "テキストとして解釈できないエンコーディング",
+          "body": "このファイルは UTF-8 として解釈できません。別のビューアで開くか、テキストとして強制表示を試してください。",
+          "learn_more": "サポートされるエンコーディング"
+        },
+        "fmt_is_directory": {
+          "title": "このパスはフォルダです",
+          "body": "ファイルではなくフォルダのため、エディタでは開けません。ファイルツリーでフォルダを展開し、中のファイルを選んでください。",
+          "learn_more": ""
+        },
+        "fmt_binary_sniff": {
+          "title": "バイナリファイルと検出されました",
+          "body": "ファイル先頭に NUL バイトがあるため、バイナリと判定されました。画像や PDF ビューアで開くか、本当にテキストならテキストとして強制表示を使用してください。",
+          "learn_more": "バイナリ検出ポリシー"
+        },
+        "io_disk_full": {
+          "title": "ディスク容量不足",
+          "body": "ディスク容量が不足しているため保存に失敗しました。空き容量を確保してから再試行してください。",
+          "learn_more": ""
+        },
+        "io_enoent": {
+          "title": "ファイルが見つかりません",
+          "body": "このパスにファイルが見当たりません。別のツールで移動・削除された可能性があるため、ファイルツリーを更新して確認してください。",
+          "learn_more": ""
+        },
+        "io_unclassified": {
+          "title": "不明なファイルシステムエラー",
+          "body": "分類されていない I/O エラーが発生しました (コード: {{code}})。しばらくしてから再試行するか、診断情報をコピーして報告してください。",
+          "learn_more": ""
+        }
+      }
+    }
+  }
+}
