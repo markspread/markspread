@@ -19,9 +19,9 @@
 // pre-flight checks the UI uses to render the update flow.
 
 export interface UpdateManifest {
-  version: string;          // SemVer
+  version: string; // SemVer
   notesMarkdown: string;
-  pubDate: string;          // ISO timestamp
+  pubDate: string; // ISO timestamp
   /** Per-platform artefact descriptor. */
   platforms: Record<string, UpdatePlatformEntry>;
   /** Ed25519 signature over the manifest body. */
@@ -30,7 +30,7 @@ export interface UpdateManifest {
 
 export interface UpdatePlatformEntry {
   url: string;
-  signature: string;        // signature over the artefact bytes
+  signature: string; // signature over the artefact bytes
   sha256: string;
   /** Resolved IP at manifest-fetch time — used to pin during tarball download (S-SE-039). */
   resolvedHost: string | null;
@@ -71,7 +71,12 @@ export function preflightUpdate(
     return { ok: false, code: "manifest-malformed", message: "version is not a SemVer triple" };
   }
   if (isDowngrade(currentVersion, manifest.version)) {
-    return { ok: false, code: "downgrade-blocked", current: currentVersion, candidate: manifest.version };
+    return {
+      ok: false,
+      code: "downgrade-blocked",
+      current: currentVersion,
+      candidate: manifest.version,
+    };
   }
   return { ok: true, targetVersion: manifest.version };
 }

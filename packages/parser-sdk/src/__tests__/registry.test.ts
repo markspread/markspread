@@ -29,10 +29,7 @@ describe("ParserRegistry — priority", () => {
       mf({ id: "diagram", fileMatch: { frontmatterSniff: { type: "diagram" } } }),
       noopFactory,
     );
-    reg.registerParser(
-      mf({ id: "any-csv", fileMatch: { globs: ["**/*.csv"] } }),
-      noopFactory,
-    );
+    reg.registerParser(mf({ id: "any-csv", fileMatch: { globs: ["**/*.csv"] } }), noopFactory);
     const r = reg.match({ path: "/a/b.csv", frontmatter: { type: "diagram" } });
     expect(r?.parser.manifest.id).toBe("diagram");
     expect(r?.reason).toBe("frontmatter");
@@ -40,10 +37,7 @@ describe("ParserRegistry — priority", () => {
 
   it("extension exact beats glob when both match", () => {
     reg.registerParser(mf({ id: "csv-ext", fileMatch: { extensions: [".csv"] } }), noopFactory);
-    reg.registerParser(
-      mf({ id: "glob-csv", fileMatch: { globs: ["**/*.csv"] } }),
-      noopFactory,
-    );
+    reg.registerParser(mf({ id: "glob-csv", fileMatch: { globs: ["**/*.csv"] } }), noopFactory);
     const r = reg.match({ path: "/a/b.csv" });
     expect(r?.parser.manifest.id).toBe("csv-ext");
     expect(r?.reason).toBe("extension");
@@ -106,13 +100,10 @@ describe("ParserRegistry — conflicts and candidates", () => {
 
   it("candidates() returns all compatible parsers ranked", () => {
     reg.registerParser(mf({ id: "csv-ext", fileMatch: { extensions: [".csv"] } }), noopFactory);
-    reg.registerParser(
-      mf({ id: "csv-glob", fileMatch: { globs: ["**/*.csv"] } }),
-      noopFactory,
-    );
+    reg.registerParser(mf({ id: "csv-glob", fileMatch: { globs: ["**/*.csv"] } }), noopFactory);
     const cs = reg.candidates({ path: "/a.csv" });
     expect(cs.map((c) => c.parser.manifest.id)).toEqual(["csv-ext", "csv-glob"]);
-    expect(cs[0]?.score).toBeGreaterThan(cs[1]!.score);
+    expect(cs[0]?.score).toBeGreaterThan(cs[1]?.score);
   });
 
   it("candidates() is empty for unsupported paths (no fallback)", () => {

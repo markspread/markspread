@@ -23,12 +23,13 @@ function shouldSkip(node: Node): boolean {
 
 function trimTrailing(url: string): { href: string; trail: string } {
   // Pull trailing punctuation off the URL so prose like "see https://x.com." renders correctly.
+  let href = url;
   let trail = "";
-  while (url.length > 0 && /[.,;:!?)\]}'"]/.test(url[url.length - 1] ?? "")) {
-    trail = (url[url.length - 1] ?? "") + trail;
-    url = url.slice(0, -1);
+  while (href.length > 0 && /[.,;:!?)\]}'"]/.test(href[href.length - 1] ?? "")) {
+    trail = (href[href.length - 1] ?? "") + trail;
+    href = href.slice(0, -1);
   }
-  return { href: url, trail };
+  return { href, trail };
 }
 
 export function linkifyTextNodes(root: ParentNode): void {
@@ -38,7 +39,8 @@ export function linkifyTextNodes(root: ParentNode): void {
   while (n) {
     if (n.nodeValue && URL_RE.test(n.nodeValue)) {
       URL_RE.lastIndex = 0;
-      if (!shouldSkip(n.parentNode!)) targets.push(n as Text);
+      const parent = n.parentNode;
+      if (parent && !shouldSkip(parent)) targets.push(n as Text);
     }
     URL_RE.lastIndex = 0;
     n = walker.nextNode();
@@ -48,8 +50,8 @@ export function linkifyTextNodes(root: ParentNode): void {
     URL_RE.lastIndex = 0;
     const frag = document.createDocumentFragment();
     let last = 0;
-    let m: RegExpExecArray | null;
-    while ((m = URL_RE.exec(value))) {
+    let m = URL_RE.exec(value);
+    while (m !== null) {
       if (m.index > last) {
         frag.appendChild(document.createTextNode(value.slice(last, m.index)));
       }
@@ -62,6 +64,7 @@ export function linkifyTextNodes(root: ParentNode): void {
       frag.appendChild(a);
       if (trail) frag.appendChild(document.createTextNode(trail));
       last = m.index + m[0].length;
+      m = URL_RE.exec(value);
     }
     if (last < value.length) {
       frag.appendChild(document.createTextNode(value.slice(last)));

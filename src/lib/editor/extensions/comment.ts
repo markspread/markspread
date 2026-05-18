@@ -24,8 +24,8 @@
 // nested language extension is wired (tracked in MD unit follow-up).
 
 import { toggleBlockComment, toggleComment } from "@codemirror/commands";
-import { keymap } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 
 export function commentExtension(): Extension {
   return keymap.of([

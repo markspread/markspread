@@ -1,11 +1,11 @@
 import { useEffect } from "react";
+import { useLocale } from "../store/locale";
 import {
+  FONT_WEIGHT_VALUES,
   clampFontSize,
   clampLetterSpacing,
-  FONT_WEIGHT_VALUES,
   useSettings,
 } from "../store/settings";
-import { useLocale } from "../store/locale";
 
 const UI_BASE =
   '"Inter Variable", "Inter", "Pretendard Variable", "Pretendard", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR"';
@@ -17,10 +17,8 @@ const EDITOR_DEFAULT =
 // conservative chain. The Traditional Chinese branch is selected only when
 // the navigator tag includes a TW/HK region; everything else under "zh"
 // resolves to Simplified.
-const JP_CHAIN =
-  '"Noto Sans JP", "Hiragino Sans", "Yu Gothic", "Yu Gothic UI", "Meiryo"';
-const SC_CHAIN =
-  '"Noto Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", "SimHei"';
+const JP_CHAIN = '"Noto Sans JP", "Hiragino Sans", "Yu Gothic", "Yu Gothic UI", "Meiryo"';
+const SC_CHAIN = '"Noto Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", "SimHei"';
 const TC_CHAIN =
   '"Noto Sans TC", "Noto Sans CJK TC", "PingFang TC", "Microsoft JhengHei", "PMingLiU"';
 
@@ -84,13 +82,5 @@ export function useFontFamilyEffect(): void {
     // S-TY-007: weight applies to the entire UI body. Bold UI elements
     // (h1, strong, etc.) keep their authored weight via their own selectors.
     root.style.fontWeight = String(FONT_WEIGHT_VALUES[fontWeight] ?? 400);
-  }, [
-    uiFontFamily,
-    editorFontFamily,
-    fontSizePx,
-    lineHeight,
-    letterSpacingPx,
-    fontWeight,
-    locale,
-  ]);
+  }, [uiFontFamily, editorFontFamily, fontSizePx, lineHeight, letterSpacingPx, fontWeight, locale]);
 }

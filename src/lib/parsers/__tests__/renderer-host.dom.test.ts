@@ -3,9 +3,12 @@
 
 import { describe, expect, it } from "vitest";
 import type { ParseRequest } from "../messages";
-import { renderInSandbox, type SandboxTransport } from "../renderer-host";
+import { type SandboxTransport, renderInSandbox } from "../renderer-host";
 
-function fakeTransport(reply: unknown, opts: { mode?: "worker" | "iframe" } = {}): SandboxTransport {
+function fakeTransport(
+  reply: unknown,
+  opts: { mode?: "worker" | "iframe" } = {},
+): SandboxTransport {
   let handler: ((raw: unknown) => void) | null = null;
   return {
     mode: opts.mode ?? "worker",

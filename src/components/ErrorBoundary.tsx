@@ -10,8 +10,8 @@
 // the unhandled-rejection listener installed at boot, which routes
 // through the same makeError pipeline and surfaces a toast.
 
-import { Component, type ErrorInfo, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { i18n } from "../lib/i18n-init";
 
 interface Props {
@@ -51,12 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.props.fallback) return this.props.fallback(this.reset, this.state.error);
     return (
       <div role="alert" className="error-boundary">
-        <h2>
-          {i18n.t(
-            "error_boundary.headline",
-            "Something went wrong in this view.",
-          )}
-        </h2>
+        <h2>{i18n.t("error_boundary.headline", "Something went wrong in this view.")}</h2>
         <p>{this.state.error.message}</p>
         <button type="button" onClick={this.reset}>
           {i18n.t("error_boundary.retry", "Try again")}

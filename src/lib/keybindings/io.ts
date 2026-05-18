@@ -17,13 +17,9 @@
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
-import type { Binding, BindingEntry } from "./types";
-import {
-  clearUserOverride,
-  listActiveBindings,
-  setUserOverride,
-} from ".";
+import { clearUserOverride, listActiveBindings, setUserOverride } from ".";
 import { persistUserOverrides } from "./persistence";
+import type { Binding, BindingEntry } from "./types";
 
 const SCHEMA_URL = "https://markspread.app/schemas/keybindings.json";
 
@@ -66,9 +62,7 @@ export type ImportReport = {
  *
  * Returns a report so the caller can surface what changed.
  */
-export async function importKeybindings(
-  mode: ImportMode = "merge",
-): Promise<ImportReport | null> {
+export async function importKeybindings(mode: ImportMode = "merge"): Promise<ImportReport | null> {
   const path = await openDialog({
     title: "Import Keybindings",
     multiple: false,
@@ -85,9 +79,7 @@ export async function importKeybindings(
   }
   const bindings = extractBindings(parsed);
   if (!bindings) {
-    throw new Error(
-      "File is not a Markspread keybindings export (missing bindings object).",
-    );
+    throw new Error("File is not a Markspread keybindings export (missing bindings object).");
   }
 
   const existing = new Map<string, BindingEntry>();

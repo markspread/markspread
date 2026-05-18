@@ -17,15 +17,14 @@ export function ChordIndicator() {
 
   if (!prefix) return null;
   return (
-    <span
+    <output
       className="flex items-center space-x-1 rounded border border-surface-border bg-surface-bg-subtle px-2 py-0.5 text-xs"
-      role="status"
       aria-live="polite"
     >
       <kbd className="font-mono">({formatBinding(prefix)})</kbd>
       <span className="text-surface-fg-muted">
         {t("keybindings.chord.waiting", "waiting for next key…")}
       </span>
-    </span>
+    </output>
   );
 }

@@ -6,8 +6,8 @@
 // file into `<workspace>/assets/` via WorkspaceFs.saveAsset (same
 // machinery used by S-ED-051), then insert `![alt](relPath)`.
 
-import type { EditorView } from "@codemirror/view";
 import { EditorSelection } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 
 import type { WorkspaceFs } from "../extensions/clipboard";
 
@@ -46,7 +46,7 @@ export async function insertImage(view: EditorView): Promise<boolean> {
     });
   });
   if (!result) return false;
-  let { alt, url } = result;
+  const { alt, url } = result;
   // If url points at a File-via-picker payload (data: URL we tagged
   // ourselves), the dialog passes us the File via a separate path —
   // in this code path the dialog has already saved the asset and

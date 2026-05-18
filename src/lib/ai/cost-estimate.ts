@@ -50,8 +50,7 @@ export function estimateCost(
 ): CostEstimate {
   const input = estimateInputTokens(inputText);
   const output = Math.ceil(input * pricing.outputRatio);
-  const usd =
-    (input / 1000) * pricing.inputPer1K + (output / 1000) * pricing.outputPer1K;
+  const usd = (input / 1000) * pricing.inputPer1K + (output / 1000) * pricing.outputPer1K;
   return { tokens: input + output, usd: Math.round(usd * 10000) / 10000 };
 }
 

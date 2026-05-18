@@ -17,12 +17,9 @@
 // keymap is searchable from the spec ID.
 
 import { indentLess, indentWithTab } from "@codemirror/commands";
-import { keymap } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 
 export function indentExtension(): Extension {
-  return keymap.of([
-    indentWithTab,
-    { key: "Shift-Tab", run: indentLess, preventDefault: true },
-  ]);
+  return keymap.of([indentWithTab, { key: "Shift-Tab", run: indentLess, preventDefault: true }]);
 }

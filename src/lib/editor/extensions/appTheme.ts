@@ -4,8 +4,8 @@
 // work in CSS rather than JS means a `data-theme` flip on <html>
 // re-paints the editor with no transaction or remount.
 
-import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 
 export function appThemeExtension(): Extension {
   return EditorView.theme({
@@ -38,19 +38,16 @@ export function appThemeExtension(): Extension {
       borderRight: "1px solid var(--color-border)",
     },
     ".cm-activeLineGutter, .cm-activeLine": {
-      backgroundColor:
-        "color-mix(in oklab, var(--color-accent) 8%, transparent)",
+      backgroundColor: "color-mix(in oklab, var(--color-accent) 8%, transparent)",
     },
     ".cm-cursor, .cm-dropCursor": {
       borderLeftColor: "var(--color-fg)",
     },
     "&.cm-focused .cm-selectionBackground, ::selection": {
-      backgroundColor:
-        "color-mix(in oklab, var(--color-accent) 30%, transparent)",
+      backgroundColor: "color-mix(in oklab, var(--color-accent) 30%, transparent)",
     },
     ".cm-selectionMatch": {
-      backgroundColor:
-        "color-mix(in oklab, var(--color-accent) 18%, transparent)",
+      backgroundColor: "color-mix(in oklab, var(--color-accent) 18%, transparent)",
     },
     ".cm-panels": {
       backgroundColor: "var(--color-surface)",

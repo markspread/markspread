@@ -38,7 +38,7 @@ let state: SpreadPaneState = { ...DEFAULT_STATE };
 const listeners = new Set<() => void>();
 
 function emit() {
-  listeners.forEach((fn) => fn());
+  for (const fn of listeners) fn();
 }
 
 export function getSpreadPaneState(): SpreadPaneState {
@@ -97,7 +97,9 @@ export function serializeSpreadPane(): { visible: boolean; ratio: number; active
   };
 }
 
-export function restoreSpreadPane(snapshot: Partial<{ visible: boolean; ratio: number; activeTab: string }>): void {
+export function restoreSpreadPane(
+  snapshot: Partial<{ visible: boolean; ratio: number; activeTab: string }>,
+): void {
   state = {
     ...state,
     visible: snapshot.visible ?? state.visible,

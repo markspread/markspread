@@ -13,7 +13,7 @@
 //   {"summary":true,"runs":5,"p50":491,"p95":absolute,"min":...,"max":...}
 
 import { spawn } from "node:child_process";
-import { existsSync, readdirSync, appendFileSync, writeFileSync, statSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 function parseArgs(argv) {
@@ -23,7 +23,7 @@ function parseArgs(argv) {
     else if (argv[i] === "--report") args.report = argv[++i];
   }
   if (!Number.isInteger(args.runs) || args.runs < 1) {
-    console.error(`::error::invalid --runs value`);
+    console.error("::error::invalid --runs value");
     process.exit(1);
   }
   return args;
@@ -34,9 +34,7 @@ function parseArgs(argv) {
 // a plain `cargo build` leaves the crate name, so accept both.
 function findBinary() {
   const isWin = process.platform === "win32";
-  const candidates = isWin
-    ? ["Markspread.exe", "markspread.exe"]
-    : ["Markspread", "markspread"];
+  const candidates = isWin ? ["Markspread.exe", "markspread.exe"] : ["Markspread", "markspread"];
   const root = join(process.cwd(), "src-tauri", "target");
   if (!existsSync(root)) return null;
 
@@ -93,7 +91,9 @@ async function main() {
   const { runs, report } = parseArgs(process.argv.slice(2));
   const bin = findBinary();
   if (!bin) {
-    console.error("::error::no debug binary found under src-tauri/target — run `pnpm tauri build --debug --no-bundle` first");
+    console.error(
+      "::error::no debug binary found under src-tauri/target — run `pnpm tauri build --debug --no-bundle` first",
+    );
     process.exit(1);
   }
   console.log(`probe binary: ${bin}`);

@@ -155,15 +155,13 @@ async function evaluateAndOpen(layout: WorkspaceLayout): Promise<void> {
         details: quarantine || "index.db",
         ttlMs: 8000,
       });
-      void invoke("fs_index_rebuild", { workspace: layout.root }).catch(
-        (e) => {
-          useToasts.getState().push({
-            kind: "error",
-            message: "workspace.error.index_rebuild_failed",
-            details: String(e),
-          });
-        },
-      );
+      void invoke("fs_index_rebuild", { workspace: layout.root }).catch((e) => {
+        useToasts.getState().push({
+          kind: "error",
+          message: "workspace.error.index_rebuild_failed",
+          details: String(e),
+        });
+      });
     } catch (e) {
       useToasts.getState().push({
         kind: "error",
@@ -172,10 +170,7 @@ async function evaluateAndOpen(layout: WorkspaceLayout): Promise<void> {
       });
     }
   }
-  if (
-    layout.root.length > LONG_PATH_THRESHOLD &&
-    !longPathSeen.has(layout.root)
-  ) {
+  if (layout.root.length > LONG_PATH_THRESHOLD && !longPathSeen.has(layout.root)) {
     longPathSeen.add(layout.root);
     useToasts.getState().push({
       kind: "info",
@@ -217,9 +212,7 @@ async function evaluateAndOpen(layout: WorkspaceLayout): Promise<void> {
     });
   }
 
-  useWorkspace
-    .getState()
-    .open(layout.root, { readOnly: layout.read_only });
+  useWorkspace.getState().open(layout.root, { readOnly: layout.read_only });
   useRecentWorkspaces.getState().add(layout.root);
 }
 
@@ -283,10 +276,10 @@ export async function newWorkspaceFromDialog(): Promise<string | null> {
     return null;
   }
   if (layout.already_existed) {
-    const proceed = await ask(
-      "이미 워크스페이스로 초기화된 폴더입니다. 다시 여시겠습니까?",
-      { title: "Markspread", kind: "info" },
-    );
+    const proceed = await ask("이미 워크스페이스로 초기화된 폴더입니다. 다시 여시겠습니까?", {
+      title: "Markspread",
+      kind: "info",
+    });
     if (!proceed) return null;
   }
   await evaluateAndOpen(layout);

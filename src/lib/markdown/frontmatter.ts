@@ -87,7 +87,10 @@ function parseSimpleYaml(text: string): Record<string, unknown> {
     }
     if (valueRaw.trim().startsWith("[") && valueRaw.trim().endsWith("]")) {
       const inner = valueRaw.trim().slice(1, -1);
-      out[key] = inner.split(",").map((s) => unquote(s.trim())).filter(Boolean);
+      out[key] = inner
+        .split(",")
+        .map((s) => unquote(s.trim()))
+        .filter(Boolean);
       i++;
       continue;
     }

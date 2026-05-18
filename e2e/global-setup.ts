@@ -6,7 +6,7 @@
 // with deterministic-clock + IPC-mock helpers — see
 // `src/lib/test-harness/install.ts` (registered behind the flag).
 
-import { mkdtempSync, rmSync, mkdirSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 

@@ -46,9 +46,9 @@ export type PluginPermission =
   | "fs.workspace-read"
   | "fs.workspace-write"
   | "fs.outside"
-  | { network: string[] }      // S-PL-014: explicit hostname allow-list
-  | { keychain: string[] }     // S-PL-015: alias allow-list
-  | "shell";                   // S-PL-016: always denied in v1
+  | { network: string[] } // S-PL-014: explicit hostname allow-list
+  | { keychain: string[] } // S-PL-015: alias allow-list
+  | "shell"; // S-PL-016: always denied in v1
 
 export interface ManifestValidationError {
   path: string;
@@ -63,7 +63,9 @@ const VALID_KINDS: PluginKind[] = ["parser", "ai", "command", "view"];
 const VALID_ACTIVATION_PREFIXES = ["onLanguage:", "onCommand:", "onView:"];
 const VALID_BARE_ACTIVATIONS = new Set(["onStartup"]);
 
-export function validateManifest(input: unknown): { ok: true; value: PluginManifest } | { ok: false; errors: ManifestValidationError[] } {
+export function validateManifest(
+  input: unknown,
+): { ok: true; value: PluginManifest } | { ok: false; errors: ManifestValidationError[] } {
   const errors: ManifestValidationError[] = [];
   const expectObject = (path: string, v: unknown): v is Record<string, unknown> => {
     if (!v || typeof v !== "object" || Array.isArray(v)) {
@@ -79,11 +81,15 @@ export function validateManifest(input: unknown): { ok: true; value: PluginManif
   // S-PL-002: required fields. Each missing field gets its own error so
   // the plugin author sees the full list in one shot.
   const required = ["id", "name", "version", "kind", "engines", "activationEvents", "permissions"];
-  for (const k of required) if (!(k in m)) errors.push({ path: k, message: "required field missing" });
+  for (const k of required)
+    if (!(k in m)) errors.push({ path: k, message: "required field missing" });
   if (errors.length > 0) return { ok: false, errors };
 
   if (typeof m.id !== "string" || !ID_RE.test(m.id)) {
-    errors.push({ path: "id", message: "must be lowercase, 1..64 chars, [a-z0-9._-], not starting/ending in punctuation" });
+    errors.push({
+      path: "id",
+      message: "must be lowercase, 1..64 chars, [a-z0-9._-], not starting/ending in punctuation",
+    });
   }
   if (typeof m.name !== "string" || m.name.length === 0 || m.name.length > 80) {
     errors.push({ path: "name", message: "must be a non-empty string ≤80 chars" });
@@ -96,7 +102,10 @@ export function validateManifest(input: unknown): { ok: true; value: PluginManif
   }
   // S-PL-003: engines.markspread is required and must be a non-empty range.
   if (!expectObject("engines", m.engines) || typeof m.engines.markspread !== "string") {
-    errors.push({ path: "engines.markspread", message: "must be a SemVer range string (e.g. ^1.0.0)" });
+    errors.push({
+      path: "engines.markspread",
+      message: "must be a SemVer range string (e.g. ^1.0.0)",
+    });
   }
   if (!Array.isArray(m.activationEvents)) {
     errors.push({ path: "activationEvents", message: "must be an array of strings" });
@@ -106,8 +115,13 @@ export function validateManifest(input: unknown): { ok: true; value: PluginManif
         errors.push({ path: `activationEvents[${i}]`, message: "must be a string" });
         return;
       }
-      const matches = VALID_ACTIVATION_PREFIXES.some((p) => evt.startsWith(p)) || VALID_BARE_ACTIVATIONS.has(evt);
-      if (!matches) errors.push({ path: `activationEvents[${i}]`, message: `unknown activation event "${evt}"` });
+      const matches =
+        VALID_ACTIVATION_PREFIXES.some((p) => evt.startsWith(p)) || VALID_BARE_ACTIVATIONS.has(evt);
+      if (!matches)
+        errors.push({
+          path: `activationEvents[${i}]`,
+          message: `unknown activation event "${evt}"`,
+        });
     });
   }
   if (!Array.isArray(m.permissions)) {
@@ -115,13 +129,21 @@ export function validateManifest(input: unknown): { ok: true; value: PluginManif
   } else {
     m.permissions.forEach((p, i) => {
       if (typeof p === "string") {
-        if (p !== "fs.workspace-read" && p !== "fs.workspace-write" && p !== "fs.outside" && p !== "shell") {
+        if (
+          p !== "fs.workspace-read" &&
+          p !== "fs.workspace-write" &&
+          p !== "fs.outside" &&
+          p !== "shell"
+        ) {
           errors.push({ path: `permissions[${i}]`, message: `unknown permission "${p}"` });
         }
       } else if (expectObject(`permissions[${i}]`, p)) {
         if ("network" in p && Array.isArray(p.network)) return;
         if ("keychain" in p && Array.isArray(p.keychain)) return;
-        errors.push({ path: `permissions[${i}]`, message: "object permission must be {network: [...]} or {keychain: [...]}" });
+        errors.push({
+          path: `permissions[${i}]`,
+          message: "object permission must be {network: [...]} or {keychain: [...]}",
+        });
       }
     });
   }
@@ -161,7 +183,11 @@ export function isHostCompatible(hostVersion: string, requiredRange: string): bo
   return cmp(host, want) === 0;
 }
 
-interface SemverParts { major: number; minor: number; patch: number }
+interface SemverParts {
+  major: number;
+  minor: number;
+  patch: number;
+}
 
 function parseSemver(s: string): SemverParts | null {
   const m = /^(\d+)\.(\d+)\.(\d+)/.exec(s);

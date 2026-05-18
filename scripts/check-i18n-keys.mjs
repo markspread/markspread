@@ -56,13 +56,18 @@ function extractCalledKeys() {
   for (const file of walk(SRC_DIR, ".ts").concat(walk(SRC_DIR, ".tsx"))) {
     if (file.endsWith(".test.ts") || file.endsWith(".test.tsx")) continue;
     const src = readFileSync(file, "utf8");
-    let m;
-    while ((m = T_CALL.exec(src))) calls.add(m[2]);
+    let m = T_CALL.exec(src);
+    while (m !== null) {
+      calls.add(m[2]);
+      m = T_CALL.exec(src);
+    }
   }
   return calls;
 }
 
-const locales = readdirSync(LOCALES_DIR).filter((d) => statSync(join(LOCALES_DIR, d)).isDirectory());
+const locales = readdirSync(LOCALES_DIR).filter((d) =>
+  statSync(join(LOCALES_DIR, d)).isDirectory(),
+);
 if (!locales.includes("en")) {
   console.error("FATAL: src/locales/en is missing — `en` is the source of truth.");
   process.exit(2);
@@ -88,7 +93,8 @@ for (const locale of locales) {
     if (!k.has(key)) {
       const level = STRICT ? "ERR " : "WARN";
       console.error(`${level} ${locale} missing key: ${key}`);
-      if (STRICT) errors += 1; else warnings += 1;
+      if (STRICT) errors += 1;
+      else warnings += 1;
     }
   }
   for (const key of k) {

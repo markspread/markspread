@@ -2,11 +2,7 @@
 
 import { registerParser } from "@markspread/parser-sdk";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  BUILTIN_MARKDOWN_ID,
-  __resetParserRegistryForTests,
-  getParserRegistry,
-} from "../registry";
+import { BUILTIN_MARKDOWN_ID, __resetParserRegistryForTests, getParserRegistry } from "../registry";
 
 afterEach(() => __resetParserRegistryForTests());
 

@@ -14,7 +14,7 @@
 // instead. When the harness lands this spec keeps working unchanged —
 // the store API is the source of truth either way.
 
-import { expect, test, type Page } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 type DevStores = {
   workspace: {
@@ -41,9 +41,9 @@ async function openWorkspace(page: Page, path: string): Promise<void> {
 }
 
 async function sidebarHidden(page: Page): Promise<boolean> {
-  return await page.locator('aside[data-sidebar-aside]').evaluate((el) =>
-    el.getAttribute("aria-hidden") === "true",
-  );
+  return await page
+    .locator("aside[data-sidebar-aside]")
+    .evaluate((el) => el.getAttribute("aria-hidden") === "true");
 }
 
 test("Mod+B toggles the sidebar 5× without drift", async ({ page }) => {
@@ -51,7 +51,7 @@ test("Mod+B toggles the sidebar 5× without drift", async ({ page }) => {
   await waitForDevHooks(page);
   await openWorkspace(page, WS_A);
 
-  const aside = page.locator('aside[data-sidebar-aside]');
+  const aside = page.locator("aside[data-sidebar-aside]");
   await expect(aside).toBeVisible();
 
   // Establish a known starting state (visible) regardless of any
@@ -80,12 +80,12 @@ test("hidden state survives a page reload", async ({ page }) => {
   if (!(await sidebarHidden(page))) {
     await toggle.click();
   }
-  await expect(page.locator('aside[data-sidebar-aside]')).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("aside[data-sidebar-aside]")).toHaveAttribute("aria-hidden", "true");
 
   await page.reload();
   await waitForDevHooks(page);
   await openWorkspace(page, WS_A);
-  await expect(page.locator('aside[data-sidebar-aside]')).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("aside[data-sidebar-aside]")).toHaveAttribute("aria-hidden", "true");
 });
 
 test("two workspaces keep independent collapsed state", async ({ page }) => {
@@ -97,13 +97,13 @@ test("two workspaces keep independent collapsed state", async ({ page }) => {
   if (!(await sidebarHidden(page))) {
     await page.keyboard.press("Meta+B");
   }
-  await expect(page.locator('aside[data-sidebar-aside]')).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("aside[data-sidebar-aside]")).toHaveAttribute("aria-hidden", "true");
 
   // Switch to B — should default to visible (workspace-scoped state).
   await openWorkspace(page, WS_B);
-  await expect(page.locator('aside[data-sidebar-aside]')).toHaveAttribute("aria-hidden", "false");
+  await expect(page.locator("aside[data-sidebar-aside]")).toHaveAttribute("aria-hidden", "false");
 
   // Hop back to A; the previously-hidden state must come back.
   await openWorkspace(page, WS_A);
-  await expect(page.locator('aside[data-sidebar-aside]')).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("aside[data-sidebar-aside]")).toHaveAttribute("aria-hidden", "true");
 });

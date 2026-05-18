@@ -27,9 +27,7 @@ export function SettingsKeybindings() {
       aria-label={t("settings.keybindings.title", "Keybindings")}
       className="flex flex-col gap-3 border-[var(--color-border)] border-b p-4 text-sm"
     >
-      <h2 className="font-semibold text-base">
-        {t("settings.keybindings.title", "Keybindings")}
-      </h2>
+      <h2 className="font-semibold text-base">{t("settings.keybindings.title", "Keybindings")}</h2>
       <input
         type="search"
         placeholder={t("settings.keybindings.search", "Search commands…")}
@@ -39,10 +37,7 @@ export function SettingsKeybindings() {
       />
       <ul className="flex flex-col divide-y divide-[var(--color-border)]">
         {filtered.map((c) => (
-          <li
-            key={c.id}
-            className="flex items-center justify-between gap-3 py-1.5 text-xs"
-          >
+          <li key={c.id} className="flex items-center justify-between gap-3 py-1.5 text-xs">
             <span className="flex flex-col">
               <span className="font-medium">{c.title}</span>
               <span className="text-[var(--color-muted)]">{c.id}</span>

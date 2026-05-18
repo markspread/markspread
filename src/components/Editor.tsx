@@ -13,11 +13,7 @@ import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  buildEditorState,
-  type EditorLanguage,
-  mountEditor,
-} from "@/lib/editor/state";
+import { type EditorLanguage, buildEditorState, mountEditor } from "@/lib/editor/state";
 
 export interface EditorViewPosition {
   line: number;
@@ -82,11 +78,7 @@ export function Editor({
   // re-mounts via the dependency, so a Korean→English switch updates
   // the hint without the user needing to reopen the file.
   const placeholderText = useMemo(
-    () =>
-      t(
-        "editor.placeholder",
-        "Start typing… or press ⌘K for commands",
-      ),
+    () => t("editor.placeholder", "Start typing… or press ⌘K for commands"),
     [t],
   );
 
@@ -161,9 +153,7 @@ export function Editor({
   useEffect(() => {
     const view = viewRef.current;
     if (!view || !extensions) return;
-    view.setState(
-      buildEditorState(view.state.doc.toString(), extensions, undefined, language),
-    );
+    view.setState(buildEditorState(view.state.doc.toString(), extensions, undefined, language));
   }, [extensions, language]);
 
   // S-ESP-007: reconcile when an external (other-pane) edit lands. We do

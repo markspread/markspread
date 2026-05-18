@@ -211,8 +211,7 @@ pub fn migrate_run(req: MigrationRunRequest) -> AppResult<MigrationRunResult> {
     if req.copy_files {
         std::fs::create_dir_all(&output).map_err(AppError::from)?;
     }
-    let output_canon = std::fs::canonicalize(&output)
-        .unwrap_or_else(|_| output.clone());
+    let output_canon = std::fs::canonicalize(&output).unwrap_or_else(|_| output.clone());
 
     // Notion exports arrive as a `.zip`; everything else is a folder.
     let scan_root: PathBuf;
@@ -230,10 +229,9 @@ pub fn migrate_run(req: MigrationRunRequest) -> AppResult<MigrationRunResult> {
                 .by_index(i)
                 .map_err(|e| AppError::Invalid(format!("import zip entry: {e}")))?;
             let Some(rel) = entry.enclosed_name() else {
-                result.warnings.push(format!(
-                    "skipped unsafe zip entry: {}",
-                    entry.name()
-                ));
+                result
+                    .warnings
+                    .push(format!("skipped unsafe zip entry: {}", entry.name()));
                 continue;
             };
             let dest = extract_to.join(&rel);
@@ -257,8 +255,7 @@ pub fn migrate_run(req: MigrationRunRequest) -> AppResult<MigrationRunResult> {
     for entry in walkdir::WalkDir::new(&scan_root)
         .into_iter()
         .filter_entry(|e| {
-            !e.file_type().is_dir()
-                || !is_skipped_dir(&e.file_name().to_string_lossy())
+            !e.file_type().is_dir() || !is_skipped_dir(&e.file_name().to_string_lossy())
         })
         .filter_map(|e| e.ok())
     {

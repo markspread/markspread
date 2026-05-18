@@ -56,8 +56,8 @@ async function* callStreaming(opts: CallOptions): AsyncGenerator<ChatChunk, void
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "authorization": `Bearer ${opts.apiKey}`,
-      "accept": "text/event-stream",
+      authorization: `Bearer ${opts.apiKey}`,
+      accept: "text/event-stream",
     },
     body: JSON.stringify(buildRequestBody(opts, true)),
     ...(opts.signal ? { signal: opts.signal } : {}),
@@ -83,7 +83,9 @@ async function* callStreaming(opts: CallOptions): AsyncGenerator<ChatChunk, void
       | { delta?: Record<string, unknown>; finish_reason?: string | null }[]
       | undefined;
     const choice = choices?.[0];
-    const usage = parsed.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+    const usage = parsed.usage as
+      | { prompt_tokens?: number; completion_tokens?: number }
+      | undefined;
     if (usage) {
       inputTokens = usage.prompt_tokens ?? inputTokens;
       outputTokens = usage.completion_tokens ?? outputTokens;
@@ -122,7 +124,7 @@ async function* callOneShot(opts: CallOptions): AsyncGenerator<ChatChunk, void, 
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "authorization": `Bearer ${opts.apiKey}`,
+      authorization: `Bearer ${opts.apiKey}`,
     },
     body: JSON.stringify(buildRequestBody(opts, false)),
     ...(opts.signal ? { signal: opts.signal } : {}),

@@ -2,7 +2,7 @@
 
 use super::decision::{AccessCategory, AccessIntent, RuleId};
 use super::engine::{check_access, check_path_input, check_stat, ensure_within_engine};
-use super::rules::{is_pol_exception, match_pol_rule, looks_binary};
+use super::rules::{is_pol_exception, looks_binary, match_pol_rule};
 use std::path::{Path, PathBuf};
 
 fn ws() -> (tempfile::TempDir, PathBuf) {
@@ -190,8 +190,13 @@ fn io_rule_categories_are_io() {
 fn check_access_happy_path() {
     let (_w_keep, w) = ws();
     std::fs::write(w.join("note.md"), b"hi").unwrap();
-    let resolved =
-        check_access(&w, Path::new("note.md"), "note.md", AccessIntent::OpenAsFile).unwrap();
+    let resolved = check_access(
+        &w,
+        Path::new("note.md"),
+        "note.md",
+        AccessIntent::OpenAsFile,
+    )
+    .unwrap();
     assert!(resolved.ends_with("note.md"));
 }
 

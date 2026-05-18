@@ -11,22 +11,16 @@
 //                    extends the selection as the cursor moves over
 //                    other gutter rows; mouseup tears it down.
 
-import { lineNumbers, type EditorView } from "@codemirror/view";
 import { EditorSelection } from "@codemirror/state";
 import type { Extension } from "@codemirror/state";
+import { type EditorView, lineNumbers } from "@codemirror/view";
 
-function selectLineRange(
-  view: EditorView,
-  fromLine: number,
-  toLine: number,
-): void {
+function selectLineRange(view: EditorView, fromLine: number, toLine: number): void {
   const start = Math.min(fromLine, toLine);
   const end = Math.max(fromLine, toLine);
   const startPos = view.state.doc.line(start).from;
   const endPos =
-    end >= view.state.doc.lines
-      ? view.state.doc.length
-      : view.state.doc.line(end + 1).from;
+    end >= view.state.doc.lines ? view.state.doc.length : view.state.doc.line(end + 1).from;
   const anchor = fromLine <= toLine ? startPos : endPos;
   const head = fromLine <= toLine ? endPos : startPos;
   view.dispatch({

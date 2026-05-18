@@ -10,9 +10,9 @@
 // the GFM parser is configured with `frontmatter: true`; we don't
 // duplicate that work here.
 
-import { EditorView } from "@codemirror/view";
-import { foldService, foldEffect } from "@codemirror/language";
+import { foldEffect, foldService } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 
 const FENCE_RE = /^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/;
 

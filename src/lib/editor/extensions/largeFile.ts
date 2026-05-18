@@ -18,27 +18,23 @@
 // The size threshold can be overridden per-tab (some power users want
 // to bump it once they understand the trade-off).
 
-import { EditorView } from "@codemirror/view";
 import { Compartment, type Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 
 export const READ_ONLY_THRESHOLD_BYTES = 50 * 1024 * 1024; // 50MB
-export const VIEWPORT_HINT_BYTES = 5 * 1024 * 1024;        // 5MB
+export const VIEWPORT_HINT_BYTES = 5 * 1024 * 1024; // 5MB
 
 const readOnlyCompartment = new Compartment();
 
 export function largeFileExtension(initialSize: number): Extension {
   return readOnlyCompartment.of(
-    initialSize > READ_ONLY_THRESHOLD_BYTES
-      ? EditorView.editable.of(false)
-      : [],
+    initialSize > READ_ONLY_THRESHOLD_BYTES ? EditorView.editable.of(false) : [],
   );
 }
 
 export function setReadOnly(view: EditorView, readOnly: boolean): void {
   view.dispatch({
-    effects: readOnlyCompartment.reconfigure(
-      readOnly ? EditorView.editable.of(false) : [],
-    ),
+    effects: readOnlyCompartment.reconfigure(readOnly ? EditorView.editable.of(false) : []),
   });
 }
 

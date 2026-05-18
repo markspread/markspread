@@ -135,8 +135,7 @@ export const useLayout = create<LayoutState>()(
       // Default "rail": collapsed sidebar still shows a 6px handle so users
       // never lose the affordance to reopen. Users who want a fully clean
       // editor (esp. on small displays) can switch to "hidden" via Settings.
-      getSidebarCollapsedMode: (workspace) =>
-        get().sidebarCollapsedMode[workspace] ?? "rail",
+      getSidebarCollapsedMode: (workspace) => get().sidebarCollapsedMode[workspace] ?? "rail",
       setSidebarCollapsedMode: (workspace, mode) => {
         if (get().sidebarCollapsedMode[workspace] === mode) return;
         set({

@@ -47,7 +47,7 @@ fn probe_locked(path: &Path) -> bool {
 fn probe_locked(path: &Path) -> bool {
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::Foundation::{
-        CloseHandle, ERROR_SHARING_VIOLATION, GetLastError, INVALID_HANDLE_VALUE,
+        CloseHandle, GetLastError, ERROR_SHARING_VIOLATION, INVALID_HANDLE_VALUE,
     };
     use windows_sys::Win32::Storage::FileSystem::{
         CreateFileW, FILE_ATTRIBUTE_NORMAL, OPEN_EXISTING,

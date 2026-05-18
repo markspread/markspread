@@ -28,11 +28,16 @@ export async function probeKeychain(): Promise<KeychainStatus> {
   try {
     const raw = await invoke<{ status: string; hint?: string }>("ai_keychain_probe");
     switch (raw.status) {
-      case "available": return { kind: "available" };
-      case "locked":    return { kind: "locked", hint: raw.hint ?? "" };
-      case "denied":    return { kind: "denied", hint: raw.hint ?? "" };
-      case "missing":   return { kind: "missing", hint: raw.hint ?? "" };
-      default: return { kind: "missing", hint: raw.hint ?? "unknown keychain status" };
+      case "available":
+        return { kind: "available" };
+      case "locked":
+        return { kind: "locked", hint: raw.hint ?? "" };
+      case "denied":
+        return { kind: "denied", hint: raw.hint ?? "" };
+      case "missing":
+        return { kind: "missing", hint: raw.hint ?? "" };
+      default:
+        return { kind: "missing", hint: raw.hint ?? "unknown keychain status" };
     }
   } catch (e) {
     return { kind: "missing", hint: (e as Error).message };
@@ -41,11 +46,17 @@ export async function probeKeychain(): Promise<KeychainStatus> {
 
 // User-facing banner copy keys (i18n). Returning the i18n key + a single
 // string interpolation slot keeps the call sites uncluttered.
-export function statusBanner(s: KeychainStatus): { i18nKey: string; values?: Record<string, string> } | null {
+export function statusBanner(
+  s: KeychainStatus,
+): { i18nKey: string; values?: Record<string, string> } | null {
   switch (s.kind) {
-    case "available": return null;
-    case "locked":    return { i18nKey: "ai.keychain.locked" };
-    case "denied":    return { i18nKey: "ai.keychain.denied", values: { hint: s.hint } };
-    case "missing":   return { i18nKey: "ai.keychain.missing", values: { hint: s.hint } };
+    case "available":
+      return null;
+    case "locked":
+      return { i18nKey: "ai.keychain.locked" };
+    case "denied":
+      return { i18nKey: "ai.keychain.denied", values: { hint: s.hint } };
+    case "missing":
+      return { i18nKey: "ai.keychain.missing", values: { hint: s.hint } };
   }
 }

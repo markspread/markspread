@@ -18,8 +18,8 @@
 // who want the OS convention can rebind via the keybindings file.
 
 import { gotoLine } from "@codemirror/search";
+import { type Extension, Prec } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
-import { Prec, type Extension } from "@codemirror/state";
 
 export function gotoLineExtension(): Extension {
   return Prec.highest(

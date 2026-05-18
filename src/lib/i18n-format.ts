@@ -47,7 +47,10 @@ function numberFormatter(tag: string, opts: Intl.NumberFormatOptions): Intl.Numb
   return f;
 }
 
-function relativeFormatter(tag: string, opts: Intl.RelativeTimeFormatOptions): Intl.RelativeTimeFormat {
+function relativeFormatter(
+  tag: string,
+  opts: Intl.RelativeTimeFormatOptions,
+): Intl.RelativeTimeFormat {
   const key = `${tag}|${JSON.stringify(opts)}`;
   let f = relativeCache.get(key);
   if (!f) {
@@ -78,10 +81,7 @@ export function formatDateTime(
   return dateFormatter(activeTag(), opts).format(value);
 }
 
-export function formatNumber(
-  value: number,
-  opts: Intl.NumberFormatOptions = {},
-): string {
+export function formatNumber(value: number, opts: Intl.NumberFormatOptions = {}): string {
   return numberFormatter(activeTag(), opts).format(value);
 }
 
@@ -104,7 +104,7 @@ export function formatUsdCost(usd: number): string {
 // number formatter for the digits.
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return formatNumber(0) + " B";
+  if (!Number.isFinite(bytes) || bytes < 0) return `${formatNumber(0)} B`;
   let value = bytes;
   let unitIndex = 0;
   while (value >= 1024 && unitIndex < BYTE_UNITS.length - 1) {

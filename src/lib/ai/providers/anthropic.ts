@@ -71,7 +71,7 @@ async function* callStreaming(opts: CallOptions): AsyncGenerator<ChatChunk, void
       "content-type": "application/json",
       "x-api-key": opts.apiKey,
       "anthropic-version": API_VERSION,
-      "accept": "text/event-stream",
+      accept: "text/event-stream",
     },
     body: JSON.stringify(buildRequestBody(opts, true)),
     ...(opts.signal ? { signal: opts.signal } : {}),

@@ -6,8 +6,8 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ThemeMode } from "../lib/theme";
-import { useTheme } from "../store/theme";
 import { useSettingsSheet } from "../store/settings-sheet";
+import { useTheme } from "../store/theme";
 import { Icon } from "./Icon";
 import { SettingsAi } from "./SettingsAi";
 import { SettingsAppearance } from "./SettingsAppearance";
@@ -21,8 +21,8 @@ import { SettingsUpdater } from "./SettingsUpdater";
 
 const THEME_OPTIONS: { value: ThemeMode; labelKey: string; fallback: string }[] = [
   { value: "system", labelKey: "settings.theme.mode.system", fallback: "System" },
-  { value: "light",  labelKey: "settings.theme.mode.light",  fallback: "Light"  },
-  { value: "dark",   labelKey: "settings.theme.mode.dark",   fallback: "Dark"   },
+  { value: "light", labelKey: "settings.theme.mode.light", fallback: "Light" },
+  { value: "dark", labelKey: "settings.theme.mode.dark", fallback: "Dark" },
 ];
 
 export function SettingsSheet() {
@@ -50,6 +50,7 @@ export function SettingsSheet() {
   if (!open) return null;
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-close; Escape handled within dialog
     <div
       className="fixed inset-0 flex items-center justify-center bg-black/40"
       style={{ zIndex: "var(--z-sheet)" }}
@@ -60,6 +61,7 @@ export function SettingsSheet() {
     >
       <div
         ref={dialogRef}
+        // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
         role="dialog"
         aria-modal="true"
         aria-label={t("settings.sheet.title", "Settings")}
@@ -67,9 +69,7 @@ export function SettingsSheet() {
         className="flex max-h-[80vh] w-[min(560px,90vw)] flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-fg)] shadow-2xl outline-none"
       >
         <header className="flex items-center justify-between border-[var(--color-border)] border-b px-4 py-2.5">
-          <h1 className="font-semibold text-base">
-            {t("settings.sheet.title", "Settings")}
-          </h1>
+          <h1 className="font-semibold text-base">{t("settings.sheet.title", "Settings")}</h1>
           <button
             type="button"
             onClick={hide}
@@ -84,13 +84,9 @@ export function SettingsSheet() {
             aria-label={t("settings.theme.title", "Theme")}
             className="flex flex-col gap-3 border-[var(--color-border)] border-b p-4 text-sm"
           >
-            <h2 className="font-semibold text-base">
-              {t("settings.theme.title", "Theme")}
-            </h2>
+            <h2 className="font-semibold text-base">{t("settings.theme.title", "Theme")}</h2>
             <fieldset className="flex flex-col gap-1">
-              <legend className="sr-only">
-                {t("settings.theme.title", "Theme")}
-              </legend>
+              <legend className="sr-only">{t("settings.theme.title", "Theme")}</legend>
               <div className="flex gap-2">
                 {THEME_OPTIONS.map((opt) => (
                   <label

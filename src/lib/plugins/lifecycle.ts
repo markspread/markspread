@@ -13,15 +13,17 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export type ActivationEvent =
-  | { kind: "language"; language: string }   // S-PL-017: onLanguage:markdown
-  | { kind: "command"; command: string }     // S-PL-018: onCommand:my.thing
-  | { kind: "view"; view: string }           // S-PL-019: onView:outline
-  | { kind: "startup" };                     // S-PL-020: onStartup
+  | { kind: "language"; language: string } // S-PL-017: onLanguage:markdown
+  | { kind: "command"; command: string } // S-PL-018: onCommand:my.thing
+  | { kind: "view"; view: string } // S-PL-019: onView:outline
+  | { kind: "startup" }; // S-PL-020: onStartup
 
 export function parseActivationEvent(raw: string): ActivationEvent | null {
   if (raw === "onStartup") return { kind: "startup" };
-  if (raw.startsWith("onLanguage:")) return { kind: "language", language: raw.slice("onLanguage:".length) };
-  if (raw.startsWith("onCommand:")) return { kind: "command", command: raw.slice("onCommand:".length) };
+  if (raw.startsWith("onLanguage:"))
+    return { kind: "language", language: raw.slice("onLanguage:".length) };
+  if (raw.startsWith("onCommand:"))
+    return { kind: "command", command: raw.slice("onCommand:".length) };
   if (raw.startsWith("onView:")) return { kind: "view", view: raw.slice("onView:".length) };
   return null;
 }
@@ -38,8 +40,10 @@ export function shouldActivate(events: string[], signal: HostSignal): boolean {
     const evt = parseActivationEvent(raw);
     if (!evt) continue;
     if (evt.kind === "startup" && signal.type === "startup") return true;
-    if (evt.kind === "language" && signal.type === "language" && evt.language === signal.value) return true;
-    if (evt.kind === "command" && signal.type === "command" && evt.command === signal.value) return true;
+    if (evt.kind === "language" && signal.type === "language" && evt.language === signal.value)
+      return true;
+    if (evt.kind === "command" && signal.type === "command" && evt.command === signal.value)
+      return true;
     if (evt.kind === "view" && signal.type === "view" && evt.view === signal.value) return true;
   }
   return false;
@@ -71,7 +75,11 @@ export async function pluginStorageGet(pluginId: string, key: string): Promise<s
   return invoke<string | null>("plugin_storage_get", { pluginId, key });
 }
 
-export async function pluginStorageSet(pluginId: string, key: string, value: string): Promise<void> {
+export async function pluginStorageSet(
+  pluginId: string,
+  key: string,
+  value: string,
+): Promise<void> {
   await invoke("plugin_storage_set", { pluginId, key, value });
 }
 
@@ -99,7 +107,7 @@ export const PLUGIN_LOG_RING_SIZE = 1_000;
 // plugin owns the contribution. The host then disables the other's
 // contribution while keeping the rest of its features alive.
 export interface ContributionPoint {
-  point: string;     // "commands.toggle-outline"
+  point: string; // "commands.toggle-outline"
   pluginId: string;
 }
 

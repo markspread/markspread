@@ -63,9 +63,7 @@ export class ParserRegistry implements RegistryHost {
 
   registerRenderer(spec: RendererSpec): void {
     if (!this.parsers.has(spec.parserId)) {
-      throw new Error(
-        `Cannot register renderer for unknown parser '${spec.parserId}'`,
-      );
+      throw new Error(`Cannot register renderer for unknown parser '${spec.parserId}'`);
     }
     this.renderers.set(spec.parserId, spec);
   }
@@ -111,7 +109,7 @@ function scoreParser(p: RegisteredParser, ctx: MatchContext): MatchResult | null
   const fm = manifest.fileMatch;
   if (fm.frontmatterSniff && ctx.frontmatter) {
     const keys = Object.entries(fm.frontmatterSniff);
-    const allMatch = keys.every(([k, v]) => ctx.frontmatter![k] === v);
+    const allMatch = keys.every(([k, v]) => ctx.frontmatter?.[k] === v);
     if (allMatch && keys.length > 0) {
       return { parser: p, score: FRONTMATTER_BASE + keys.length, reason: "frontmatter" };
     }
@@ -144,7 +142,7 @@ export function globMatch(glob: string, path: string): boolean {
 function globToRegex(glob: string): string {
   let out = "";
   for (let i = 0; i < glob.length; i++) {
-    const c = glob[i]!;
+    const c = glob[i] as string;
     if (c === "*") {
       if (glob[i + 1] === "*") {
         out += ".*";

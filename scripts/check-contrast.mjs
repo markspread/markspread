@@ -29,9 +29,9 @@ function oklchToSrgb(L, C, hDeg) {
   const l = l_ ** 3;
   const m = m_ ** 3;
   const s = s_ ** 3;
-  let r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-  let g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-  let bch = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+  const r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+  const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+  const bch = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
   return [r, g, bch].map((v) => Math.max(0, Math.min(1, v)));
 }
 
@@ -52,20 +52,24 @@ const css = readFileSync(cssPath, "utf8");
 function parseThemeBlocks(text) {
   const blocks = [];
   const re = /@theme\s*\{([\s\S]*?)\}/g;
-  let m;
-  while ((m = re.exec(text)) !== null) blocks.push(m[1]);
+  let m = re.exec(text);
+  while (m !== null) {
+    blocks.push(m[1]);
+    m = re.exec(text);
+  }
   return blocks;
 }
 
 function parseTokens(block) {
   const tokens = {};
   const re = /(--color-[a-z-]+):\s*oklch\(\s*([\d.]+)%?\s+([\d.]+)\s+([\d.]+)\s*\)/g;
-  let m;
-  while ((m = re.exec(block)) !== null) {
-    const L = parseFloat(m[2]) / 100;
-    const C = parseFloat(m[3]);
-    const H = parseFloat(m[4]);
+  let m = re.exec(block);
+  while (m !== null) {
+    const L = Number.parseFloat(m[2]) / 100;
+    const C = Number.parseFloat(m[3]);
+    const H = Number.parseFloat(m[4]);
     tokens[m[1]] = oklchToSrgb(L, C, H);
+    m = re.exec(block);
   }
   return tokens;
 }

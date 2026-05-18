@@ -4,13 +4,9 @@
 // invoke 를 호출할 수 없으므로 호스트 부팅 시 한 번만 import 하는 게 안전.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { ProviderId } from "./providers";
-import type {
-  AuthBeginResponse,
-  AuthCompleteResponse,
-  AuthTransport,
-} from "./subscription-auth";
 import type { SubscriptionCredential } from "./credentials";
+import type { ProviderId } from "./providers";
+import type { AuthBeginResponse, AuthCompleteResponse, AuthTransport } from "./subscription-auth";
 
 type RustAuthBeginResponse = {
   verificationUrl: string;
@@ -47,24 +43,25 @@ export function createTauriAuthTransport(): AuthTransport {
       // 토큰 자체는 Rust 측 키체인에만 — TS 는 메타데이터만 받는다. 호스트
       // 코드(useAiKeyStore 등)가 keychain entry 이름을 알고 호출하므로 여기서는
       // encrypted* 필드에 placeholder 를 채워 union 형태만 맞춘다.
-      const credential: SubscriptionCredential = r.accountLabel != null
-        ? {
-            kind: "subscription",
-            providerId: "anthropic",
-            alias: r.alias,
-            encryptedAccessToken: "keychain://ai-keys/anthropic/subscription#access",
-            encryptedRefreshToken: "keychain://ai-keys/anthropic/subscription#refresh",
-            expiresAt: r.expiresAt,
-            accountLabel: r.accountLabel,
-          }
-        : {
-            kind: "subscription",
-            providerId: "anthropic",
-            alias: r.alias,
-            encryptedAccessToken: "keychain://ai-keys/anthropic/subscription#access",
-            encryptedRefreshToken: "keychain://ai-keys/anthropic/subscription#refresh",
-            expiresAt: r.expiresAt,
-          };
+      const credential: SubscriptionCredential =
+        r.accountLabel != null
+          ? {
+              kind: "subscription",
+              providerId: "anthropic",
+              alias: r.alias,
+              encryptedAccessToken: "keychain://ai-keys/anthropic/subscription#access",
+              encryptedRefreshToken: "keychain://ai-keys/anthropic/subscription#refresh",
+              expiresAt: r.expiresAt,
+              accountLabel: r.accountLabel,
+            }
+          : {
+              kind: "subscription",
+              providerId: "anthropic",
+              alias: r.alias,
+              encryptedAccessToken: "keychain://ai-keys/anthropic/subscription#access",
+              encryptedRefreshToken: "keychain://ai-keys/anthropic/subscription#refresh",
+              expiresAt: r.expiresAt,
+            };
       return { credential };
     },
     async cancel(sessionId): Promise<void> {

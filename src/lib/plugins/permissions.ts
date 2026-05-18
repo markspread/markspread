@@ -181,10 +181,14 @@ export async function gateHostApi(
 export function describePermission(p: PluginPermission): string {
   if (typeof p === "string") {
     switch (p) {
-      case "fs.workspace-read":  return "Read files in the open workspace";
-      case "fs.workspace-write": return "Read and write files in the open workspace";
-      case "fs.outside":         return "Ask each time to read/write files outside the workspace";
-      case "shell":              return "(blocked in v1) Run shell commands";
+      case "fs.workspace-read":
+        return "Read files in the open workspace";
+      case "fs.workspace-write":
+        return "Read and write files in the open workspace";
+      case "fs.outside":
+        return "Ask each time to read/write files outside the workspace";
+      case "shell":
+        return "(blocked in v1) Run shell commands";
     }
   }
   if ("network" in p) return `Make network requests to: ${p.network.join(", ")}`;

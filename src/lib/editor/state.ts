@@ -16,9 +16,10 @@
 // extension array per mount; we cache it as a singleton below so the
 // allocation is one-time.
 
-import { EditorState, type Extension } from "@codemirror/state";
-import { highlightSelectionMatches } from "@codemirror/search";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { highlightSelectionMatches } from "@codemirror/search";
+import { EditorState, type Extension } from "@codemirror/state";
 import {
   EditorView,
   crosshairCursor,
@@ -30,7 +31,6 @@ import {
   keymap,
   rectangularSelection,
 } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 
 // S-ED-002: history config. CodeMirror's default newGroupDelay is
 // 500ms which matches our acceptance — typing pauses longer than half
@@ -62,11 +62,7 @@ import { searchExtension } from "./extensions/search";
 import { tablesExtension } from "./extensions/tables";
 import { wikilinkExtension } from "./extensions/wikilink";
 import { wordCommandsExtension } from "./extensions/wordCommands";
-import {
-  DEFAULT_EDITOR_PREFS,
-  type EditorPrefs,
-  settingsExtensions,
-} from "./settings";
+import { DEFAULT_EDITOR_PREFS, type EditorPrefs, settingsExtensions } from "./settings";
 
 export type EditorLanguage = "markdown" | "plain";
 

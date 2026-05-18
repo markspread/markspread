@@ -77,12 +77,8 @@ export function applyTheme(opts: ApplyOptions = {}): void {
 
   const def = themes.get(activeId) ?? themes.get("default-light");
   if (!def) return;
-  const resolvedMode: ThemeMode =
-    activeMode === "system"
-      ? matchSystemMode()
-      : activeMode;
-  const baseTokens =
-    (resolvedMode === "dark" && def.dark ? def.dark : def.light).tokens;
+  const resolvedMode: ThemeMode = activeMode === "system" ? matchSystemMode() : activeMode;
+  const baseTokens = (resolvedMode === "dark" && def.dark ? def.dark : def.light).tokens;
   const root = document.documentElement;
   // Wipe previous overrides so disabling a vision mode actually
   // removes its tokens. We use a session map keyed by `applyTheme`
@@ -175,7 +171,7 @@ export function subscribeTheme(fn: () => void): () => void {
 }
 
 function emit() {
-  listeners.forEach((fn) => fn());
+  for (const fn of listeners) fn();
 }
 
 // -- bootstrap default themes ------------------------------------

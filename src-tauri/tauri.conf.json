@@ -88,11 +88,7 @@
         "desktopTemplate": "installer/markspread.desktop"
       },
       "rpm": {
-        "depends": [
-          "webkit2gtk4.1",
-          "gtk3",
-          "libappindicator-gtk3"
-        ],
+        "depends": ["webkit2gtk4.1", "gtk3", "libappindicator-gtk3"],
         "release": "1",
         "desktopTemplate": "installer/markspread.desktop"
       },

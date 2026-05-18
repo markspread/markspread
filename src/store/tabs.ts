@@ -100,30 +100,23 @@ export const useTabs = create<TabsState>()(
           preview,
         };
         // Replace any existing preview tab — only one preview slot at a time.
-        const existingTabs = preview
-          ? get().tabs.filter((t) => !t.preview)
-          : get().tabs;
+        const existingTabs = preview ? get().tabs.filter((t) => !t.preview) : get().tabs;
         set({ tabs: [...existingTabs, tab], activePath: path });
       },
       close: (path) => {
         const tabs = get().tabs.filter((t) => t.path !== path);
         const active = get().activePath;
-        const nextActive =
-          active === path ? (tabs[tabs.length - 1]?.path ?? null) : active;
+        const nextActive = active === path ? (tabs[tabs.length - 1]?.path ?? null) : active;
         set({ tabs, activePath: nextActive });
       },
       setActive: (path) => set({ activePath: path }),
       setPosition: (path, position) =>
         set({
-          tabs: get().tabs.map((t) =>
-            t.path === path ? { ...t, position } : t,
-          ),
+          tabs: get().tabs.map((t) => (t.path === path ? { ...t, position } : t)),
         }),
       setDirty: (path, dirty) =>
         set({
-          tabs: get().tabs.map((t) =>
-            t.path === path ? { ...t, dirty } : t,
-          ),
+          tabs: get().tabs.map((t) => (t.path === path ? { ...t, dirty } : t)),
         }),
       pin: (path) =>
         set({
@@ -133,9 +126,7 @@ export const useTabs = create<TabsState>()(
         }),
       unpin: (path) =>
         set({
-          tabs: get().tabs.map((t) =>
-            t.path === path ? { ...t, pinned: false } : t,
-          ),
+          tabs: get().tabs.map((t) => (t.path === path ? { ...t, pinned: false } : t)),
         }),
       reorder: (fromPath, toPath, before) => {
         const tabs = get().tabs.slice();
@@ -150,11 +141,10 @@ export const useTabs = create<TabsState>()(
         // alternative — silently clamping to the boundary — leaves the
         // tab "stuck" against the divider, which surveys consistently
         // rate worse.
-        const adjusted = fromPinned !== toPinned
-          ? tabs.map((t, i) =>
-              i === fromIdx ? { ...t, pinned: toPinned } : t,
-            )
-          : tabs;
+        const adjusted =
+          fromPinned !== toPinned
+            ? tabs.map((t, i) => (i === fromIdx ? { ...t, pinned: toPinned } : t))
+            : tabs;
         const [moved] = adjusted.splice(fromIdx, 1);
         if (!moved) return;
         const insertAt =
@@ -173,9 +163,7 @@ export const useTabs = create<TabsState>()(
         set({
           tabs: get().tabs.map((t) => {
             const next = remap(t.path);
-            return next === t.path
-              ? t
-              : { ...t, path: next, orphaned: false };
+            return next === t.path ? t : { ...t, path: next, orphaned: false };
           }),
           activePath: get().activePath ? remap(get().activePath as string) : null,
         });

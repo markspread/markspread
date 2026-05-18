@@ -12,9 +12,9 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  type WorkspaceLayout,
   parseEditorLayout,
   serializeEditorLayout,
-  type WorkspaceLayout,
 } from "../lib/editor/layout-model";
 import { useDocCache } from "../store/doc-cache";
 import { useEditorLayout } from "../store/editor-layout";
@@ -48,29 +48,28 @@ describe("split-pane integration scenarios", () => {
     });
 
     // Split right; the new pane becomes active.
-    const rightPaneId = useEditorLayout
-      .getState()
-      .splitPane(WS, leftPaneId, "horizontal", "after")!;
+    const rightPaneId = useEditorLayout.getState().splitPane(WS, leftPaneId, "horizontal", "after");
     expect(rightPaneId).toBeTruthy();
+    if (!rightPaneId) throw new Error("expected right pane id");
 
     // Open "/b.md" in the right pane via a setLayout reflecting what the
     // open-from-tree action would produce.
-    const layout = useEditorLayout.getState().layouts[WS]!;
+    const layout = useEditorLayout.getState().layouts[WS];
+    if (!layout) throw new Error("expected layout");
     useEditorLayout.getState().setLayout(WS, {
       ...layout,
       root: {
         ...(layout.root as { type: "split" } & typeof layout.root),
         type: "split",
-        children: (layout.root as { children: typeof layout.root[] }).children.map(
-          (c) =>
-            c.id === rightPaneId
-              ? {
-                  ...c,
-                  type: "pane" as const,
-                  tabs: [{ id: "t-b", path: "/b.md", position: POS }],
-                  activeTabId: "t-b",
-                }
-              : c,
+        children: (layout.root as { children: (typeof layout.root)[] }).children.map((c) =>
+          c.id === rightPaneId
+            ? {
+                ...c,
+                type: "pane" as const,
+                tabs: [{ id: "t-b", path: "/b.md", position: POS }],
+                activeTabId: "t-b",
+              }
+            : c,
         ),
       } as typeof layout.root,
     });
@@ -87,8 +86,9 @@ describe("split-pane integration scenarios", () => {
     expect(useDocCache.getState().getLive(WS, "/b.md")).toBe("beta edited");
 
     // Both dirty (baseline != live).
-    const aBaseline = useDocCache.getState().getBaseline(WS, "/a.md")!;
-    const bBaseline = useDocCache.getState().getBaseline(WS, "/b.md")!;
+    const aBaseline = useDocCache.getState().getBaseline(WS, "/a.md");
+    const bBaseline = useDocCache.getState().getBaseline(WS, "/b.md");
+    if (!aBaseline || !bBaseline) throw new Error("expected baselines");
     expect(useDocCache.getState().getLive(WS, "/a.md")).not.toBe(aBaseline.content);
     expect(useDocCache.getState().getLive(WS, "/b.md")).not.toBe(bBaseline.content);
   });
@@ -172,10 +172,12 @@ describe("split-pane integration scenarios", () => {
     const wire = JSON.parse(JSON.stringify(serializeEditorLayout(before)));
     // Simulate "restart": clear in-memory state, then re-parse.
     useEditorLayout.setState({ layouts: {} });
-    const restored = parseEditorLayout(wire)!;
+    const restored = parseEditorLayout(wire);
+    if (!restored) throw new Error("expected restored layout");
     useEditorLayout.getState().setLayout(WS, restored);
 
-    const live = useEditorLayout.getState().layouts[WS]!;
+    const live = useEditorLayout.getState().layouts[WS];
+    if (!live) throw new Error("expected live layout");
     expect(live.activePaneId).toBe("p2");
     expect(live.root).toEqual(before.root);
   });

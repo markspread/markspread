@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { ask } from "@tauri-apps/plugin-dialog";
+import { type UnlistenFn, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useRecentWorkspaces } from "../store/recent-workspaces";
 import { useSingleFile } from "../store/single-file";
 import { useToasts } from "../store/toasts";
@@ -53,10 +53,10 @@ async function dropFolder(path: string): Promise<void> {
   }
 
   if (inWorkspace) {
-    const proceed = await ask(
-      "현재 워크스페이스를 닫고 이 폴더로 전환하시겠습니까?",
-      { title: "Markspread — 워크스페이스 전환", kind: "warning" },
-    );
+    const proceed = await ask("현재 워크스페이스를 닫고 이 폴더로 전환하시겠습니까?", {
+      title: "Markspread — 워크스페이스 전환",
+      kind: "warning",
+    });
     if (!proceed) return;
   } else if (!inspection.already_existed) {
     const proceed = await ask(
@@ -157,8 +157,7 @@ async function importIntoWorkspace(
     const src = paths[i];
     if (importCancel.requested) break;
     if (src === undefined) continue;
-    const baseName =
-      src.split(/[/\\]/).filter(Boolean).pop() ?? `imported-${imported}`;
+    const baseName = src.split(/[/\\]/).filter(Boolean).pop() ?? `imported-${imported}`;
     let target = `${destDir.replace(/[/\\]+$/, "")}/${baseName}`;
     let exists = await fileExists(workspace, target);
     if (exists) {
@@ -287,9 +286,7 @@ export function registerDragDrop(): () => void {
       // folder/file outside the tree still routes to the open/switch flow.
       const ws = useWorkspace.getState().current;
       if (ws && evt.payload.position && paths.length > 0) {
-        const tree = document.querySelector<HTMLElement>(
-          '[data-filetree-root="true"]',
-        );
+        const tree = document.querySelector<HTMLElement>('[data-filetree-root="true"]');
         if (tree) {
           const dpr = window.devicePixelRatio || 1;
           const x = evt.payload.position.x / dpr;

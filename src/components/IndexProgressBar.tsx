@@ -25,21 +25,21 @@ export function IndexProgressBar() {
     listen<IndexProgress>("fs:index:done", () => setActive(null))
       .then((u) => unlisteners.push(u))
       .catch(() => {});
-    return () => unlisteners.forEach((u) => u());
+    return () => {
+      for (const u of unlisteners) u();
+    };
   }, []);
 
   if (!active) return null;
   return (
-    <div
-      role="status"
+    <output
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 bottom-0 flex items-center justify-center bg-[var(--color-surface-subtle)] px-4 py-1 text-[var(--color-muted)] text-xs"
     >
       <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)]" />
       <span>
-        인덱스 재구축 중 — {active.files_seen}개 파일,{" "}
-        {Math.round(active.bytes_seen / 1024)} KB
+        인덱스 재구축 중 — {active.files_seen}개 파일, {Math.round(active.bytes_seen / 1024)} KB
       </span>
-    </div>
+    </output>
   );
 }

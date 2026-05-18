@@ -56,7 +56,10 @@ export function readDevFlags(): DevFlags {
 // Convenience predicate so production builds can early-return on a
 // single check rather than evaluating every flag.
 export function isDevBuild(): boolean {
-  return typeof import.meta !== "undefined" && Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
+  return (
+    typeof import.meta !== "undefined" &&
+    Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV)
+  );
 }
 
 // S-DEV-009: AI mock. When the flag is set, every provider call returns
@@ -76,7 +79,7 @@ export function mockAiResponse(prompt: string): MockAiResponse {
   // pick a hash-based length so test snapshots are stable across runs.
   const seed = Array.from(prompt).reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 5_381);
   const length = 80 + (seed % 240);
-  const text = `mock response for prompt of length ${prompt.length} (seed ${seed.toString(16)}) — ` + "lorem ipsum ".repeat(Math.ceil(length / 12)).slice(0, length);
+  const text = `mock response for prompt of length ${prompt.length} (seed ${seed.toString(16)}) — ${"lorem ipsum ".repeat(Math.ceil(length / 12)).slice(0, length)}`;
   return {
     text,
     inputTokens: Math.ceil(prompt.length / 4),
@@ -102,8 +105,17 @@ export function registerDiagnosticPanel(panel: DiagnosticPanel): void {
 
 export function listDiagnosticPanels(flags: DevFlags): DiagnosticPanel[] {
   const out: DiagnosticPanel[] = [];
-  if (flags.perfOverlay) { const p = REGISTRY.get("perf-overlay"); if (p) out.push(p); }
-  if (flags.ipcTrace) { const p = REGISTRY.get("ipc-tracer"); if (p) out.push(p); }
-  if (flags.indexDebug) { const p = REGISTRY.get("indexer-debug"); if (p) out.push(p); }
+  if (flags.perfOverlay) {
+    const p = REGISTRY.get("perf-overlay");
+    if (p) out.push(p);
+  }
+  if (flags.ipcTrace) {
+    const p = REGISTRY.get("ipc-tracer");
+    if (p) out.push(p);
+  }
+  if (flags.indexDebug) {
+    const p = REGISTRY.get("indexer-debug");
+    if (p) out.push(p);
+  }
   return out;
 }

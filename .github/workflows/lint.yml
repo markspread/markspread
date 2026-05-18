@@ -28,7 +28,7 @@ jobs:
       - name: Biome — check
         run: pnpm biome ci . --reporter github
       - name: Format — verify
-        run: pnpm biome format . --write=false
+        run: pnpm biome format .
 
   # S-CI-023: assert third-party actions are SHA-pinned. Cheap (~5s) and
   # fails fast so a careless `uses: vendor/action@v1` doesn't slip in.

@@ -66,10 +66,10 @@ function lcsDiff(a: string[], b: string[]): Op[] {
     .map(() => Array(m + 1).fill(0));
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
-      const row = dp[i]!;
-      const rowNext = dp[i + 1]!;
-      if (a[i] === b[j]) row[j] = rowNext[j + 1]! + 1;
-      else row[j] = Math.max(rowNext[j]!, row[j + 1]!);
+      const row = dp[i] ?? [];
+      const rowNext = dp[i + 1] ?? [];
+      if (a[i] === b[j]) row[j] = (rowNext[j + 1] ?? 0) + 1;
+      else row[j] = Math.max(rowNext[j] ?? 0, row[j + 1] ?? 0);
     }
   }
   const out: Op[] = [];
@@ -80,7 +80,7 @@ function lcsDiff(a: string[], b: string[]): Op[] {
       out.push("same");
       i++;
       j++;
-    } else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) {
+    } else if ((dp[i + 1]?.[j] ?? 0) >= (dp[i]?.[j + 1] ?? 0)) {
       out.push("del");
       i++;
     } else {

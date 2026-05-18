@@ -34,8 +34,8 @@
 // The Tauri-dependent paths (image write to assets/) live behind a
 // `WorkspaceFs` interface so unit tests can stub them.
 
-import { EditorView } from "@codemirror/view";
 import { EditorSelection, type Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 
 import { htmlToMarkdown } from "@/lib/markdown/htmlToMarkdown";
 
@@ -68,14 +68,10 @@ function looksLikeRealHtml(html: string): boolean {
   if (html.includes("data-cm-clipboard")) return false;
   // A "real" HTML payload almost always contains at least one block
   // element. A bare span wrapping plain text isn't worth converting.
-  return /<(p|h[1-6]|ul|ol|li|pre|code|blockquote|table|img|a|strong|em|b|i)\b/i
-    .test(html);
+  return /<(p|h[1-6]|ul|ol|li|pre|code|blockquote|table|img|a|strong|em|b|i)\b/i.test(html);
 }
 
-async function pasteImage(
-  view: EditorView,
-  blob: Blob,
-): Promise<boolean> {
+async function pasteImage(view: EditorView, blob: Blob): Promise<boolean> {
   if (!workspaceFs) return false;
   const ext = extFromMime(blob.type);
   const buf = new Uint8Array(await blob.arrayBuffer());
@@ -106,9 +102,7 @@ function zipPasteText(view: EditorView, text: string): boolean {
       range: EditorSelection.cursor(from + insert.length),
     };
   });
-  view.dispatch(
-    state.update(tr, { userEvent: "input.paste", scrollIntoView: true }),
-  );
+  view.dispatch(state.update(tr, { userEvent: "input.paste", scrollIntoView: true }));
   return true;
 }
 
@@ -153,10 +147,7 @@ function pasteHandler(view: EditorView, event: ClipboardEvent): boolean {
   return false;
 }
 
-async function dropHandler(
-  view: EditorView,
-  event: DragEvent,
-): Promise<boolean> {
+async function dropHandler(view: EditorView, event: DragEvent): Promise<boolean> {
   const dt = event.dataTransfer;
   if (!dt) return false;
 

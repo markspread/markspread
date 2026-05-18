@@ -1,13 +1,13 @@
 // S-PSDK-004: hot reload 호스트 회귀.
 
-import { ParserRegistry, type ParserManifest } from "@markspread/parser-sdk";
+import { type ParserManifest, ParserRegistry } from "@markspread/parser-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  buildLoaderResult,
-  createParserHotReloader,
   type ParserSourceLoader,
   type ParserWatcher,
   type WatchEvent,
+  buildLoaderResult,
+  createParserHotReloader,
 } from "../hot-reload";
 
 beforeEach(() => vi.useFakeTimers());

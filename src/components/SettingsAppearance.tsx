@@ -62,9 +62,7 @@ export function SettingsAppearance() {
       aria-label={t("settings.appearance.title", "Appearance")}
       className="flex flex-col gap-4 p-4 text-sm"
     >
-      <h2 className="font-semibold text-base">
-        {t("settings.appearance.title", "Appearance")}
-      </h2>
+      <h2 className="font-semibold text-base">{t("settings.appearance.title", "Appearance")}</h2>
       <FontPicker
         labelKey="settings.appearance.font.ui"
         value={uiFontFamily}
@@ -136,7 +134,8 @@ export function SettingsAppearance() {
       </fieldset>
       <label className="flex flex-col gap-1">
         <span className="text-[var(--color-muted)]">
-          {t("settings.appearance.letter_spacing", "Letter spacing")} · {letterSpacingPx.toFixed(1)}px
+          {t("settings.appearance.letter_spacing", "Letter spacing")} · {letterSpacingPx.toFixed(1)}
+          px
         </span>
         <div className="flex items-center gap-2">
           <input
@@ -219,7 +218,9 @@ function FontPicker({
         onChange={(e) => onChange(e.target.value)}
         disabled={loading || !!error}
       >
-        <option value="">{t("settings.appearance.font.default", "Default")} ({defaultLabel})</option>
+        <option value="">
+          {t("settings.appearance.font.default", "Default")} ({defaultLabel})
+        </option>
         {families.map((f) => (
           <option key={f} value={f}>
             {f}

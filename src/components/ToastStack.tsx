@@ -18,10 +18,9 @@ export function ToastStack() {
     // its own live attributes. `assertive` interrupts the SR mid-utterance —
     // we only want that for errors. Info / success / warning use `polite` so
     // a passing notice doesn't stomp the user's editor narration.
-    <div
+    <section
       className="pointer-events-none fixed top-4 right-4 flex flex-col gap-2"
       style={{ zIndex: "var(--z-toast)" }}
-      role="region"
       aria-label={tr("toasts.aria", "Notifications")}
     >
       {toasts.map((t) => (
@@ -34,9 +33,7 @@ export function ToastStack() {
         >
           <div className="flex flex-col">
             <span className="font-medium">{t.message}</span>
-            {t.details && (
-              <span className="text-[var(--color-muted)] text-xs">{t.details}</span>
-            )}
+            {t.details && <span className="text-[var(--color-muted)] text-xs">{t.details}</span>}
           </div>
           {t.action && (
             <button
@@ -60,6 +57,6 @@ export function ToastStack() {
           </button>
         </div>
       ))}
-    </div>
+    </section>
   );
 }

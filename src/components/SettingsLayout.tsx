@@ -14,9 +14,7 @@ const MODE_OPTIONS: { value: SidebarCollapsedMode; labelKey: string; fallback: s
 export function SettingsLayout() {
   const { t } = useTranslation();
   const current = useWorkspace((s) => s.current);
-  const mode = useLayout((s) =>
-    current ? s.getSidebarCollapsedMode(current) : "rail",
-  );
+  const mode = useLayout((s) => (current ? s.getSidebarCollapsedMode(current) : "rail"));
   const setMode = useLayout((s) => s.setSidebarCollapsedMode);
 
   if (!current) return null;
@@ -26,15 +24,10 @@ export function SettingsLayout() {
       aria-label={t("settings.layout.title", "Layout")}
       className="flex flex-col gap-3 border-[var(--color-border)] border-b p-4 text-sm"
     >
-      <h2 className="font-semibold text-base">
-        {t("settings.layout.title", "Layout")}
-      </h2>
+      <h2 className="font-semibold text-base">{t("settings.layout.title", "Layout")}</h2>
       <fieldset className="flex flex-col gap-2">
         <legend className="text-xs text-[var(--color-muted)]">
-          {t(
-            "settings.layout.collapsed_mode.label",
-            "When the sidebar is collapsed",
-          )}
+          {t("settings.layout.collapsed_mode.label", "When the sidebar is collapsed")}
         </legend>
         <div className="flex gap-2">
           {MODE_OPTIONS.map((opt) => (

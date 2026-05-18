@@ -15,17 +15,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  closePalette,
-  getPaletteState,
-  openPalette,
-  subscribePalette,
-} from "@/lib/palette/state";
-import {
-  noteUsed,
-  query as runQuery,
-  type PaletteItem,
-} from "@/lib/palette/registry";
+import { type PaletteItem, noteUsed, query as runQuery } from "@/lib/palette/registry";
+import { closePalette, getPaletteState, openPalette, subscribePalette } from "@/lib/palette/state";
 
 export function CommandPalette() {
   const { t } = useTranslation();
@@ -38,7 +29,12 @@ export function CommandPalette() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k" && !e.altKey) {
         e.preventDefault();
         openPalette("all");
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "p" && !e.shiftKey && !e.altKey) {
+      } else if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key.toLowerCase() === "p" &&
+        !e.shiftKey &&
+        !e.altKey
+      ) {
         e.preventDefault();
         openPalette("file");
       }
@@ -88,6 +84,7 @@ export function CommandPalette() {
   return (
     <div
       className="ms-modal-backdrop ms-palette-backdrop"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("palette.title", "Command palette")}
@@ -120,11 +117,10 @@ export function CommandPalette() {
           placeholder={placeholder}
           aria-autocomplete="list"
         />
-        <ul className="ms-palette-list" role="listbox">
+        <ul className="ms-palette-list">
           {items.map((item, idx) => (
             <li
               key={item.id}
-              role="option"
               aria-selected={idx === active}
               className={idx === active ? "is-active" : undefined}
               title={item.description}
@@ -138,18 +134,12 @@ export function CommandPalette() {
                 {item.category}
               </span>
               <span className="ms-palette-label">{item.label}</span>
-              {item.detail && (
-                <span className="ms-palette-detail">{item.detail}</span>
-              )}
-              {item.shortcut && (
-                <kbd className="ms-palette-shortcut">{item.shortcut}</kbd>
-              )}
+              {item.detail && <span className="ms-palette-detail">{item.detail}</span>}
+              {item.shortcut && <kbd className="ms-palette-shortcut">{item.shortcut}</kbd>}
             </li>
           ))}
           {items.length === 0 && (
-            <li className="ms-palette-empty">
-              {t("palette.empty", "No matches")}
-            </li>
+            <li className="ms-palette-empty">{t("palette.empty", "No matches")}</li>
           )}
         </ul>
       </div>

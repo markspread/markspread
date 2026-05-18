@@ -6,11 +6,11 @@
 // 유지된다.
 
 import {
-  ParserRegistry,
-  setRegistryHost,
   type ParseInput,
   type ParseOutput,
   type ParserManifest,
+  ParserRegistry,
+  setRegistryHost,
 } from "@markspread/parser-sdk";
 
 export const BUILTIN_MARKDOWN_ID = "builtin-markdown";

@@ -87,18 +87,14 @@ export const useReview = create<ReviewState>((set, get) => ({
     const { doc: nextDoc, result } = applyComments(doc, pending);
     const appliedIds = new Set(result.applied.map((c) => c.id));
     set({
-      comments: get().comments.map((c) =>
-        appliedIds.has(c.id) ? { ...c, status: "applied" } : c,
-      ),
+      comments: get().comments.map((c) => (appliedIds.has(c.id) ? { ...c, status: "applied" } : c)),
     });
     return { doc: nextDoc, skippedCount: result.skipped.length };
   },
 
   dismiss(id) {
     set({
-      comments: get().comments.map((c) =>
-        c.id === id ? { ...c, status: "dismissed" } : c,
-      ),
+      comments: get().comments.map((c) => (c.id === id ? { ...c, status: "dismissed" } : c)),
     });
   },
 

@@ -7,8 +7,8 @@
 // This runs after first paint so it never blocks the editor from mounting.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { PluginManifest } from "./manifest";
 import { shouldActivate } from "./lifecycle";
+import type { PluginManifest } from "./manifest";
 
 interface InstalledPlugin {
   manifest: PluginManifest;

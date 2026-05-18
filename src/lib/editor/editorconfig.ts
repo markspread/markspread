@@ -61,21 +61,16 @@ function globMatchesFilename(glob: string, filename: string): boolean {
     return alts.some((alt) => globMatchesFilename(before + alt + after, filename));
   }
   // Convert simple glob to regex: ** → .*, * → [^/]*, ? → .
-  const pattern = "^" +
-    glob
-      .replace(/[.+^${}()|\\[\]]/g, "\\$&")
-      .replace(/\*\*/g, "<<DOUBLESTAR>>")
-      .replace(/\*/g, "[^/]*")
-      .replace(/<<DOUBLESTAR>>/g, ".*")
-      .replace(/\?/g, ".") +
-    "$";
+  const pattern = `^${glob
+    .replace(/[.+^${}()|\\[\]]/g, "\\$&")
+    .replace(/\*\*/g, "<<DOUBLESTAR>>")
+    .replace(/\*/g, "[^/]*")
+    .replace(/<<DOUBLESTAR>>/g, ".*")
+    .replace(/\?/g, ".")}$`;
   return new RegExp(pattern).test(filename);
 }
 
-export function patchFromEditorconfig(
-  text: string,
-  filename: string,
-): EditorconfigPatch {
+export function patchFromEditorconfig(text: string, filename: string): EditorconfigPatch {
   const { sections } = parseEditorconfig(text);
   const patch: EditorconfigPatch = {};
   for (const sec of sections) {
@@ -91,9 +86,6 @@ export function patchFromEditorconfig(
 }
 
 /** Merge a patch into a baseline prefs object (workspace settings). */
-export function applyEditorconfigPatch(
-  base: EditorPrefs,
-  patch: EditorconfigPatch,
-): EditorPrefs {
+export function applyEditorconfigPatch(base: EditorPrefs, patch: EditorconfigPatch): EditorPrefs {
   return { ...base, ...patch };
 }

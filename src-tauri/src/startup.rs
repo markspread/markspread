@@ -34,10 +34,7 @@ pub fn startup_mark_first_paint(state: State<'_, StartupClock>) -> AppResult<Sta
         *slot = Some(now);
     }
     let elapsed = now.duration_since(process_start()).as_millis();
-    tracing::info!(
-        cold_start_ms = elapsed as u64,
-        "first paint reported"
-    );
+    tracing::info!(cold_start_ms = elapsed as u64, "first paint reported");
     Ok(StartupMetrics {
         first_paint_ms: elapsed,
         since_app_start_ms: elapsed,

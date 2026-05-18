@@ -175,7 +175,13 @@ export function locateInJson(json: string, path: string): { line: number; column
         const ch = json[offset];
         if (ch === "[" || ch === "{") depth += 1;
         else if (ch === "]" || ch === "}") depth -= 1;
-        else if (ch === "," && depth === 1) { count += 1; if (count === want) { offset += 1; break; } }
+        else if (ch === "," && depth === 1) {
+          count += 1;
+          if (count === want) {
+            offset += 1;
+            break;
+          }
+        }
         offset += 1;
       }
     } else {
@@ -188,7 +194,12 @@ export function locateInJson(json: string, path: string): { line: number; column
   let line = 1;
   let column = 1;
   for (let i = 0; i < offset && i < json.length; i += 1) {
-    if (json[i] === "\n") { line += 1; column = 1; } else { column += 1; }
+    if (json[i] === "\n") {
+      line += 1;
+      column = 1;
+    } else {
+      column += 1;
+    }
   }
   return { line, column };
 }
@@ -251,14 +262,22 @@ export function createRecordingBridge(): RecordingBridge {
 
   return {
     calls,
-    respondWith(method, output) { responses.set(method, output); },
-    respond(method, handler) { handlers.set(method, handler); },
+    respondWith(method, output) {
+      responses.set(method, output);
+    },
+    respond(method, handler) {
+      handlers.set(method, handler);
+    },
     async invoke(method, input) {
       calls.push({ command: method, payload: input });
       const h = handlers.get(method);
       if (!h) throw new Error(`missing handler for command: ${method}`);
       return h(input);
     },
-    reset() { calls.length = 0; responses.clear(); handlers.clear(); },
+    reset() {
+      calls.length = 0;
+      responses.clear();
+      handlers.clear();
+    },
   };
 }

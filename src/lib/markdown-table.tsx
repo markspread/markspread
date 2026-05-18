@@ -48,28 +48,34 @@ export function renderGfmTable(table: ParsedTable): ReactElement {
     <table className="markspread-table">
       <thead>
         <tr>
-          {table.header.map((cell, i) => (
-            <th
-              key={i}
-              scope="col"
-              style={table.alignments[i] ? { textAlign: table.alignments[i]! } : undefined}
-            >
-              {cell}
-            </th>
-          ))}
+          {table.header.map((cell, i) => {
+            const align = table.alignments[i];
+            return (
+              <th
+                // biome-ignore lint/suspicious/noArrayIndexKey: table columns are positional and static per render
+                key={`h${i}`}
+                scope="col"
+                style={align ? { textAlign: align } : undefined}
+              >
+                {cell}
+              </th>
+            );
+          })}
         </tr>
       </thead>
       <tbody>
         {table.rows.map((row, r) => (
-          <tr key={r}>
-            {row.map((cell, c) => (
-              <td
-                key={c}
-                style={table.alignments[c] ? { textAlign: table.alignments[c]! } : undefined}
-              >
-                {cell}
-              </td>
-            ))}
+          // biome-ignore lint/suspicious/noArrayIndexKey: table rows are positional and static per render
+          <tr key={`r${r}`}>
+            {row.map((cell, c) => {
+              const align = table.alignments[c];
+              return (
+                // biome-ignore lint/suspicious/noArrayIndexKey: table cells are positional and static per render
+                <td key={`c${c}`} style={align ? { textAlign: align } : undefined}>
+                  {cell}
+                </td>
+              );
+            })}
           </tr>
         ))}
       </tbody>

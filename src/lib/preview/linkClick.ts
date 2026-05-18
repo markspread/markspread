@@ -18,10 +18,7 @@ export interface LinkClickHost {
   resolveInternal(href: string): { path: string; anchor?: string } | null;
 }
 
-export function attachLinkClickHandler(
-  root: HTMLElement,
-  host: LinkClickHost,
-): () => void {
+export function attachLinkClickHandler(root: HTMLElement, host: LinkClickHost): () => void {
   const onClick = (e: MouseEvent) => {
     const target = (e.target as Element | null)?.closest("a");
     if (!target) return;

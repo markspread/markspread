@@ -15,12 +15,8 @@
 // order, so user-installed plugins can intentionally override
 // built-ins by reusing a binding.
 
-import { commands, type WhenClause } from "@/lib/commands/registry";
-import {
-  bindingFromEvent,
-  listActiveBindings,
-  normaliseBinding,
-} from ".";
+import { type WhenClause, commands } from "@/lib/commands/registry";
+import { bindingFromEvent, listActiveBindings, normaliseBinding } from ".";
 import { isComposing } from "./ime";
 
 let activeContext: WhenClause = "always";
@@ -72,9 +68,7 @@ export function dispatch(event: KeyboardEvent, prefix?: string): string | null {
   // Filter by context: a command with `when: "editorFocus"` only
   // fires when activeContext is "editorFocus". `when: "always"`
   // fires in any context.
-  const inContext = matches.filter(
-    (m) => m.when === "always" || m.when === activeContext,
-  );
+  const inContext = matches.filter((m) => m.when === "always" || m.when === activeContext);
 
   // Prefer the most specific binding: a context-scoped match always
   // wins over an "always" match when both are present.
@@ -97,7 +91,7 @@ export function dispatch(event: KeyboardEvent, prefix?: string): string | null {
       );
     }
   }
-  return finalists[finalists.length - 1]!.commandId;
+  return finalists[finalists.length - 1]?.commandId ?? null;
 }
 
 /** Reset the warn cache; tests use this. */

@@ -6,9 +6,9 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import {
-  createAuthRefreshScheduler,
   type AuthRefreshScheduler,
   type RefreshTransport,
+  createAuthRefreshScheduler,
 } from "./auth-refresh";
 import type { SubscriptionCredential } from "./credentials";
 

@@ -10,10 +10,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { estimateInputTokens } from "./cost-estimate";
 
 export type ContextScope =
-  | "selection"          // S-AI-031
+  | "selection" // S-AI-031
   | "selection-document" // S-AI-032
-  | "backlinks"          // S-AI-033
-  | "workspace-glob";    // S-AI-034
+  | "backlinks" // S-AI-033
+  | "workspace-glob"; // S-AI-034
 
 export interface ContextRequest {
   scope: ContextScope;
@@ -49,7 +49,10 @@ const SECRET_PATTERNS: { name: string; re: RegExp }[] = [
   { name: "github-fine-grained", re: /\bgithub_pat_[A-Za-z0-9_]{82}\b/g },
   { name: "openai-key", re: /\bsk-[A-Za-z0-9]{20,}\b/g },
   { name: "anthropic-key", re: /\bsk-ant-[A-Za-z0-9-]{40,}\b/g },
-  { name: "private-key-pem", re: /-----BEGIN (?:RSA |EC |OPENSSH |)PRIVATE KEY-----[\s\S]*?-----END[^-]*-----/g },
+  {
+    name: "private-key-pem",
+    re: /-----BEGIN (?:RSA |EC |OPENSSH |)PRIVATE KEY-----[\s\S]*?-----END[^-]*-----/g,
+  },
   { name: "jwt", re: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g },
 ];
 
@@ -103,8 +106,9 @@ export async function buildContext(req: ContextRequest): Promise<ContextPayload>
     const masked = maskSecrets(slice.text);
     redacted += masked.count;
     parts.push(`# ${kind}: ${path ?? "(inline)"}\n${masked.text}`);
-    sources.push({ kind, path, tokens: estimateInputTokens(masked.text), truncated: slice.truncated });
-    total += sources[sources.length - 1]!.tokens;
+    const tokens = estimateInputTokens(masked.text);
+    sources.push({ kind, path, tokens, truncated: slice.truncated });
+    total += tokens;
   }
 
   if (req.scope === "selection") {
@@ -119,10 +123,11 @@ export async function buildContext(req: ContextRequest): Promise<ContextPayload>
       // side because it already maintains the link graph for the Outline
       // pane. The graph respects S-AI-037's gitignore filter natively.
       try {
-        const links = await invoke<{ path: string; excerpt: string }[]>(
-          "ai_context_backlinks",
-          { workspace: req.workspace, file: req.documentPath, max: 10 },
-        );
+        const links = await invoke<{ path: string; excerpt: string }[]>("ai_context_backlinks", {
+          workspace: req.workspace,
+          file: req.documentPath,
+          max: 10,
+        });
         for (const link of links) {
           take("backlink", link.path, link.excerpt, 0.05);
         }
@@ -135,10 +140,11 @@ export async function buildContext(req: ContextRequest): Promise<ContextPayload>
     // and applies the glob filter, returning at most N files keyed by
     // relevance (most-recently-modified first).
     try {
-      const files = await invoke<{ path: string; body: string }[]>(
-        "ai_context_glob",
-        { workspace: req.workspace, glob: req.glob, max: 20 },
-      );
+      const files = await invoke<{ path: string; body: string }[]>("ai_context_glob", {
+        workspace: req.workspace,
+        glob: req.glob,
+        max: 20,
+      });
       const share = files.length === 0 ? 0 : 1 / files.length;
       for (const f of files) take("workspace", f.path, f.body, share);
     } catch {

@@ -11,18 +11,17 @@ export type IsolationMode = "worker" | "iframe";
  * 자기 자신과 blob 만 로드하고, 어떤 fetch/connect/스크립트도 외부로
  * 나가지 못하도록 잠근다. import()/Worker 내부 import 도 차단된다.
  */
-export const WORKER_CSP =
-  [
-    "default-src 'none'",
-    "script-src 'self' blob:",
-    "worker-src 'self' blob:",
-    "connect-src 'none'",
-    "img-src 'none'",
-    "style-src 'none'",
-    "font-src 'none'",
-    "frame-src 'none'",
-    "base-uri 'none'",
-  ].join("; ");
+export const WORKER_CSP = [
+  "default-src 'none'",
+  "script-src 'self' blob:",
+  "worker-src 'self' blob:",
+  "connect-src 'none'",
+  "img-src 'none'",
+  "style-src 'none'",
+  "font-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'none'",
+].join("; ");
 
 /**
  * iframe 격리 시 sandbox 속성. allow-scripts 는 파서 실행을 위해 필수.
@@ -35,15 +34,14 @@ export const IFRAME_SANDBOX = "allow-scripts";
  * iframe 내부에 주입할 inline CSP meta. parent 가 srcdoc 으로 주입한
  * 문서가 자체 fetch 를 못 하게 한다.
  */
-export const IFRAME_CSP_META =
-  [
-    "default-src 'none'",
-    "script-src 'unsafe-inline' blob:",
-    "style-src 'unsafe-inline'",
-    "img-src data:",
-    "connect-src 'none'",
-    "base-uri 'none'",
-  ].join("; ");
+export const IFRAME_CSP_META = [
+  "default-src 'none'",
+  "script-src 'unsafe-inline' blob:",
+  "style-src 'unsafe-inline'",
+  "img-src data:",
+  "connect-src 'none'",
+  "base-uri 'none'",
+].join("; ");
 
 /**
  * CSP 문자열에 외부 호스트가 들어있는지 — 회귀 테스트용. 의도치 않게

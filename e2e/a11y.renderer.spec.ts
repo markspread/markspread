@@ -11,12 +11,12 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 const SURFACES: { name: string; url: string }[] = [
-  { name: "first-run",       url: "/?harness=fresh-install" },
-  { name: "main-editor",     url: "/?harness=workspace-with-content" },
-  { name: "settings",        url: "/?harness=workspace-with-content&route=/settings/general" },
+  { name: "first-run", url: "/?harness=fresh-install" },
+  { name: "main-editor", url: "/?harness=workspace-with-content" },
+  { name: "settings", url: "/?harness=workspace-with-content&route=/settings/general" },
   { name: "command-palette", url: "/?harness=workspace-with-content&overlay=palette" },
-  { name: "ai-chat",         url: "/?harness=ai-mock&overlay=chat" },
-  { name: "marketplace",     url: "/?harness=plugin-lifecycle&route=/marketplace" },
+  { name: "ai-chat", url: "/?harness=ai-mock&overlay=chat" },
+  { name: "marketplace", url: "/?harness=plugin-lifecycle&route=/marketplace" },
 ];
 
 const EXPECTED_EXCEPTIONS: { surface: string; rule: string; ticket: string }[] = [
@@ -39,7 +39,10 @@ for (const { name, url } of SURFACES) {
     const unexpected = results.violations.filter((v) => !isExpected(name, v.id));
     if (unexpected.length > 0) {
       const summary = unexpected
-        .map((v) => `  - ${v.id} (${v.impact}): ${v.help}\n    ${v.nodes.length} nodes\n    ${v.helpUrl}`)
+        .map(
+          (v) =>
+            `  - ${v.id} (${v.impact}): ${v.help}\n    ${v.nodes.length} nodes\n    ${v.helpUrl}`,
+        )
         .join("\n");
       throw new Error(`A11y violations on ${name}:\n${summary}`);
     }
@@ -48,14 +51,18 @@ for (const { name, url } of SURFACES) {
   });
 }
 
-test("keyboard-only flow: tab order reaches every interactive control on the editor", async ({ page }) => {
+test("keyboard-only flow: tab order reaches every interactive control on the editor", async ({
+  page,
+}) => {
   await page.goto("/?harness=workspace-with-content");
   await page.waitForSelector('[data-harness-ready="true"]');
 
   const reached = new Set<string>();
   for (let i = 0; i < 50; i += 1) {
     await page.keyboard.press("Tab");
-    const id = await page.evaluate(() => document.activeElement?.getAttribute("data-a11y-id") ?? null);
+    const id = await page.evaluate(
+      () => document.activeElement?.getAttribute("data-a11y-id") ?? null,
+    );
     if (id) reached.add(id);
   }
 

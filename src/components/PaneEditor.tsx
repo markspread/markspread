@@ -20,9 +20,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fromPosixError } from "../lib/access-policy/mapping";
+import type { PaneNode } from "../lib/editor/layout-model";
 import { detectExternalChange } from "../lib/external-change";
 import { classifyFile, isMarkdownPath } from "../lib/file-kind";
-import type { PaneNode } from "../lib/editor/layout-model";
 import { saveTab } from "../lib/save-tab";
 import { type DocBaseline, scheduleSave, useDocCache } from "../store/doc-cache";
 import { useEditorLayout } from "../store/editor-layout";
@@ -53,7 +53,7 @@ interface FsReadResult {
 export const PaneEditor = memo(function PaneEditor({ workspace, pane }: PaneEditorProps) {
   const { t } = useTranslation();
   const activeTabId = pane.activeTabId;
-  const activeTab = activeTabId ? pane.tabs.find((tab) => tab.id === activeTabId) ?? null : null;
+  const activeTab = activeTabId ? (pane.tabs.find((tab) => tab.id === activeTabId) ?? null) : null;
   const activePath = activeTab?.path ?? null;
   // T-U07-001-FIX-B: view-mode toggle. Defaults to edit; markdown files
   // can be flipped to spread (CodeMirror left, SpreadPane right) via the
@@ -72,7 +72,7 @@ export const PaneEditor = memo(function PaneEditor({ workspace, pane }: PaneEdit
     activePath ? s.errors[`${workspace}::${activePath}`] : undefined,
   );
   const reloadEpoch = useDocCache((s) =>
-    activePath ? s.reloadEpoch[`${workspace}::${activePath}`] ?? 0 : 0,
+    activePath ? (s.reloadEpoch[`${workspace}::${activePath}`] ?? 0) : 0,
   );
   // S-ESP-007: subscribe to the shared live content so when pane A types,
   // pane B's Editor sees a new `remoteDoc` and reconciles.
@@ -242,9 +242,7 @@ export const PaneEditor = memo(function PaneEditor({ workspace, pane }: PaneEdit
       className="flex flex-1 min-h-0 min-w-0 flex-col"
       aria-label={t("editor.aria.host", "Editor")}
     >
-      {isMarkdown && (
-        <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-      )}
+      {isMarkdown && <ViewModeToggle mode={viewMode} onChange={setViewMode} />}
       {effectiveMode === "preview" ? (
         <SpreadPane
           workspace={workspace}
@@ -295,6 +293,7 @@ function ViewModeToggle({
         <button
           key={opt.value}
           type="button"
+          // biome-ignore lint/a11y/useSemanticElements: <input type="radio"> cannot host button label/styling; custom radiogroup
           role="radio"
           aria-checked={mode === opt.value}
           onClick={() => onChange(opt.value)}

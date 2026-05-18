@@ -37,7 +37,8 @@ fn open_conn() -> AppResult<Connection> {
     let mut path = data_dir()?;
     std::fs::create_dir_all(&path).map_err(AppError::Io)?;
     path.push("ai.db");
-    let conn = Connection::open(&path).map_err(|e| AppError::Invalid(format!("ai db open: {e}")))?;
+    let conn =
+        Connection::open(&path).map_err(|e| AppError::Invalid(format!("ai db open: {e}")))?;
     conn.pragma_update(None, "journal_mode", "WAL")
         .map_err(|e| AppError::Invalid(format!("ai db WAL: {e}")))?;
     conn.execute_batch(
@@ -286,9 +287,11 @@ pub async fn ai_key_remove(alias: String) -> AppResult<()> {
     // remaining alias (or clear the default entirely).
     if read_default_alias(&conn)?.as_deref() == Some(alias.as_str()) {
         let next: Option<String> = conn
-            .query_row("SELECT alias FROM ai_keys ORDER BY alias LIMIT 1", [], |r| {
-                r.get(0)
-            })
+            .query_row(
+                "SELECT alias FROM ai_keys ORDER BY alias LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
             .ok();
         match next {
             Some(a) => {
@@ -342,9 +345,9 @@ pub async fn ai_key_resolve(alias: String) -> AppResult<String> {
         .map_err(|e| AppError::Invalid(format!("keychain open: {e}")))?;
     match entry.get_password() {
         Ok(secret) => Ok(secret),
-        Err(keyring::Error::NoEntry) => {
-            Err(AppError::NotFound(format!("no stored key for alias {alias}")))
-        }
+        Err(keyring::Error::NoEntry) => Err(AppError::NotFound(format!(
+            "no stored key for alias {alias}"
+        ))),
         Err(e) => Err(AppError::Invalid(format!("keychain read: {e}"))),
     }
 }
@@ -655,12 +658,8 @@ pub async fn ai_keychain_probe() -> AppResult<KeychainProbe> {
     };
     match entry.get_password() {
         Ok(_) | Err(keyring::Error::NoEntry) => Ok(probe("available", None)),
-        Err(keyring::Error::NoStorageAccess(e)) => {
-            Ok(probe("denied", Some(e.to_string())))
-        }
-        Err(keyring::Error::PlatformFailure(e)) => {
-            Ok(probe("missing", Some(e.to_string())))
-        }
+        Err(keyring::Error::NoStorageAccess(e)) => Ok(probe("denied", Some(e.to_string()))),
+        Err(keyring::Error::PlatformFailure(e)) => Ok(probe("missing", Some(e.to_string()))),
         Err(e) => Ok(probe("missing", Some(e.to_string()))),
     }
 }

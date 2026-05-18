@@ -12,17 +12,17 @@
 // reviewer must SAW the pragma — so accidentally allow-listing a
 // real key requires effort.
 
-import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 const PATTERNS = [
-  { id: "aws-akia",      re: /\bAKIA[0-9A-Z]{16}\b/g },
-  { id: "github-token",  re: /\bghp_[A-Za-z0-9]{36}\b/g },
-  { id: "github-fg",     re: /\bgithub_pat_[A-Za-z0-9_]{82}\b/g },
-  { id: "openai-key",    re: /\bsk-[A-Za-z0-9]{20,}\b/g },
+  { id: "aws-akia", re: /\bAKIA[0-9A-Z]{16}\b/g },
+  { id: "github-token", re: /\bghp_[A-Za-z0-9]{36}\b/g },
+  { id: "github-fg", re: /\bgithub_pat_[A-Za-z0-9_]{82}\b/g },
+  { id: "openai-key", re: /\bsk-[A-Za-z0-9]{20,}\b/g },
   { id: "anthropic-key", re: /\bsk-ant-[A-Za-z0-9-]{40,}\b/g },
-  { id: "stripe-live",   re: /\bsk_live_[0-9A-Za-z]{24,}\b/g },
-  { id: "google-api",    re: /\bAIza[0-9A-Za-z_-]{35}\b/g },
+  { id: "stripe-live", re: /\bsk_live_[0-9A-Za-z]{24,}\b/g },
+  { id: "google-api", re: /\bAIza[0-9A-Za-z_-]{35}\b/g },
 ];
 
 const ALLOW_TAG = "ms:allow-secret";
@@ -37,21 +37,28 @@ const tracked = execSync("git ls-files", { encoding: "utf8" })
 let failed = 0;
 for (const file of tracked) {
   let body;
-  try { body = readFileSync(file, "utf8"); } catch { continue; }
+  try {
+    body = readFileSync(file, "utf8");
+  } catch {
+    continue;
+  }
   if (body.includes(ALLOW_TAG)) continue;
   for (const p of PATTERNS) {
     p.re.lastIndex = 0;
-    let m;
-    while ((m = p.re.exec(body))) {
+    let m = p.re.exec(body);
+    while (m !== null) {
       const line = body.slice(0, m.index).split("\n").length;
       console.error(`${file}:${line} matches ${p.id}`);
       failed += 1;
+      m = p.re.exec(body);
     }
   }
 }
 
 if (failed > 0) {
-  console.error(`\nfound ${failed} potential plaintext secret(s) — add // ${ALLOW_TAG} on lines that are intentional fixtures.`);
+  console.error(
+    `\nfound ${failed} potential plaintext secret(s) — add // ${ALLOW_TAG} on lines that are intentional fixtures.`,
+  );
   process.exit(1);
 } else {
   console.log("ok — no plaintext secrets in tracked files.");

@@ -14,8 +14,8 @@ import {
   autocompletion,
   completionKeymap,
 } from "@codemirror/autocomplete";
-import { keymap } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 
 const MARKDOWN_KEYWORDS: { label: string; detail: string }[] = [
   { label: "# ", detail: "H1" },

@@ -6,7 +6,7 @@
 // fake watcher 를 통해 호스트 로직만 검증한다.
 
 import type { ParserFactory } from "@markspread/parser-sdk";
-import { parseManifest, type ParserManifest } from "@markspread/parser-sdk";
+import { type ParserManifest, parseManifest } from "@markspread/parser-sdk";
 import type { ParserRegistry } from "@markspread/parser-sdk";
 
 export type WatchEvent =
@@ -28,10 +28,7 @@ export type ParserSourceLoader = {
    * `.markspread/parsers/<id>/manifest.json` + entry 를 읽어 factory 까지 만들어
    * 반환. 검증 실패 시 null.
    */
-  load: (parserId: string) => Promise<
-    | { manifest: ParserManifest; factory: ParserFactory }
-    | null
-  >;
+  load: (parserId: string) => Promise<{ manifest: ParserManifest; factory: ParserFactory } | null>;
 };
 
 export type HotReloaderOptions = {
@@ -108,10 +105,7 @@ async function apply(ev: WatchEvent, opts: HotReloaderOptions): Promise<void> {
     opts.registry.registerParser(loaded.manifest, loaded.factory);
     opts.onReload?.(loaded.manifest.id);
   } catch (err) {
-    opts.onError?.(
-      ev.parserId,
-      err instanceof Error ? err : new Error(String(err)),
-    );
+    opts.onError?.(ev.parserId, err instanceof Error ? err : new Error(String(err)));
   }
 }
 

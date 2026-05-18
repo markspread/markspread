@@ -37,9 +37,7 @@ const LEAVE_MS = 200;
 
 export function useSidebarPeekHover(): void {
   const workspace = useWorkspace((s) => s.current);
-  const sidebarHidden = useLayout((s) =>
-    workspace ? s.isSidebarHidden(workspace) : false,
-  );
+  const sidebarHidden = useLayout((s) => (workspace ? s.isSidebarHidden(workspace) : false));
   const peekOpen = useSidebarPeek((s) => s.open);
   const pinned = useSidebarPeek((s) => s.pinned);
   const show = useSidebarPeek((s) => s.show);

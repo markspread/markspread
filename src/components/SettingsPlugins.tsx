@@ -63,7 +63,13 @@ export function SettingsPlugins() {
       >
         {t("settings.plugins.browse", "Browse marketplace")}
       </button>
-      <PluginMarketplace open={marketOpen} onClose={() => { setMarketOpen(false); void refresh(); }} />
+      <PluginMarketplace
+        open={marketOpen}
+        onClose={() => {
+          setMarketOpen(false);
+          void refresh();
+        }}
+      />
       {error && (
         <p role="alert" className="text-red-500 text-xs">
           {error}

@@ -124,7 +124,9 @@ pub async fn os_open_with(path: String) -> AppResult<()> {
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     {
-        Err(AppError::Invalid("open with not supported on this OS".into()))
+        Err(AppError::Invalid(
+            "open with not supported on this OS".into(),
+        ))
     }
 }
 

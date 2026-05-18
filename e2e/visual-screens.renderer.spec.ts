@@ -26,18 +26,21 @@ const VISUAL_OPTS = {
 };
 
 const SCREENS: { name: string; url: string }[] = [
-  { name: "first-run-eula",        url: "/?harness=fresh-install&step=eula" },
-  { name: "main-editor-light",     url: "/?harness=workspace-with-content&theme=light" },
-  { name: "main-editor-dark",      url: "/?harness=workspace-with-content&theme=dark" },
-  { name: "settings-general",      url: "/?harness=workspace-with-content&route=/settings/general" },
-  { name: "settings-ai",           url: "/?harness=workspace-with-content&route=/settings/ai" },
-  { name: "settings-keybindings",  url: "/?harness=workspace-with-content&route=/settings/keybindings" },
-  { name: "settings-plugins",      url: "/?harness=workspace-with-content&route=/settings/plugins" },
-  { name: "command-palette",       url: "/?harness=workspace-with-content&overlay=palette" },
-  { name: "ai-chat-side-panel",    url: "/?harness=ai-mock&overlay=chat" },
-  { name: "plugin-marketplace",    url: "/?harness=plugin-lifecycle&route=/marketplace" },
-  { name: "diff-view",             url: "/?harness=workspace-with-content&overlay=ai-diff" },
-  { name: "export-dialog",         url: "/?harness=workspace-with-content&overlay=export" },
+  { name: "first-run-eula", url: "/?harness=fresh-install&step=eula" },
+  { name: "main-editor-light", url: "/?harness=workspace-with-content&theme=light" },
+  { name: "main-editor-dark", url: "/?harness=workspace-with-content&theme=dark" },
+  { name: "settings-general", url: "/?harness=workspace-with-content&route=/settings/general" },
+  { name: "settings-ai", url: "/?harness=workspace-with-content&route=/settings/ai" },
+  {
+    name: "settings-keybindings",
+    url: "/?harness=workspace-with-content&route=/settings/keybindings",
+  },
+  { name: "settings-plugins", url: "/?harness=workspace-with-content&route=/settings/plugins" },
+  { name: "command-palette", url: "/?harness=workspace-with-content&overlay=palette" },
+  { name: "ai-chat-side-panel", url: "/?harness=ai-mock&overlay=chat" },
+  { name: "plugin-marketplace", url: "/?harness=plugin-lifecycle&route=/marketplace" },
+  { name: "diff-view", url: "/?harness=workspace-with-content&overlay=ai-diff" },
+  { name: "export-dialog", url: "/?harness=workspace-with-content&overlay=export" },
   { name: "about-update-available", url: "/?harness=updater&variant=happy&route=/about" },
 ];
 

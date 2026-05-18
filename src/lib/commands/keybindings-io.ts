@@ -21,9 +21,7 @@ export async function exportKeybindingsCommand(): Promise<void> {
   }
 }
 
-export async function importKeybindingsCommand(
-  modeArg?: string,
-): Promise<void> {
+export async function importKeybindingsCommand(modeArg?: string): Promise<void> {
   const mode: ImportMode = modeArg === "replace" ? "replace" : "merge";
   const push = useToasts.getState().push;
   try {
@@ -33,10 +31,7 @@ export async function importKeybindingsCommand(
     push({
       kind: conflicts > 0 ? "warning" : "success",
       message: "Keybindings imported",
-      details:
-        `${report.applied} applied` +
-        (conflicts > 0 ? ` · ${conflicts} replaced existing override` : "") +
-        ` (${mode})`,
+      details: `${report.applied} applied${conflicts > 0 ? ` · ${conflicts} replaced existing override` : ""} (${mode})`,
     });
   } catch (e) {
     push({

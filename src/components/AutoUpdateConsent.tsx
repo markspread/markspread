@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useUpdater } from "../store/updater";
 import { useFocusTrap } from "../lib/focus-trap";
+import { useUpdater } from "../store/updater";
 
 export function AutoUpdateConsent() {
   const { t } = useTranslation();
@@ -17,8 +17,7 @@ export function AutoUpdateConsent() {
       .catch(() => setPortable(false));
   }, []);
 
-  const open =
-    !promptShown && consent === "unset" && portable !== null && portable !== true;
+  const open = !promptShown && consent === "unset" && portable !== null && portable !== true;
   const trapRef = useFocusTrap<HTMLDivElement>({
     active: open,
     onEscape: () => setConsent("deny"),
@@ -34,6 +33,7 @@ export function AutoUpdateConsent() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("auto_update.aria", "Auto-update consent")}
@@ -67,16 +67,17 @@ export function AutoUpdateConsent() {
               // S-UP-001/T-U17-001-FIX-C: don't wait for the next 6h
               // poll tick — fire an immediate check so a user who just
               // opted in sees the download start without lag.
-              void import("../lib/updater/updater").then(async ({ checkForUpdate, startDownload }) => {
-                try {
-                  const manifest = await checkForUpdate("stable");
-                  if (manifest) await startDownload(manifest);
-                } catch (e) {
-                  console.warn("[updater/consent] immediate check failed", e);
-                }
-              });
+              void import("../lib/updater/updater").then(
+                async ({ checkForUpdate, startDownload }) => {
+                  try {
+                    const manifest = await checkForUpdate("stable");
+                    if (manifest) await startDownload(manifest);
+                  } catch (e) {
+                    console.warn("[updater/consent] immediate check failed", e);
+                  }
+                },
+              );
             }}
-            autoFocus
           >
             {t("auto_update.allow", "Allow")}
           </button>

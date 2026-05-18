@@ -2,12 +2,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  type SubscriptionCredential,
   authModeOf,
   isSubscriptionExpired,
   migrateLegacyCredential,
   parseCredential,
   shouldRefreshSubscription,
-  type SubscriptionCredential,
 } from "../credentials";
 
 const APIKEY = {

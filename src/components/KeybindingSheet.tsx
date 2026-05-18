@@ -12,11 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { commands } from "@/lib/commands/registry";
-import {
-  type BindingEntry,
-  formatBinding,
-  listActiveBindings,
-} from "@/lib/keybindings";
+import { type BindingEntry, formatBinding, listActiveBindings } from "@/lib/keybindings";
 import {
   codeFromKeySegment,
   labelForCode,
@@ -83,11 +79,12 @@ export function KeybindingSheet({ onClose, onEditBinding }: Props) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter((r) =>
-      r.title.toLowerCase().includes(q) ||
-      r.category.toLowerCase().includes(q) ||
-      r.binding.toLowerCase().includes(q) ||
-      r.commandId.toLowerCase().includes(q),
+    return rows.filter(
+      (r) =>
+        r.title.toLowerCase().includes(q) ||
+        r.category.toLowerCase().includes(q) ||
+        r.binding.toLowerCase().includes(q) ||
+        r.commandId.toLowerCase().includes(q),
     );
   }, [rows, query]);
 
@@ -102,13 +99,16 @@ export function KeybindingSheet({ onClose, onEditBinding }: Props) {
   }, [filtered]);
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-close; Escape handled within dialog
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-24"
       onClick={onClose}
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-labelledby="kb-sheet-title"
     >
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation wrapper; not an interactive control */}
       <div
         className="w-full max-w-2xl rounded-lg border border-surface-border bg-surface-bg shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -200,9 +200,7 @@ function Highlighted({ text, match }: { text: string; match: string }) {
   return (
     <span>
       {text.slice(0, idx)}
-      <mark className="rounded bg-brand-500/20 px-0.5">
-        {text.slice(idx, idx + q.length)}
-      </mark>
+      <mark className="rounded bg-brand-500/20 px-0.5">{text.slice(idx, idx + q.length)}</mark>
       {text.slice(idx + q.length)}
     </span>
   );

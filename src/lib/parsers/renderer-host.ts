@@ -12,15 +12,11 @@
 
 import {
   DEFAULT_SANITISE_OPTIONS,
-  sanitiseMarkdownHtml,
   type SanitiseOptions,
+  sanitiseMarkdownHtml,
 } from "../security/markdown-sanitize";
-import {
-  validateIncomingMessage,
-  type ParseRequest,
-  type ParseResponse,
-} from "./messages";
-import { IFRAME_SANDBOX, WORKER_CSP, type IsolationMode } from "./sandbox-csp";
+import { type ParseRequest, type ParseResponse, validateIncomingMessage } from "./messages";
+import { IFRAME_SANDBOX, type IsolationMode, WORKER_CSP } from "./sandbox-csp";
 
 export type RenderedResult =
   | { kind: "html"; html: string; warnings: string[] }

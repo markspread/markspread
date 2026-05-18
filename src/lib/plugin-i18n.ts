@@ -1,6 +1,6 @@
-import { i18n } from "./i18n-init";
 import { useLocale } from "../store/locale";
 import { DEFAULT_LOCALE, type SupportedLocale } from "./i18n";
+import { i18n } from "./i18n-init";
 
 // S-I18-010: plugin i18n bridge.
 //

@@ -19,8 +19,8 @@
 //     then prepend `<n># ` unless the existing level matched — in
 //     which case we leave the line stripped (toggled off).
 
-import { keymap, type Command } from "@codemirror/view";
 import { EditorSelection, type Extension } from "@codemirror/state";
+import { type Command, keymap } from "@codemirror/view";
 
 function toggleInline(open: string, close: string = open): Command {
   return (view) => {
@@ -34,14 +34,8 @@ function toggleInline(open: string, close: string = open): Command {
         };
       }
       const text = state.sliceDoc(range.from, range.to);
-      const before = state.sliceDoc(
-        Math.max(0, range.from - open.length),
-        range.from,
-      );
-      const after = state.sliceDoc(
-        range.to,
-        Math.min(state.doc.length, range.to + close.length),
-      );
+      const before = state.sliceDoc(Math.max(0, range.from - open.length), range.from);
+      const after = state.sliceDoc(range.to, Math.min(state.doc.length, range.to + close.length));
       // Already wrapped → unwrap.
       if (before === open && after === close) {
         return {
@@ -49,15 +43,16 @@ function toggleInline(open: string, close: string = open): Command {
             { from: range.from - open.length, to: range.from, insert: "" },
             { from: range.to, to: range.to + close.length, insert: "" },
           ],
-          range: EditorSelection.range(
-            range.from - open.length,
-            range.to - open.length,
-          ),
+          range: EditorSelection.range(range.from - open.length, range.to - open.length),
         };
       }
       // Selection itself starts/ends with the markers (e.g. user
       // selected the wrapped form).
-      if (text.startsWith(open) && text.endsWith(close) && text.length >= open.length + close.length) {
+      if (
+        text.startsWith(open) &&
+        text.endsWith(close) &&
+        text.length >= open.length + close.length
+      ) {
         const stripped = text.slice(open.length, text.length - close.length);
         return {
           changes: { from: range.from, to: range.to, insert: stripped },
@@ -67,10 +62,7 @@ function toggleInline(open: string, close: string = open): Command {
       // Wrap.
       return {
         changes: { from: range.from, to: range.to, insert: open + text + close },
-        range: EditorSelection.range(
-          range.from + open.length,
-          range.to + open.length,
-        ),
+        range: EditorSelection.range(range.from + open.length, range.to + open.length),
       };
     });
     view.dispatch(state.update(tr, { userEvent: "input.format", scrollIntoView: true }));
@@ -81,7 +73,7 @@ function toggleInline(open: string, close: string = open): Command {
 function toggleHeading(level: number): Command {
   return (view) => {
     const { state } = view;
-    const targetPrefix = "#".repeat(level) + " ";
+    const targetPrefix = `${"#".repeat(level)} `;
     // Operate per-line over every line touched by any selection range.
     const lineSet = new Set<number>();
     for (const r of state.selection.ranges) {

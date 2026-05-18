@@ -39,27 +39,30 @@ export interface ErrorDescriptor {
 //   E6### — runtime / crash
 //   E9### — internal / unexpected
 export const ERROR_TABLE: Record<string, ErrorDescriptor> = {
-  E1001: { code: "E1001", i18nKey: "errors.E1001.disk-full",       category: "error" },     // S-ER-001
-  E1002: { code: "E1002", i18nKey: "errors.E1002.fs-permission",   category: "error" },     // S-ER-002
-  E1003: { code: "E1003", i18nKey: "errors.E1003.unmounted",       category: "error" },     // S-ER-004
-  E1004: { code: "E1004", i18nKey: "errors.E1004.file-locked",     category: "error" },     // S-ER-005
-  E1005: { code: "E1005", i18nKey: "errors.E1005.path-too-long",   category: "error" },     // S-ER-006
+  E1001: { code: "E1001", i18nKey: "errors.E1001.disk-full", category: "error" }, // S-ER-001
+  E1002: { code: "E1002", i18nKey: "errors.E1002.fs-permission", category: "error" }, // S-ER-002
+  E1003: { code: "E1003", i18nKey: "errors.E1003.unmounted", category: "error" }, // S-ER-004
+  E1004: { code: "E1004", i18nKey: "errors.E1004.file-locked", category: "error" }, // S-ER-005
+  E1005: { code: "E1005", i18nKey: "errors.E1005.path-too-long", category: "error" }, // S-ER-006
   E1006: { code: "E1006", i18nKey: "errors.E1006.encoding-mismatch", category: "warning" }, // S-ER-007
-  E2001: { code: "E2001", i18nKey: "errors.E2001.ai-network",      category: "error" },     // S-ER-003
+  E2001: { code: "E2001", i18nKey: "errors.E2001.ai-network", category: "error" }, // S-ER-003
   E2002: { code: "E2002", i18nKey: "errors.E2002.ai-context-truncated", category: "warning" },
   E3001: { code: "E3001", i18nKey: "errors.E3001.plugin-activate", category: "error" },
   E3002: { code: "E3002", i18nKey: "errors.E3002.plugin-permission-denied", category: "warning" },
-  E4001: { code: "E4001", i18nKey: "errors.E4001.keychain-missing", category: "warning" },  // S-ER-010
-  E5001: { code: "E5001", i18nKey: "errors.E5001.update-network",  category: "warning" },
+  E4001: { code: "E4001", i18nKey: "errors.E4001.keychain-missing", category: "warning" }, // S-ER-010
+  E5001: { code: "E5001", i18nKey: "errors.E5001.update-network", category: "warning" },
   E5002: { code: "E5002", i18nKey: "errors.E5002.update-signature", category: "fatal" },
   E5003: { code: "E5003", i18nKey: "errors.E5003.update-downgrade", category: "warning" },
-  E6001: { code: "E6001", i18nKey: "errors.E6001.crash-recovered", category: "info" },      // S-ER-008
-  E6002: { code: "E6002", i18nKey: "errors.E6002.oom-large-file",  category: "error" },     // S-ER-009
-  E9999: { code: "E9999", i18nKey: "errors.E9999.unknown",         category: "error" },
+  E6001: { code: "E6001", i18nKey: "errors.E6001.crash-recovered", category: "info" }, // S-ER-008
+  E6002: { code: "E6002", i18nKey: "errors.E6002.oom-large-file", category: "error" }, // S-ER-009
+  E9999: { code: "E9999", i18nKey: "errors.E9999.unknown", category: "error" },
 };
 
+// biome-ignore lint/style/noNonNullAssertion: E9999 is a literal key defined in ERROR_TABLE above.
+const UNKNOWN_ERROR: ErrorDescriptor = ERROR_TABLE.E9999!;
+
 export function describe(code: string): ErrorDescriptor {
-  return ERROR_TABLE[code] ?? ERROR_TABLE.E9999!;
+  return ERROR_TABLE[code] ?? UNKNOWN_ERROR;
 }
 
 // Wrap an unknown thrown value as a structured error. Native errors keep
@@ -93,7 +96,10 @@ export function fromIpcError(raw: unknown): AppError {
   if (!raw || typeof raw !== "object") return makeError("E9999", raw);
   const r = raw as Record<string, unknown>;
   if (typeof r.code === "string" && r.code in ERROR_TABLE) {
-    const ctx = typeof r.context === "object" && r.context ? (r.context as Record<string, string | number>) : undefined;
+    const ctx =
+      typeof r.context === "object" && r.context
+        ? (r.context as Record<string, string | number>)
+        : undefined;
     return {
       ...describe(r.code),
       message: typeof r.message === "string" ? r.message : "",

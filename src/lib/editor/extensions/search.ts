@@ -15,8 +15,8 @@
 //     decorator already updates per dispatch.
 
 import { SearchQuery, getSearchQuery, search, searchKeymap } from "@codemirror/search";
-import { EditorView, keymap, type Command } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { type Command, EditorView, keymap } from "@codemirror/view";
 
 // S-ED-010: "Replace All in Selection". CM6's stock search panel
 // doesn't ship an "In selection" toggle, so we expose the behaviour
@@ -33,34 +33,34 @@ const replaceAllInSelection: Command = (view) => {
   const ranges = view.state.selection.ranges.filter((r) => !r.empty);
   if (ranges.length === 0) return false;
 
-  const cursor = q.regexp
-    ? new RegExp(q.search, q.caseSensitive ? "g" : "gi")
-    : null;
+  const cursor = q.regexp ? new RegExp(q.search, q.caseSensitive ? "g" : "gi") : null;
   const changes: { from: number; to: number; insert: string }[] = [];
   for (const r of ranges) {
     const slice = view.state.sliceDoc(r.from, r.to);
     if (cursor) {
       cursor.lastIndex = 0;
-      let m: RegExpExecArray | null;
-      while ((m = cursor.exec(slice))) {
+      let m = cursor.exec(slice);
+      while (m !== null) {
         changes.push({
           from: r.from + m.index,
           to: r.from + m.index + m[0].length,
           insert: q.replace,
         });
         if (m.index === cursor.lastIndex) cursor.lastIndex++;
+        m = cursor.exec(slice);
       }
     } else {
       const needle = q.caseSensitive ? q.search : q.search.toLowerCase();
       const hay = q.caseSensitive ? slice : slice.toLowerCase();
-      let idx = 0;
-      while ((idx = hay.indexOf(needle, idx)) !== -1) {
+      let idx = hay.indexOf(needle, 0);
+      while (idx !== -1) {
         changes.push({
           from: r.from + idx,
           to: r.from + idx + q.search.length,
           insert: q.replace,
         });
         idx += q.search.length || 1;
+        idx = hay.indexOf(needle, idx);
       }
     }
   }
@@ -115,9 +115,6 @@ export function searchExtension(): Extension {
     //   Escape         → closeSearchPanel
     // Replace controls live in the same panel as Find — no separate
     // dialog (S-ED-004 acceptance: "Find 패널 확장 형태 — 별도 화면 X").
-    keymap.of([
-      ...searchKeymap,
-      { key: "Mod-Alt-Shift-Enter", run: replaceAllInSelection },
-    ]),
+    keymap.of([...searchKeymap, { key: "Mod-Alt-Shift-Enter", run: replaceAllInSelection }]),
   ];
 }

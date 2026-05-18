@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import { AiActionPalette } from "./components/AiActionPalette";
 import { AutoUpdateConsent } from "./components/AutoUpdateConsent";
 import { ChordIndicator } from "./components/ChordIndicator";
@@ -16,21 +16,18 @@ import { registerCliForwardedListener } from "./lib/cli-forwarded";
 import { registerDragDrop } from "./lib/dnd";
 import { useFontFamilyEffect } from "./lib/font-effect";
 import { registerKeybindings } from "./lib/keybindings";
+import { openSingleMdFromDialog } from "./lib/open-md-file";
+import { newWorkspaceFromDialog, openWorkspaceFromDialog } from "./lib/open-workspace";
 import { registerPollingNoticeListener } from "./lib/polling-notice";
 import { maybeStartUnmountWatch, registerUnmountListener, stopUnmountWatch } from "./lib/unmount";
-import { openSingleMdFromDialog } from "./lib/open-md-file";
-import {
-  newWorkspaceFromDialog,
-  openWorkspaceFromDialog,
-} from "./lib/open-workspace";
 import { Main } from "./screens/Main";
 import { SingleFile } from "./screens/SingleFile";
 import { Welcome } from "./screens/Welcome";
 import { useAiPalette } from "./store/ai-palette";
 import { useDialogs } from "./store/dialogs";
-import { useTabs } from "./store/tabs";
 import { useRecentWorkspaces } from "./store/recent-workspaces";
 import { useSingleFile } from "./store/single-file";
+import { useTabs } from "./store/tabs";
 import { useWorkspace } from "./store/workspace";
 
 function App() {
@@ -57,7 +54,7 @@ function App() {
     };
   }, [current]);
 
-  let body;
+  let body: ReactNode;
   if (current) {
     body = <Main />;
   } else if (singleFilePath) {
@@ -108,7 +105,7 @@ function App() {
           open={exportOpen}
           onClose={hideExport}
           documentPath={activeTabPath}
-          documentTitle={activeTabPath ? activeTabPath.split(/[/\\]/).pop() ?? "" : "Untitled"}
+          documentTitle={activeTabPath ? (activeTabPath.split(/[/\\]/).pop() ?? "") : "Untitled"}
           bodyHtml=""
         />
         <div className="pointer-events-none fixed bottom-2 right-2 z-50">

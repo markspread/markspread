@@ -1,12 +1,7 @@
 // S-ESP-013: budgets + regression detection for the split-pane scenarios.
 
 import { describe, expect, it } from "vitest";
-import {
-  PERF_BUDGETS,
-  findRegressions,
-  percentile,
-  type PerfSample,
-} from "../lib/perf/budgets";
+import { PERF_BUDGETS, type PerfSample, findRegressions, percentile } from "../lib/perf/budgets";
 
 const RUN = { ts: "2026-05-13T00:00:00Z", runId: "test-run" };
 
@@ -26,7 +21,8 @@ describe("split-pane perf budgets", () => {
 
   it("keystroke ceiling stays at one 60Hz frame across pane counts", () => {
     for (const n of [1, 2, 4]) {
-      const budget = PERF_BUDGETS.find((b) => b.id === `panes.${n}.input-keystroke-p95`)!;
+      const budget = PERF_BUDGETS.find((b) => b.id === `panes.${n}.input-keystroke-p95`);
+      if (!budget) throw new Error(`expected budget for ${n} panes`);
       expect(budget.ceiling).toBe(16);
     }
   });

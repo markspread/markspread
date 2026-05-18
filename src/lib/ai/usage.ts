@@ -36,7 +36,12 @@ export const BUILTIN_PRICING: PricingTable = {
   rows: [
     { provider: "anthropic", model: "claude-opus-4-7", inputPerMTok: 15, outputPerMTok: 75 },
     { provider: "anthropic", model: "claude-sonnet-4-6", inputPerMTok: 3, outputPerMTok: 15 },
-    { provider: "anthropic", model: "claude-haiku-4-5-20251001", inputPerMTok: 1, outputPerMTok: 5 },
+    {
+      provider: "anthropic",
+      model: "claude-haiku-4-5-20251001",
+      inputPerMTok: 1,
+      outputPerMTok: 5,
+    },
     { provider: "openai", model: "gpt-5", inputPerMTok: 5, outputPerMTok: 20 },
     { provider: "openai", model: "gpt-5-mini", inputPerMTok: 0.5, outputPerMTok: 2 },
     { provider: "openai", model: "gpt-4.1", inputPerMTok: 2, outputPerMTok: 8 },
@@ -53,7 +58,11 @@ export const BUILTIN_PRICING: PricingTable = {
   ],
 };
 
-export function priceFor(table: PricingTable, provider: ProviderId, model: string): PricingRow | null {
+export function priceFor(
+  table: PricingTable,
+  provider: ProviderId,
+  model: string,
+): PricingRow | null {
   return (
     table.rows.find((r) => r.provider === provider && r.model === model) ??
     table.rows.find((r) => r.provider === provider && r.model === "*") ??
@@ -70,7 +79,9 @@ export function computeUsd(
 ): number {
   const row = priceFor(table, provider, model);
   if (!row) return 0;
-  return (inputTokens / 1_000_000) * row.inputPerMTok + (outputTokens / 1_000_000) * row.outputPerMTok;
+  return (
+    (inputTokens / 1_000_000) * row.inputPerMTok + (outputTokens / 1_000_000) * row.outputPerMTok
+  );
 }
 
 // S-AIC-001: usage row written every time an action completes.
@@ -152,7 +163,10 @@ export type ThresholdEvaluation =
   | { kind: "warn"; usedUsd: number; limitUsd: number; pct: number }
   | { kind: "block"; usedUsd: number; limitUsd: number };
 
-export function evaluateThreshold(threshold: CostThreshold, monthSoFarUsd: number): ThresholdEvaluation {
+export function evaluateThreshold(
+  threshold: CostThreshold,
+  monthSoFarUsd: number,
+): ThresholdEvaluation {
   if (!threshold.enabled || threshold.monthlyUsdLimit <= 0) return { kind: "ok" };
   const pct = monthSoFarUsd / threshold.monthlyUsdLimit;
   if (pct >= 1) {
@@ -160,14 +174,16 @@ export function evaluateThreshold(threshold: CostThreshold, monthSoFarUsd: numbe
       ? { kind: "block", usedUsd: monthSoFarUsd, limitUsd: threshold.monthlyUsdLimit }
       : { kind: "warn", usedUsd: monthSoFarUsd, limitUsd: threshold.monthlyUsdLimit, pct };
   }
-  if (pct >= 0.8) return { kind: "warn", usedUsd: monthSoFarUsd, limitUsd: threshold.monthlyUsdLimit, pct };
+  if (pct >= 0.8)
+    return { kind: "warn", usedUsd: monthSoFarUsd, limitUsd: threshold.monthlyUsdLimit, pct };
   return { kind: "ok" };
 }
 
 // S-AIC-011: CSV export. Rust streams rows; we format here so users get
 // a stable header order. Excel-compatible: BOM-prefixed UTF-8, CRLF lines.
 export function formatUsageCsv(rows: UsageRow[]): string {
-  const header = "ts,alias,provider,model,action,input_tokens,output_tokens,usd,pricing_version,status";
+  const header =
+    "ts,alias,provider,model,action,input_tokens,output_tokens,usd,pricing_version,status";
   const lines = rows.map((r) =>
     [
       new Date(r.ts).toISOString(),

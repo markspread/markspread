@@ -2,13 +2,13 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  collectPaths,
   type LayoutNode,
+  type SplitNode,
+  type WorkspaceLayout,
+  collectPaths,
   parseEditorLayout,
   pruneEditorLayout,
   serializeEditorLayout,
-  type SplitNode,
-  type WorkspaceLayout,
 } from "../lib/editor/layout-model";
 
 const POS = { line: 0, column: 0, scrollTop: 0 };
@@ -19,7 +19,7 @@ function pane(id: string, paths: string[], activeIdx: number | null = 0): Layout
     type: "pane",
     id,
     tabs,
-    activeTabId: activeIdx == null ? null : tabs[activeIdx]?.id ?? null,
+    activeTabId: activeIdx == null ? null : (tabs[activeIdx]?.id ?? null),
   };
 }
 

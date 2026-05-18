@@ -32,7 +32,11 @@ export default defineConfig({
   retries: isCI ? 1 : 0,
   workers: isCI ? 2 : undefined,
   reporter: isCI
-    ? [["html", { open: "never" }], ["junit", { outputFile: "test-results/playwright-junit.xml" }], ["github"]]
+    ? [
+        ["html", { open: "never" }],
+        ["junit", { outputFile: "test-results/playwright-junit.xml" }],
+        ["github"],
+      ]
     : [["list"], ["html", { open: "on-failure" }]],
 
   globalSetup: "./e2e/global-setup.ts",

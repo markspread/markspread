@@ -19,7 +19,10 @@ test.describe("plugin install / uninstall", () => {
   test("install + run a hello plugin", async ({ page }) => {
     await page.getByRole("link", { name: /marketplace/i }).click();
     await page.getByPlaceholder(/search plugins/i).fill("hello");
-    await page.getByRole("button", { name: /^install$/i }).first().click();
+    await page
+      .getByRole("button", { name: /^install$/i })
+      .first()
+      .click();
 
     const consent = page.getByTestId("permission-consent");
     await expect(consent).toBeVisible();
@@ -27,7 +30,9 @@ test.describe("plugin install / uninstall", () => {
     await page.getByRole("button", { name: /allow/i }).click();
 
     await expect(page.getByTestId("plugin-installed-toast")).toBeVisible();
-    await expect(page.getByTestId(`plugin-row-@markspread-fixtures/hello`)).toContainText(/enabled/i);
+    await expect(page.getByTestId("plugin-row-@markspread-fixtures/hello")).toContainText(
+      /enabled/i,
+    );
 
     // Command palette should now expose `Hello: greet`.
     await page.keyboard.press("Control+Shift+P");
@@ -40,7 +45,10 @@ test.describe("plugin install / uninstall", () => {
     await page.goto("/?harness=plugin-lifecycle&preinstalled=hello");
     await page.getByRole("link", { name: /plugins/i }).click();
 
-    await page.getByTestId("plugin-row-@markspread-fixtures/hello").getByRole("button", { name: /uninstall/i }).click();
+    await page
+      .getByTestId("plugin-row-@markspread-fixtures/hello")
+      .getByRole("button", { name: /uninstall/i })
+      .click();
     await page.getByRole("button", { name: /confirm/i }).click();
 
     await expect(page.getByTestId("plugin-row-@markspread-fixtures/hello")).toHaveCount(0);
@@ -53,7 +61,10 @@ test.describe("plugin install / uninstall", () => {
   test("plugin requesting `shell` permission is rejected at install", async ({ page }) => {
     await page.getByRole("link", { name: /marketplace/i }).click();
     await page.getByPlaceholder(/search plugins/i).fill("wants-shell");
-    await page.getByRole("button", { name: /^install$/i }).first().click();
+    await page
+      .getByRole("button", { name: /^install$/i })
+      .first()
+      .click();
 
     await expect(page.getByTestId("install-error")).toBeVisible();
     await expect(page.getByTestId("install-error")).toContainText(/shell/i);

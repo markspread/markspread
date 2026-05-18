@@ -7,14 +7,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useFocusTrap } from "../lib/focus-trap";
+import type { SubscriptionCredential } from "../lib/ai/credentials";
 import {
-  createSubscriptionAuthFlow,
   type AuthFlowHandle,
   type AuthStage,
+  createSubscriptionAuthFlow,
 } from "../lib/ai/subscription-auth";
 import { createTauriAuthTransport } from "../lib/ai/subscription-auth-tauri";
-import type { SubscriptionCredential } from "../lib/ai/credentials";
+import { useFocusTrap } from "../lib/focus-trap";
 
 interface SubscriptionAuthModalProps {
   open: boolean;
@@ -22,11 +22,7 @@ interface SubscriptionAuthModalProps {
   onSuccess: (cred: SubscriptionCredential) => void;
 }
 
-export function SubscriptionAuthModal({
-  open,
-  onClose,
-  onSuccess,
-}: SubscriptionAuthModalProps) {
+export function SubscriptionAuthModal({ open, onClose, onSuccess }: SubscriptionAuthModalProps) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<AuthStage>({ kind: "idle" });
   const flowRef = useRef<AuthFlowHandle | null>(null);
@@ -61,6 +57,7 @@ export function SubscriptionAuthModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("subscription.auth.aria", "Sign in with Claude")}

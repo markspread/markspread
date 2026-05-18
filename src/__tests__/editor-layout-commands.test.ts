@@ -8,7 +8,7 @@ import {
   splitDownCommand,
   splitRightCommand,
 } from "../lib/commands/editor-layout";
-import { findPane, forEachPane, type SplitNode } from "../lib/editor/layout-model";
+import { type SplitNode, findPane, forEachPane } from "../lib/editor/layout-model";
 import { useEditorLayout } from "../store/editor-layout";
 import { useTabs } from "../store/tabs";
 import { useWorkspace } from "../store/workspace";
@@ -33,22 +33,20 @@ describe("editor-layout commands", () => {
     useWorkspace.setState({ current: WS, readOnly: false });
     const initial = useEditorLayout.getState().ensureLayout(WS);
     splitRightCommand();
-    const root = useEditorLayout.getState().layouts[WS]!.root as SplitNode;
+    const root = useEditorLayout.getState().layouts[WS]?.root as SplitNode;
     expect(root.type).toBe("split");
     expect(root.direction).toBe("horizontal");
     expect(root.children).toHaveLength(2);
     // First child stays the original pane; new pane becomes active.
-    expect(root.children[0]!.id).toBe(initial.root.id);
-    expect(useEditorLayout.getState().layouts[WS]!.activePaneId).toBe(
-      root.children[1]!.id,
-    );
+    expect(root.children[0]?.id).toBe(initial.root.id);
+    expect(useEditorLayout.getState().layouts[WS]?.activePaneId).toBe(root.children[1]?.id);
   });
 
   it("splitDown creates a vertical split", () => {
     useWorkspace.setState({ current: WS, readOnly: false });
     useEditorLayout.getState().ensureLayout(WS);
     splitDownCommand();
-    const root = useEditorLayout.getState().layouts[WS]!.root as SplitNode;
+    const root = useEditorLayout.getState().layouts[WS]?.root as SplitNode;
     expect(root.type).toBe("split");
     expect(root.direction).toBe("vertical");
   });
@@ -59,6 +57,7 @@ describe("editor-layout commands", () => {
     splitRightCommand(); // 2 panes
     splitRightCommand(); // 3 panes (flat horizontal split)
     const order: string[] = [];
+    // biome-ignore lint/style/noNonNullAssertion: ensureLayout(WS) above guarantees the layout exists.
     forEachPane(useEditorLayout.getState().layouts[WS]!.root, (p) => {
       order.push(p.id);
     });
@@ -66,18 +65,18 @@ describe("editor-layout commands", () => {
     expect(order[0]).toBe(initial.root.id);
 
     focusPaneCommand(1);
-    expect(useEditorLayout.getState().layouts[WS]!.activePaneId).toBe(order[0]);
+    expect(useEditorLayout.getState().layouts[WS]?.activePaneId).toBe(order[0]);
     focusPaneCommand(2);
-    expect(useEditorLayout.getState().layouts[WS]!.activePaneId).toBe(order[1]);
+    expect(useEditorLayout.getState().layouts[WS]?.activePaneId).toBe(order[1]);
     focusPaneCommand(3);
-    expect(useEditorLayout.getState().layouts[WS]!.activePaneId).toBe(order[2]);
+    expect(useEditorLayout.getState().layouts[WS]?.activePaneId).toBe(order[2]);
   });
 
   it("focusPane out-of-range is a no-op", () => {
     useWorkspace.setState({ current: WS, readOnly: false });
     const initial = useEditorLayout.getState().ensureLayout(WS);
     focusPaneCommand(5);
-    expect(useEditorLayout.getState().layouts[WS]!.activePaneId).toBe(initial.root.id);
+    expect(useEditorLayout.getState().layouts[WS]?.activePaneId).toBe(initial.root.id);
   });
 
   it("closeActiveTab removes the active tab from the active pane", () => {
@@ -97,7 +96,9 @@ describe("editor-layout commands", () => {
       },
     });
     closeActiveTabCommand();
-    const pane = findPane(useEditorLayout.getState().layouts[WS]!.root, paneId)!;
+    // biome-ignore lint/style/noNonNullAssertion: the layout was set up above and is guaranteed present.
+    const pane = findPane(useEditorLayout.getState().layouts[WS]!.root, paneId);
+    if (!pane) throw new Error("expected pane");
     expect(pane.tabs.map((t) => t.id)).toEqual(["t1"]);
     expect(pane.activeTabId).toBe("t1");
   });
@@ -116,6 +117,7 @@ describe("editor-layout commands", () => {
       },
     });
     closeActiveTabCommand();
+    // biome-ignore lint/style/noNonNullAssertion: the layout was set up above and is guaranteed present.
     const root = useEditorLayout.getState().layouts[WS]!.root;
     expect(root.type).toBe("pane");
     expect((root as { tabs: unknown[] }).tabs).toEqual([]);
@@ -159,6 +161,7 @@ describe("editor-layout commands", () => {
     });
     closeActiveTabCommand();
     // p1 emptied → split collapses to p2 alone.
+    // biome-ignore lint/style/noNonNullAssertion: the layout was set up above and is guaranteed present.
     const root = useEditorLayout.getState().layouts[WS]!.root;
     expect(root.type).toBe("pane");
     expect((root as { id: string }).id).toBe("p2");
@@ -197,8 +200,10 @@ describe("editor-layout commands", () => {
       },
     });
     moveEditorToNextGroupCommand();
-    const layout = useEditorLayout.getState().layouts[WS]!;
-    const p2 = findPane(layout.root, "p2")!;
+    const layout = useEditorLayout.getState().layouts[WS];
+    if (!layout) throw new Error("expected layout");
+    const p2 = findPane(layout.root, "p2");
+    if (!p2) throw new Error("expected pane p2");
     expect(p2.tabs.map((t) => t.id)).toEqual(["t1"]);
     expect(layout.activePaneId).toBe("p2");
   });
@@ -215,9 +220,9 @@ describe("editor-layout commands", () => {
         activeTabId: "t1",
       },
     });
-    const before = useEditorLayout.getState().layouts[WS]!.root;
+    const before = useEditorLayout.getState().layouts[WS]?.root;
     moveEditorToNextGroupCommand();
-    expect(useEditorLayout.getState().layouts[WS]!.root).toBe(before);
+    expect(useEditorLayout.getState().layouts[WS]?.root).toBe(before);
   });
 
   it("closeActiveTab falls back to useTabs.close when no pane is active", () => {

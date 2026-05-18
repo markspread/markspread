@@ -5,8 +5,8 @@
 // matter what arbitrary JSON you throw at it. We use fast-check (the
 // JS-side equivalent of proptest) to generate adversarial inputs.
 
-import { describe, expect, it } from "vitest";
 import fc from "fast-check";
+import { describe, expect, it } from "vitest";
 import { validateManifest } from "./manifest";
 
 const arbJsonValue: any = fc.letrec((tie: any) => ({
@@ -39,7 +39,10 @@ describe("validateManifest — fuzz", () => {
   it("rejects every input missing the `id` field", () => {
     fc.assert(
       fc.property(
-        fc.dictionary(fc.string({ minLength: 1 }).filter((k: string) => k !== "id"), arbJsonValue),
+        fc.dictionary(
+          fc.string({ minLength: 1 }).filter((k: string) => k !== "id"),
+          arbJsonValue,
+        ),
         (obj: unknown) => {
           const result = validateManifest(obj as never) as any;
           // Either errors mention `id` directly, or the manifest is rejected for some other invariant — but it must not be valid.
@@ -77,7 +80,13 @@ describe("validateManifest — fuzz", () => {
 
   it("rejects every deeply-nested object that doesn't match the schema", () => {
     // Take a known-good manifest, then perturb a deep field with random data.
-    const base = { id: "ok", name: "n", version: "1.0.0", engines: { markspread: "^1.0.0" }, permissions: [] as string[] };
+    const base = {
+      id: "ok",
+      name: "n",
+      version: "1.0.0",
+      engines: { markspread: "^1.0.0" },
+      permissions: [] as string[],
+    };
     fc.assert(
       fc.property(arbJsonValue, (junk: unknown) => {
         const evil = { ...base, contributes: junk };

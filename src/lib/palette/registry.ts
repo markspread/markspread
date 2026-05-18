@@ -9,13 +9,7 @@
 // Mode prefixes (S-CP-011/012): `>` filters to commands, `?` filters
 // to help — both implemented as a `category` filter inside `query()`.
 
-export type PaletteCategory =
-  | "file"
-  | "command"
-  | "ai"
-  | "settings"
-  | "plugin"
-  | "help";
+export type PaletteCategory = "file" | "command" | "ai" | "settings" | "plugin" | "help";
 
 export interface PaletteItem {
   id: string;
@@ -98,7 +92,7 @@ export function query(opts: QueryOptions): PaletteItem[] {
     return { it, score };
   });
   return scored
-    .filter((x) => x.score > -Infinity)
+    .filter((x) => x.score > Number.NEGATIVE_INFINITY)
     .map((x) => ({
       ...x,
       score: x.score + (x.it.weight ?? 0) + recencyBoost(x.it.id),
@@ -143,7 +137,7 @@ export function fuzzyScore(haystack: string, needle: string): number {
       i++;
     }
   }
-  if (i < needle.length) return -Infinity;
+  if (i < needle.length) return Number.NEGATIVE_INFINITY;
   score += 6;
   // Penalise skipped characters.
   score -= haystack.length - lastMatch - 1;

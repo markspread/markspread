@@ -1,5 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -50,9 +50,7 @@ export function Welcome({
     // marked pending then resolved to ok / missing / unmounted independently
     // so a slow network drive doesn't gate the rest.
     let cancelled = false;
-    setStatuses(
-      Object.fromEntries(recent.map((w) => [w.path, "pending" as RecentStatus])),
-    );
+    setStatuses(Object.fromEntries(recent.map((w) => [w.path, "pending" as RecentStatus])));
     for (const w of recent) {
       void (async () => {
         try {
@@ -131,7 +129,6 @@ export function Welcome({
   return (
     <main
       className="grid h-full w-full grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
-      role="main"
       aria-label={t("welcome.aria.main", "Welcome screen")}
     >
       {/* Left panel: logo + version */}
@@ -143,9 +140,7 @@ export function Welcome({
         <p className="mt-3 text-[var(--color-muted)] text-sm">
           {t("app.tagline", "A lightweight markdown reviewer for the AI era")}
         </p>
-        {version && (
-          <p className="mt-12 text-[var(--color-muted)] text-xs">v{version}</p>
-        )}
+        {version && <p className="mt-12 text-[var(--color-muted)] text-xs">v{version}</p>}
       </aside>
 
       {/* Right panel: actions + recent */}
@@ -159,9 +154,7 @@ export function Welcome({
             className="rounded-md bg-[var(--color-accent)] px-6 py-3 text-left font-medium text-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
             onClick={onOpenWorkspace}
           >
-            <span className="block">
-              {t("welcome.action.open_workspace", "Open workspace")}
-            </span>
+            <span className="block">{t("welcome.action.open_workspace", "Open workspace")}</span>
             <span className="mt-1 block text-white/70 text-xs">
               <kbd>⌘O</kbd>
             </span>
@@ -212,26 +205,17 @@ export function Welcome({
                 <path d="M5 10 h12 l3 3 h15 v18 a2 2 0 0 1 -2 2 H7 a2 2 0 0 1 -2 -2 z" />
                 <path d="M14 22 h12 M14 26 h8" />
               </svg>
-              <span>
-                {t(
-                  "welcome.recent.empty.label",
-                  "No recently opened workspaces",
-                )}
-              </span>
+              <span>{t("welcome.recent.empty.label", "No recently opened workspaces")}</span>
             </div>
           ) : (
             <ul
               className="flex flex-col gap-1"
-              role="listbox"
               aria-label={t("welcome.recent.list.aria", "Recent workspaces")}
               onKeyDown={(e) => {
                 if (recent.length === 0) return;
                 if (e.key === "ArrowDown") {
                   e.preventDefault();
-                  const next =
-                    focusedIdx < 0
-                      ? 0
-                      : Math.min(focusedIdx + 1, recent.length - 1);
+                  const next = focusedIdx < 0 ? 0 : Math.min(focusedIdx + 1, recent.length - 1);
                   setFocusedIdx(next);
                   recentRefs.current[next]?.focus();
                 } else if (e.key === "ArrowUp") {
@@ -252,18 +236,9 @@ export function Welcome({
                 const status = statuses[w.path] ?? "pending";
                 const dim = status === "missing" || status === "unmounted";
                 const iconName: IconName | null =
-                  status === "missing"
-                    ? "warning"
-                    : status === "unmounted"
-                      ? "eject"
-                      : null;
+                  status === "missing" ? "warning" : status === "unmounted" ? "eject" : null;
                 return (
-                  <li
-                    key={w.path}
-                    role="option"
-                    aria-selected={focusedIdx === i}
-                    className="group relative"
-                  >
+                  <li key={w.path} aria-selected={focusedIdx === i} className="group relative">
                     <button
                       ref={(el) => {
                         recentRefs.current[i] = el;
@@ -278,34 +253,22 @@ export function Welcome({
                               path: w.path,
                             })
                           : status === "unmounted"
-                            ? t(
-                                "welcome.recent.title_unmounted",
-                                "{{path}} (drive not mounted)",
-                                { path: w.path },
-                              )
+                            ? t("welcome.recent.title_unmounted", "{{path}} (drive not mounted)", {
+                                path: w.path,
+                              })
                             : w.path
                       }
                       onClick={() => void handleRecentClick(w.path)}
                       onFocus={() => setFocusedIdx(i)}
                     >
-                      {iconName && (
-                        <Icon name={iconName} size={12} className="shrink-0" />
-                      )}
+                      {iconName && <Icon name={iconName} size={12} className="shrink-0" />}
                       <span className="truncate font-medium">{label}</span>
-                      <span className="truncate text-[var(--color-muted)] text-xs">
-                        {w.path}
-                      </span>
+                      <span className="truncate text-[var(--color-muted)] text-xs">{w.path}</span>
                     </button>
                     <button
                       type="button"
-                      aria-label={t(
-                        "welcome.recent.remove.aria",
-                        "Remove from recent",
-                      )}
-                      title={t(
-                        "welcome.recent.remove",
-                        "Remove from recent",
-                      )}
+                      aria-label={t("welcome.recent.remove.aria", "Remove from recent")}
+                      title={t("welcome.recent.remove", "Remove from recent")}
                       className="-translate-y-1/2 absolute top-1/2 right-1 hidden h-6 w-6 items-center justify-center rounded text-[var(--color-muted)] hover:bg-[var(--color-border)]/50 hover:text-[var(--color-fg)] focus:flex focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] group-hover:flex"
                       onClick={(e) => {
                         e.stopPropagation();

@@ -2,18 +2,18 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { EditorPane } from "../components/EditorPane";
 import { FileTree } from "../components/FileTree";
+import { Icon } from "../components/Icon";
 import { PaneEditor } from "../components/PaneEditor";
 import { PaneTree } from "../components/PaneTree";
-import { Icon } from "../components/Icon";
 import { SettingsSheet } from "../components/SettingsSheet";
 import { ShortcutHint } from "../components/ShortcutHint";
 import { SidebarPeek } from "../components/SidebarPeek";
 import { SidebarSplitter } from "../components/SidebarSplitter";
 import { TabBar } from "../components/TabBar";
-import { useEditorLayout } from "../store/editor-layout";
 import { WelcomeBanner } from "../components/WelcomeBanner";
 import { useSidebarPeekHover } from "../hooks/useSidebarPeekHover";
 import { useWorkspaceLayoutSync } from "../hooks/useWorkspaceLayoutSync";
+import { useEditorLayout } from "../store/editor-layout";
 import { SIDEBAR_DEFAULT_PX, SIDEBAR_RAIL_PX, useLayout } from "../store/layout";
 import { useSettingsSheet } from "../store/settings-sheet";
 import { useWorkspace } from "../store/workspace";
@@ -25,12 +25,8 @@ export function Main() {
   const sidebarWidth = useLayout((s) =>
     current ? s.getSidebarWidth(current) : SIDEBAR_DEFAULT_PX,
   );
-  const sidebarHidden = useLayout((s) =>
-    current ? s.isSidebarHidden(current) : false,
-  );
-  const collapsedMode = useLayout((s) =>
-    current ? s.getSidebarCollapsedMode(current) : "rail",
-  );
+  const sidebarHidden = useLayout((s) => (current ? s.isSidebarHidden(current) : false));
+  const collapsedMode = useLayout((s) => (current ? s.getSidebarCollapsedMode(current) : "rail"));
   const toggleSidebar = useLayout((s) => s.toggleSidebar);
   const showSettings = useSettingsSheet((s) => s.show);
   const splitContainer = useRef<HTMLDivElement | null>(null);
@@ -54,7 +50,7 @@ export function Main() {
     prevHiddenRef.current = sidebarHidden;
     if (prev === sidebarHidden) return;
     const activeInSidebar = !!document
-      .querySelector('aside[data-sidebar-aside]')
+      .querySelector("aside[data-sidebar-aside]")
       ?.contains(document.activeElement);
     if (sidebarHidden) {
       if (activeInSidebar) {
@@ -89,7 +85,6 @@ export function Main() {
   return (
     <main
       className="flex h-full w-full flex-col"
-      role="main"
       aria-label={t("main.aria.workspace", "Workspace")}
     >
       <WelcomeBanner />
@@ -169,14 +164,9 @@ export function Main() {
           />
         )}
         {!sidebarHidden && current && (
-          <SidebarSplitter
-            workspace={current}
-            containerRef={splitContainer}
-          />
+          <SidebarSplitter workspace={current} containerRef={splitContainer} />
         )}
-        {current && (
-          <EditorHost workspace={current} ariaLabel={t("main.aria.editor", "Editor")} />
-        )}
+        {current && <EditorHost workspace={current} ariaLabel={t("main.aria.editor", "Editor")} />}
       </div>
       <SettingsSheet />
       <SidebarPeek />

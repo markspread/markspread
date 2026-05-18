@@ -32,7 +32,9 @@ interface InlineCompleteState {
 export const useInlineComplete = create<InlineCompleteState>((set, get) => ({
   enabled: false,
   suggestion: null,
-  setEnabled(enabled) { set({ enabled, suggestion: enabled ? get().suggestion : null }); },
+  setEnabled(enabled) {
+    set({ enabled, suggestion: enabled ? get().suggestion : null });
+  },
   show(suggestion) {
     if (!get().enabled) return;
     set({ suggestion });
@@ -42,8 +44,12 @@ export const useInlineComplete = create<InlineCompleteState>((set, get) => ({
     set({ suggestion: null });
     return s;
   },
-  reject() { set({ suggestion: null }); },
-  invalidate() { set({ suggestion: null }); },
+  reject() {
+    set({ suggestion: null });
+  },
+  invalidate() {
+    set({ suggestion: null });
+  },
 }));
 
 // Debounce helper — the editor uses this to wait for an idle pause before

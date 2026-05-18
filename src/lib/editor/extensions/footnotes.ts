@@ -10,17 +10,20 @@
 // label) we replace it with `[^N]` where N is the next free integer
 // label not already present in the doc.
 
-import { keymap, type Command, EditorView } from "@codemirror/view";
-import { Prec, EditorSelection, type Extension } from "@codemirror/state";
+import { EditorSelection, type Extension, Prec } from "@codemirror/state";
+import { type Command, EditorView, keymap } from "@codemirror/view";
 
 const REF_RE = /\[\^([\w-]+)\]/g;
 const EMPTY_REF_RE = /\[\^\](?!:)/; // `[^]` not followed by ':' (avoid eating defs)
 
 function nextLabel(text: string): string {
   const used = new Set<string>();
-  let m: RegExpExecArray | null;
   REF_RE.lastIndex = 0;
-  while ((m = REF_RE.exec(text))) used.add(m[1] ?? "");
+  let m = REF_RE.exec(text);
+  while (m !== null) {
+    used.add(m[1] ?? "");
+    m = REF_RE.exec(text);
+  }
   let n = 1;
   while (used.has(String(n))) n++;
   return String(n);

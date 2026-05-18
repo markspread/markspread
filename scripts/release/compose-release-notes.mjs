@@ -25,7 +25,10 @@ function arg(flag, fallback) {
 
 const tag = arg("--tag");
 const out = arg("--out", "release-notes.md");
-if (!tag) { console.error("--tag is required"); exit(1); }
+if (!tag) {
+  console.error("--tag is required");
+  exit(1);
+}
 const versionHeading = `## ${tag.replace(/^v/, "")}`;
 
 function extractTagSection(path, heading) {
@@ -39,24 +42,26 @@ function extractTagSection(path, heading) {
   return slice.join("\n").trim();
 }
 
-const changes  = extractTagSection("CHANGELOG.md", versionHeading);
-const sbomDiff = existsSync("dist/SBOM-DELTA.md") ? readFileSync("dist/SBOM-DELTA.md", "utf8").trim() : "";
+const changes = extractTagSection("CHANGELOG.md", versionHeading);
+const sbomDiff = existsSync("dist/SBOM-DELTA.md")
+  ? readFileSync("dist/SBOM-DELTA.md", "utf8").trim()
+  : "";
 
 let security = "";
 if (existsSync("SECURITY-INDEX.md")) {
   const src = readFileSync("SECURITY-INDEX.md", "utf8");
   const block = src.split(/^## /m).find((b) => b.startsWith(tag.replace(/^v/, "")));
-  if (block) security = `> ⚠️ **Security release** — see [advisory](#security) below.\n`;
+  if (block) security = "> ⚠️ **Security release** — see [advisory](#security) below.\n";
 }
 
 let body = "";
-if (security) body += security + "\n";
+if (security) body += `${security}\n`;
 body += changes || "_No changeset entries — this release is automation-only._\n";
 if (sbomDiff) body += `\n## Dependency changes\n\n${sbomDiff}\n`;
 
-body += `\n## Verifying the download\n\n`;
+body += "\n## Verifying the download\n\n";
 body += "Each release ships a detached `SHA256SUMS.asc` signed by the Markspread release key";
-body += " (fingerprint: \`see https://markspread.app/security\`).\n\n";
+body += " (fingerprint: `see https://markspread.app/security`).\n\n";
 body += "```sh\ngpg --verify SHA256SUMS.asc SHA256SUMS\nshasum -a 256 -c SHA256SUMS\n```\n";
 
 writeFileSync(out, body);

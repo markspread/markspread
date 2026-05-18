@@ -10,9 +10,9 @@
 // (S-MD-027) uses to rewrite a single source line via the editor's
 // dispatch — keeps undo history coherent across both entry points.
 
+import { type EditorState, type Extension, Prec } from "@codemirror/state";
 import type { Command } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
-import { Prec, type Extension, type EditorState } from "@codemirror/state";
 
 const TASK_RE = /^(\s*[-*+]\s+\[)([ xX])(\])/;
 
@@ -55,9 +55,5 @@ export function applyTaskToggle(state: EditorState, apply: TaskToggleApply) {
 }
 
 export function taskToggleExtension(): Extension {
-  return Prec.high(
-    keymap.of([
-      { key: "Mod-Shift-Enter", run: toggleTaskAtCursor },
-    ]),
-  );
+  return Prec.high(keymap.of([{ key: "Mod-Shift-Enter", run: toggleTaskAtCursor }]));
 }

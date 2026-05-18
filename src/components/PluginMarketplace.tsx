@@ -5,13 +5,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../lib/focus-trap";
-import { Icon } from "./Icon";
 import {
+  type MarketplaceListing,
   installPlugin,
   licenceWarning,
   searchMarketplace,
-  type MarketplaceListing,
 } from "../lib/plugins/marketplace";
+import { Icon } from "./Icon";
 
 interface PluginMarketplaceProps {
   open: boolean;
@@ -56,6 +56,7 @@ export function PluginMarketplace({ open, onClose }: PluginMarketplaceProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("plugins.market.aria", "Plugin marketplace")}

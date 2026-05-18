@@ -59,7 +59,11 @@ export function installWebviewPermissionGuard(): () => void {
   // Geolocation always errors out before reaching the OS prompt.
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition = ((_ok: unknown, fail?: PositionErrorCallback) => {
-      const err = { code: 1, message: "Geolocation is disabled in Markspread", PERMISSION_DENIED: 1 } as GeolocationPositionError;
+      const err = {
+        code: 1,
+        message: "Geolocation is disabled in Markspread",
+        PERMISSION_DENIED: 1,
+      } as GeolocationPositionError;
       if (fail) fail(err);
     }) as typeof navigator.geolocation.getCurrentPosition;
     navigator.geolocation.watchPosition = (() => -1) as typeof navigator.geolocation.watchPosition;
@@ -68,8 +72,12 @@ export function installWebviewPermissionGuard(): () => void {
   // Disable getUserMedia so plugins can't go around the permissions API.
   const md = navigator.mediaDevices;
   if (md) {
-    md.getUserMedia = () => Promise.reject(new DOMException("media access disabled", "NotAllowedError"));
-    md.getDisplayMedia = (() => Promise.reject(new DOMException("display capture disabled", "NotAllowedError"))) as typeof md.getDisplayMedia;
+    md.getUserMedia = () =>
+      Promise.reject(new DOMException("media access disabled", "NotAllowedError"));
+    md.getDisplayMedia = (() =>
+      Promise.reject(
+        new DOMException("display capture disabled", "NotAllowedError"),
+      )) as typeof md.getDisplayMedia;
   }
 
   return () => {

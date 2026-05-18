@@ -13,8 +13,8 @@
 // outcome is obvious before the user releases.
 
 import { useState } from "react";
-import { type SplitSide, useEditorLayout } from "../store/editor-layout";
 import type { PaneId, SplitDirection, TabId } from "../lib/editor/layout-model";
+import { type SplitSide, useEditorLayout } from "../store/editor-layout";
 
 export const TAB_DRAG_MIME = "application/x-markspread-pane-tab";
 
@@ -54,9 +54,7 @@ export function regionForPoint(
   return "bottom";
 }
 
-function regionToSplit(
-  region: DropRegion,
-): { direction: SplitDirection; side: SplitSide } | null {
+function regionToSplit(region: DropRegion): { direction: SplitDirection; side: SplitSide } | null {
   switch (region) {
     case "left":
       return { direction: "horizontal", side: "before" };

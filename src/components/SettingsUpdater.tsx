@@ -6,10 +6,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  checkForUpdate,
-  type UpdateChannel,
-} from "../lib/updater/updater";
+import { type UpdateChannel, checkForUpdate } from "../lib/updater/updater";
 import { useUpdater } from "../store/updater";
 
 export function SettingsUpdater() {
@@ -51,7 +48,8 @@ export function SettingsUpdater() {
     >
       <h2 className="font-semibold text-base">{t("settings.updater.title", "Updates")}</h2>
       <p className="text-[var(--color-muted)] text-xs">
-        {t("settings.updater.current", "Current version")}: <span className="font-mono">{version || "—"}</span>
+        {t("settings.updater.current", "Current version")}:{" "}
+        <span className="font-mono">{version || "—"}</span>
       </p>
       <label className="flex items-center gap-2 text-xs">
         <span className="w-20 text-[var(--color-muted)]">

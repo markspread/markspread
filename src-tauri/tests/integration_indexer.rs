@@ -73,7 +73,10 @@ async fn parses_yaml_front_matter() {
     let idx = index_workspace(dir.path()).await.unwrap();
     let entry = find(&idx, "front.md").unwrap();
 
-    assert_eq!(entry.front_matter.get("title").and_then(|v| v.as_str()), Some("Hello"));
+    assert_eq!(
+        entry.front_matter.get("title").and_then(|v| v.as_str()),
+        Some("Hello")
+    );
     assert!(!entry.body_excerpt.contains("title: Hello"));
     assert!(entry.body_excerpt.contains("# Body"));
 }
@@ -99,7 +102,10 @@ async fn symlinks_followed_once_with_no_loop() {
     symlink(dir.path().join("link"), dir.path().join("real/loop")).unwrap();
 
     let idx = index_workspace(dir.path()).await.unwrap();
-    let count = idx.iter().filter(|e| e.relative_path.ends_with("a.md")).count();
+    let count = idx
+        .iter()
+        .filter(|e| e.relative_path.ends_with("a.md"))
+        .count();
     // We expect to find a.md exactly once — symlink walks should dedupe by canonical path.
     assert_eq!(count, 1, "indexer must dedupe symlinked entries");
 }
@@ -113,5 +119,8 @@ async fn truncates_oversized_files_with_flag() {
     let idx = index_workspace(dir.path()).await.unwrap();
     let entry = find(&idx, "big.md").unwrap();
     assert!(entry.truncated, "files > 50MB should be flagged truncated");
-    assert!(entry.body_excerpt.len() < 1_000_000, "truncated excerpt should be small");
+    assert!(
+        entry.body_excerpt.len() < 1_000_000,
+        "truncated excerpt should be small"
+    );
 }

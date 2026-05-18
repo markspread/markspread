@@ -11,7 +11,7 @@
 // downstream UI rerenders are scoped (the editor doesn't rebuild
 // because privacy.telemetry flipped).
 
-import { findSetting, type SettingDef, SETTINGS } from "./schema";
+import { SETTINGS, type SettingDef, findSetting } from "./schema";
 
 export type SettingScopeKey = "global" | "workspace";
 
@@ -60,10 +60,12 @@ export async function setSetting(
 ): Promise<void> {
   const def = findSetting(key);
   if (!def) throw new Error(`Unknown setting: ${key}`);
-  if (def.scope === "global" && scope === "workspace") scope = "global";
-  const target = scope === "workspace" ? workspace : global;
+  let effectiveScope = scope;
+  if (def.scope === "global" && effectiveScope === "workspace") effectiveScope = "global";
+  const target = effectiveScope === "workspace" ? workspace : global;
   target[key] = value;
-  if (adapter) await adapter.write(scope, scope === "workspace" ? workspace : global);
+  if (adapter)
+    await adapter.write(effectiveScope, effectiveScope === "workspace" ? workspace : global);
   emit(key);
 }
 
@@ -86,19 +88,27 @@ export function subscribeSetting(key: string, fn: () => void): () => void {
     keyListeners.set(key, set);
   }
   set.add(fn);
-  return () => set!.delete(fn);
+  return () => set?.delete(fn);
 }
 
 function emit(key: string): void {
-  keyListeners.get(key)?.forEach((fn) => fn());
+  const set = keyListeners.get(key);
+  if (set) {
+    for (const fn of set) fn();
+  }
 }
 
 function emitAll(): void {
-  keyListeners.forEach((set) => set.forEach((fn) => fn()));
+  for (const set of keyListeners.values()) {
+    for (const fn of set) fn();
+  }
 }
 
 // S-ST-015: serialise the full settings tree for export.
-export function exportSettings(): { global: Record<string, unknown>; workspace: Record<string, unknown> } {
+export function exportSettings(): {
+  global: Record<string, unknown>;
+  workspace: Record<string, unknown>;
+} {
   return { global: { ...global }, workspace: { ...workspace } };
 }
 
@@ -122,7 +132,11 @@ export async function importSettings(payload: {
   emitAll();
 }
 
-export function snapshot(): { defs: SettingDef[]; values: Record<string, unknown>; scopes: Record<string, ReturnType<typeof getSettingScope>> } {
+export function snapshot(): {
+  defs: SettingDef[];
+  values: Record<string, unknown>;
+  scopes: Record<string, ReturnType<typeof getSettingScope>>;
+} {
   const values: Record<string, unknown> = {};
   const scopes: Record<string, ReturnType<typeof getSettingScope>> = {};
   for (const def of SETTINGS) {

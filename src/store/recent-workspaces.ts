@@ -28,8 +28,7 @@ export const useRecentWorkspaces = create<RecentState>()(
           ].slice(0, MAX_RECENT);
           return { recent: next };
         }),
-      remove: (path) =>
-        set((s) => ({ recent: s.recent.filter((w) => w.path !== path) })),
+      remove: (path) => set((s) => ({ recent: s.recent.filter((w) => w.path !== path) })),
       clear: () => set({ recent: [] }),
     }),
     { name: "markspread.recent-workspaces" },

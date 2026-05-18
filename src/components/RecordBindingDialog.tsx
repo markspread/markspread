@@ -47,12 +47,7 @@ export function RecordBindingDialog({ commandId, onClose }: Props) {
       }
       // Modifier-only events don't form a binding; ignore them so
       // pressing Cmd alone doesn't immediately freeze the capture.
-      if (
-        e.key === "Meta" ||
-        e.key === "Control" ||
-        e.key === "Alt" ||
-        e.key === "Shift"
-      ) {
+      if (e.key === "Meta" || e.key === "Control" || e.key === "Alt" || e.key === "Shift") {
         return;
       }
       // S-KB-008: an IME composition would otherwise capture e.g. a
@@ -64,7 +59,8 @@ export function RecordBindingDialog({ commandId, onClose }: Props) {
       if (proposed) setCaptured(normaliseBinding(proposed));
     }
     window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true } as EventListenerOptions);
+    return () =>
+      window.removeEventListener("keydown", onKey, { capture: true } as EventListenerOptions);
   }, [captured, onClose]);
 
   async function onSave() {
@@ -109,14 +105,17 @@ export function RecordBindingDialog({ commandId, onClose }: Props) {
   }
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-close; Escape handled within dialog
     <div
       className="fixed inset-0 flex items-center justify-center bg-black/50"
       style={{ zIndex: "var(--z-dialog)" }}
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-labelledby="rec-bind-title"
       onClick={onClose}
     >
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation wrapper; not an interactive control */}
       <div
         className="w-full max-w-md rounded-lg border border-surface-border bg-surface-bg p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -128,10 +127,7 @@ export function RecordBindingDialog({ commandId, onClose }: Props) {
         </h3>
 
         <p className="mt-1 text-sm text-surface-fg-muted">
-          {t(
-            "keybindings.record.instructions",
-            "Press the keys you want to use. Esc to cancel.",
-          )}
+          {t("keybindings.record.instructions", "Press the keys you want to use. Esc to cancel.")}
         </p>
 
         <div

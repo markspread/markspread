@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { locateWorkspaceCommand } from "./commands/locate-workspace";
 import { useTabs } from "../store/tabs";
 import { useToasts } from "../store/toasts";
 import { useWorkspace } from "../store/workspace";
+import { locateWorkspaceCommand } from "./commands/locate-workspace";
 
 interface DisconnectedPayload {
   workspace: string;
@@ -78,10 +78,7 @@ export function registerUnmountListener(): () => void {
     useToasts.getState().push({
       kind: "warning",
       message: "workspace.disconnected",
-      details:
-        dumped > 0
-          ? `${dumped}개 파일 임시 보관 (~/.markspread/snapshots/orphans/)`
-          : ws,
+      details: dumped > 0 ? `${dumped}개 파일 임시 보관 (~/.markspread/snapshots/orphans/)` : ws,
       ttlMs: 12000,
     });
     watching.delete(ws);

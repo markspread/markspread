@@ -57,10 +57,11 @@ for (const file of walk(srcRoot)) {
 // literal so dynamically-addressed keys aren't reported as orphaned.
 const dynamicPrefixes = [];
 const tplRe = /`([^`\\]*?)\$\{/g;
-let tm;
-while ((tm = tplRe.exec(haystack)) !== null) {
+let tm = tplRe.exec(haystack);
+while (tm !== null) {
   const prefix = tm[1];
   if (prefix.includes(".")) dynamicPrefixes.push(prefix);
+  tm = tplRe.exec(haystack);
 }
 
 const unused = keys.filter(

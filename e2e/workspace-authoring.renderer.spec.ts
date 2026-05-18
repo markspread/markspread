@@ -34,7 +34,9 @@ test("create workspace, author a file, observe preview", async ({ page }) => {
   await page.keyboard.type("# Intro\n\nMarkspread treats markdown like source.\n");
 
   await expect(page.getByTestId("spread-pane")).toContainText("Intro");
-  await expect(page.getByTestId("spread-pane")).toContainText("Markspread treats markdown like source.");
+  await expect(page.getByTestId("spread-pane")).toContainText(
+    "Markspread treats markdown like source.",
+  );
 });
 
 test("rename file updates wiki-links in referencing files", async ({ page }) => {

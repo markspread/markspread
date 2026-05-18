@@ -1,11 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import {
-  type ResolvedTheme,
-  type ThemeMode,
-  applyTheme,
-  detectSystemTheme,
-} from "../lib/theme";
+import { type ResolvedTheme, type ThemeMode, applyTheme, detectSystemTheme } from "../lib/theme";
 
 interface ThemeState {
   mode: ThemeMode;
@@ -35,8 +30,7 @@ export const useTheme = create<ThemeState>()(
       name: "markspread.theme",
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        const resolved =
-          state.mode === "system" ? detectSystemTheme() : state.mode;
+        const resolved = state.mode === "system" ? detectSystemTheme() : state.mode;
         state.resolved = resolved;
         applyTheme(resolved);
       },

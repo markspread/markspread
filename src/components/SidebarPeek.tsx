@@ -72,13 +72,11 @@ export function SidebarPeek() {
       const target = e.target;
       if (!(target instanceof Node)) return;
       if (dialogRef.current?.contains(target)) return;
-      if (target instanceof Element && target.closest("[data-sidebar-rail]"))
-        return;
+      if (target instanceof Element && target.closest("[data-sidebar-rail]")) return;
       hide();
     };
     document.addEventListener("pointerdown", onPointerDown, true);
-    return () =>
-      document.removeEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [open, pinned, hide]);
 
   // S-SBP-006: focus-out auto-close. When focus moves to any element
@@ -120,6 +118,7 @@ export function SidebarPeek() {
   return (
     <div
       ref={dialogRef}
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="false"
       aria-label={t("peek.aria.dialog", "File tree (peek)")}
@@ -136,18 +135,14 @@ export function SidebarPeek() {
       className="flex min-h-0 flex-col overflow-hidden rounded-r-md border border-[var(--color-border)] bg-[var(--color-surface)] text-sm shadow-lg motion-safe:animate-[peek-in_140ms_ease-out]"
     >
       <header className="flex items-center justify-between border-[var(--color-border)] border-b bg-[var(--color-surface-subtle)] px-3 py-1.5">
-        <span className="font-medium text-xs">
-          {t("peek.title", "Files")}
-        </span>
+        <span className="font-medium text-xs">{t("peek.title", "Files")}</span>
         <button
           type="button"
           onClick={togglePinned}
           className="text-[var(--color-muted)] text-xs hover:text-[var(--color-fg)]"
           aria-pressed={pinned}
           aria-label={
-            pinned
-              ? t("peek.action.unpin", "Unpin peek")
-              : t("peek.action.pin", "Pin peek")
+            pinned ? t("peek.action.unpin", "Unpin peek") : t("peek.action.pin", "Pin peek")
           }
           title={
             pinned

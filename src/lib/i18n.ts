@@ -1,12 +1,6 @@
 export type SupportedLocale = "en" | "ko" | "ja" | "zh" | "es";
 
-export const SUPPORTED_LOCALES: SupportedLocale[] = [
-  "en",
-  "ko",
-  "ja",
-  "zh",
-  "es",
-];
+export const SUPPORTED_LOCALES: SupportedLocale[] = ["en", "ko", "ja", "zh", "es"];
 export const DEFAULT_LOCALE: SupportedLocale = "en";
 
 const EXACT_MATCH: Record<string, SupportedLocale> = {

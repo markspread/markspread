@@ -45,10 +45,7 @@ function matches(evt: KeyboardEvent, b: ParsedBinding): boolean {
   const isMac = navigator.platform.toLowerCase().includes("mac");
   const modOk = b.ctrlOrMeta ? (isMac ? evt.metaKey : evt.ctrlKey) : !evt.metaKey && !evt.ctrlKey;
   return (
-    modOk &&
-    evt.shiftKey === b.shift &&
-    evt.altKey === b.alt &&
-    evt.key.toLowerCase() === b.key
+    modOk && evt.shiftKey === b.shift && evt.altKey === b.alt && evt.key.toLowerCase() === b.key
   );
 }
 

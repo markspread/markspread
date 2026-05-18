@@ -16,7 +16,7 @@ import {
   serializeEditorLayout,
 } from "../lib/editor/layout-model";
 import { useEditorLayout } from "../store/editor-layout";
-import { useLayout, type SidebarCollapsedMode } from "../store/layout";
+import { type SidebarCollapsedMode, useLayout } from "../store/layout";
 
 const DEBOUNCE_MS = 500;
 const LOAD_DEBOUNCE_GUARD_MS = 100;
@@ -129,8 +129,8 @@ export function useWorkspaceLayoutSync(workspace: string | null): void {
           },
           ...(editor ? { editor: serializeEditorLayout(editor) } : {}),
         };
-        void invoke("workspace_layout_save", { workspace, payload }).catch(
-          (err) => console.warn("[layout-sync] save failed", err),
+        void invoke("workspace_layout_save", { workspace, payload }).catch((err) =>
+          console.warn("[layout-sync] save failed", err),
         );
       }, DEBOUNCE_MS);
     });
@@ -155,8 +155,8 @@ export function useWorkspaceLayoutSync(workspace: string | null): void {
           },
           ...(editor ? { editor: serializeEditorLayout(editor) } : {}),
         };
-        void invoke("workspace_layout_save", { workspace, payload }).catch(
-          (err) => console.warn("[layout-sync] save failed", err),
+        void invoke("workspace_layout_save", { workspace, payload }).catch((err) =>
+          console.warn("[layout-sync] save failed", err),
         );
       }, DEBOUNCE_MS);
     });

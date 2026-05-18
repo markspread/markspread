@@ -16,14 +16,8 @@ type KeyboardLayoutMap = ReadonlyMap<string, string>;
 interface KeyboardWithLayout extends Navigator {
   keyboard?: {
     getLayoutMap?: () => Promise<KeyboardLayoutMap>;
-    addEventListener?: (
-      type: "layoutchange",
-      listener: () => void,
-    ) => void;
-    removeEventListener?: (
-      type: "layoutchange",
-      listener: () => void,
-    ) => void;
+    addEventListener?: (type: "layoutchange", listener: () => void) => void;
+    removeEventListener?: (type: "layoutchange", listener: () => void) => void;
   };
 }
 
@@ -91,18 +85,30 @@ export function labelForCode(code: string): string {
   if (code.startsWith("Key")) return code.slice(3);
   if (code.startsWith("Digit")) return code.slice(5);
   switch (code) {
-    case "Slash": return "/";
-    case "Backslash": return "\\";
-    case "Backquote": return "`";
-    case "Minus": return "-";
-    case "Equal": return "=";
-    case "Comma": return ",";
-    case "Period": return ".";
-    case "Semicolon": return ";";
-    case "Quote": return "'";
-    case "BracketLeft": return "[";
-    case "BracketRight": return "]";
-    default: return code;
+    case "Slash":
+      return "/";
+    case "Backslash":
+      return "\\";
+    case "Backquote":
+      return "`";
+    case "Minus":
+      return "-";
+    case "Equal":
+      return "=";
+    case "Comma":
+      return ",";
+    case "Period":
+      return ".";
+    case "Semicolon":
+      return ";";
+    case "Quote":
+      return "'";
+    case "BracketLeft":
+      return "[";
+    case "BracketRight":
+      return "]";
+    default:
+      return code;
   }
 }
 
@@ -115,17 +121,29 @@ export function codeFromKeySegment(segment: string): string {
   if (segment.length === 1 && /[A-Z]/.test(segment)) return `Key${segment}`;
   if (segment.length === 1 && /[0-9]/.test(segment)) return `Digit${segment}`;
   switch (segment) {
-    case "/": return "Slash";
-    case "\\": return "Backslash";
-    case "`": return "Backquote";
-    case "-": return "Minus";
-    case "=": return "Equal";
-    case ",": return "Comma";
-    case ".": return "Period";
-    case ";": return "Semicolon";
-    case "'": return "Quote";
-    case "[": return "BracketLeft";
-    case "]": return "BracketRight";
-    default: return segment;
+    case "/":
+      return "Slash";
+    case "\\":
+      return "Backslash";
+    case "`":
+      return "Backquote";
+    case "-":
+      return "Minus";
+    case "=":
+      return "Equal";
+    case ",":
+      return "Comma";
+    case ".":
+      return "Period";
+    case ";":
+      return "Semicolon";
+    case "'":
+      return "Quote";
+    case "[":
+      return "BracketLeft";
+    case "]":
+      return "BracketRight";
+    default:
+      return segment;
   }
 }

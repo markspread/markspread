@@ -26,15 +26,12 @@ export interface RenderMathOptions {
   trust?: boolean;
 }
 
-export async function renderMathIn(
-  root: ParentNode,
-  opts: RenderMathOptions = {},
-): Promise<void> {
+export async function renderMathIn(root: ParentNode, opts: RenderMathOptions = {}): Promise<void> {
   const nodes = root.querySelectorAll<HTMLElement>(".ms-math:not([data-rendered])");
   if (nodes.length === 0) return;
   const katex = await loadKatex();
   if (!katex) return;
-  nodes.forEach((el) => {
+  for (const el of nodes) {
     const mode = el.getAttribute("data-mode") === "block" ? "block" : "inline";
     const src = el.textContent ?? "";
     try {
@@ -53,5 +50,5 @@ export async function renderMathIn(
       span.textContent = src;
       el.replaceWith(span);
     }
-  });
+  }
 }

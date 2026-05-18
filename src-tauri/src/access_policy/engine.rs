@@ -58,9 +58,7 @@ pub fn check_access(
 /// input is safe.
 pub fn check_path_input(raw: &str) -> Option<AccessDecision> {
     if raw.is_empty() {
-        return Some(
-            AccessDecision::deny(RuleId::IoUnclassified).with_var("reason", "empty path"),
-        );
+        return Some(AccessDecision::deny(RuleId::IoUnclassified).with_var("reason", "empty path"));
     }
     if has_null_byte(raw) {
         return Some(AccessDecision::deny(RuleId::SecNullByte));
@@ -79,10 +77,7 @@ pub fn check_path_input(raw: &str) -> Option<AccessDecision> {
 /// canonical form. If they differ in the segments that lead outside the
 /// workspace, we attribute the escape to a symlink — otherwise it's a
 /// straight-forward BND violation.
-pub fn ensure_within_engine(
-    workspace: &Path,
-    target: &Path,
-) -> Result<PathBuf, AccessDecision> {
+pub fn ensure_within_engine(workspace: &Path, target: &Path) -> Result<PathBuf, AccessDecision> {
     let ws = workspace.canonicalize().map_err(|_| {
         AccessDecision::deny(RuleId::IoUnclassified)
             .with_var("reason", "workspace canonicalize failed")
@@ -138,9 +133,7 @@ pub fn ensure_within_engine(
         } else {
             RuleId::BndOutsideWorkspace
         };
-        return Err(
-            AccessDecision::deny(rule).with_var("path", resolved.display().to_string())
-        );
+        return Err(AccessDecision::deny(rule).with_var("path", resolved.display().to_string()));
     }
 
     Ok(resolved)
@@ -207,4 +200,3 @@ fn path_traverses_symlink(workspace: &Path, target: &Path) -> bool {
     }
     false
 }
-

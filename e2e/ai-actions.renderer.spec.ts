@@ -26,7 +26,9 @@ test.describe("AI actions (mock)", () => {
     await page.keyboard.press("Control+Shift+I"); // shortcut for "Improve writing"
     const diff = page.getByTestId("inline-ai-diff");
     await expect(diff).toBeVisible();
-    await expect(diff.getByTestId("ai-replacement")).toContainText(/mock response for prompt of length/);
+    await expect(diff.getByTestId("ai-replacement")).toContainText(
+      /mock response for prompt of length/,
+    );
 
     await page.getByRole("button", { name: /accept/i }).click();
     await expect(editor).toContainText(/mock response for prompt of length/);

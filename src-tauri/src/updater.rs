@@ -99,8 +99,8 @@ fn read_manifest_url(channel: &str) -> AppResult<Option<String>> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(e) => return Err(AppError::Io(e)),
     };
-    let v: serde_json::Value =
-        serde_json::from_str(&raw).map_err(|e| AppError::Invalid(format!("settings parse: {e}")))?;
+    let v: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| AppError::Invalid(format!("settings parse: {e}")))?;
     Ok(v.get("updateManifestUrl")
         .and_then(|x| x.as_str())
         .map(|s| s.replace("{channel}", channel)))
@@ -156,9 +156,10 @@ pub async fn updater_download(
     manifest: UpdateManifest,
 ) -> AppResult<()> {
     let key = platform_key();
-    let entry = manifest.platforms.get(&key).ok_or_else(|| {
-        AppError::Invalid(format!("manifest has no artefact for platform {key}"))
-    })?;
+    let entry = manifest
+        .platforms
+        .get(&key)
+        .ok_or_else(|| AppError::Invalid(format!("manifest has no artefact for platform {key}")))?;
 
     state.cancel.store(false, Ordering::SeqCst);
 

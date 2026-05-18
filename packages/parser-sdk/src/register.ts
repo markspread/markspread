@@ -56,9 +56,7 @@ export function registerParser(manifest: ParserManifest, factory: ParserFactory)
 
 export function registerRenderer(spec: RendererSpec): void {
   if (!host) {
-    throw new Error(
-      "registerRenderer called before host registry was initialized.",
-    );
+    throw new Error("registerRenderer called before host registry was initialized.");
   }
   host.registerRenderer(spec);
 }

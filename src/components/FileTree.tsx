@@ -1,14 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { type UnlistenFn, listen } from "@tauri-apps/api/event";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { newFileCommand, newFolderCommand } from "../lib/commands/new-file";
 import { useFileTree } from "../store/file-tree";
-import {
-  SORT_LABEL,
-  SORT_MODES,
-  useLayout,
-} from "../store/layout";
+import { SORT_LABEL, SORT_MODES, useLayout } from "../store/layout";
 import { useSettings } from "../store/settings";
 import { useTabs } from "../store/tabs";
 import { useToasts } from "../store/toasts";
@@ -103,10 +99,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
   const showHidden = useLayout((s) => s.isShowHidden(workspace));
   const setShowHidden = useLayout((s) => s.setShowHidden);
 
-  const isHidden = useCallback(
-    (entry: DirEntry): boolean => entry.name.startsWith("."),
-    [],
-  );
+  const isHidden = useCallback((entry: DirEntry): boolean => entry.name.startsWith("."), []);
 
   // Natural sort: numbers compare numerically (e.g., "file2" < "file10").
   const nameCmp = useMemo(
@@ -292,7 +285,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
       let depth = 0;
       if (flat.length > 0) {
         const cur = flat[Math.min(focusedIdx, flat.length - 1)];
-        if (cur && cur.isDir) {
+        if (cur?.isDir) {
           parentPath = cur.path;
           depth = cur.depth + 1;
           if (!cur.expanded) {
@@ -329,10 +322,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
   const rows = useMemo<Row[]>(() => {
     if (!creating) return flat;
     if (creating.parentPath === workspace) {
-      return [
-        ...flat,
-        { kind: "input", parentPath: workspace, depth: 0 },
-      ];
+      return [...flat, { kind: "input", parentPath: workspace, depth: 0 }];
     }
     const parentIdx = flat.findIndex((n) => n.path === creating.parentPath);
     if (parentIdx < 0) return flat;
@@ -361,9 +351,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
       }
       // Auto-append .md only for files; folder names are taken verbatim.
       const name =
-        creating.mode === "file" && !/\.[^.\\/]+$/.test(trimmed)
-          ? `${trimmed}.md`
-          : trimmed;
+        creating.mode === "file" && !/\.[^.\\/]+$/.test(trimmed) ? `${trimmed}.md` : trimmed;
       const targetPath = `${creating.parentPath.replace(/[/\\]+$/, "")}/${name}`;
       try {
         if (creating.mode === "file") {
@@ -423,7 +411,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
   const cancelCreate = useCallback(() => setCreating(null), []);
 
   const clearCreateError = useCallback(() => {
-    setCreating((c) => (c && c.error ? { ...c, error: null } : c));
+    setCreating((c) => (c?.error ? { ...c, error: null } : c));
   }, []);
 
   // S-FT-007: inline rename. Replaces the row in-place with an input bound
@@ -465,11 +453,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
     // single locked file doesn't block the rest.
     const focusedNode = flat[Math.min(focusedIdx, flat.length - 1)];
     const targets =
-      selected.size > 0
-        ? Array.from(selected)
-        : focusedNode
-          ? [focusedNode.path]
-          : [];
+      selected.size > 0 ? Array.from(selected) : focusedNode ? [focusedNode.path] : [];
     if (targets.length === 0) return;
     if (targets.length === 1) {
       // Fall through to the single-item path so we keep the Undo affordance.
@@ -496,6 +480,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
     }
     for (let i = 0; i < targets.length; i++) {
       if (cancelled) break;
+      // biome-ignore lint/style/noNonNullAssertion: i is bounded by targets.length
       const target = targets[i]!;
       const lastSep = Math.max(target.lastIndexOf("/"), target.lastIndexOf("\\"));
       const parentPath = lastSep > 0 ? target.slice(0, lastSep) : workspace;
@@ -505,11 +490,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
         // Close any open tabs rooted at the trashed target.
         const openPaths = useTabs.getState().tabs.map((t) => t.path);
         for (const p of openPaths) {
-          if (
-            p === target ||
-            p.startsWith(`${target}/`) ||
-            p.startsWith(`${target}\\`)
-          ) {
+          if (p === target || p.startsWith(`${target}/`) || p.startsWith(`${target}\\`)) {
             closeTab(p);
           }
         }
@@ -536,9 +517,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
     if (targets.length > 1) {
       pushToast({
         kind: cancelled ? "info" : failed > 0 ? "warning" : "success",
-        message: cancelled
-          ? "filetree.trash.bulk_cancelled"
-          : "filetree.trash.bulk_done",
+        message: cancelled ? "filetree.trash.bulk_cancelled" : "filetree.trash.bulk_done",
         details: `${succeeded} ok, ${failed} failed`,
         ttlMs: 4000,
       });
@@ -562,9 +541,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
                 workspace,
                 path: cur.path,
               });
-              await refreshParent(
-                Array.from(parents)[0] ?? workspace,
-              );
+              await refreshParent(Array.from(parents)[0] ?? workspace);
               pushToast({
                 kind: "success",
                 message: "filetree.trash.restored",
@@ -572,9 +549,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
                 ttlMs: 3000,
               });
             } catch (err) {
-              const msg = String(
-                (err as { message?: string })?.message ?? err,
-              );
+              const msg = String((err as { message?: string })?.message ?? err);
               pushToast({
                 kind: "warning",
                 message: "filetree.trash.undo_failed",
@@ -723,11 +698,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
         setChildren((c) => {
           const copy = { ...c };
           for (const k of Object.keys(copy)) {
-            if (
-              k === oldPath ||
-              k.startsWith(`${oldPath}/`) ||
-              k.startsWith(`${oldPath}\\`)
-            ) {
+            if (k === oldPath || k.startsWith(`${oldPath}/`) || k.startsWith(`${oldPath}\\`)) {
               delete copy[k];
             }
           }
@@ -795,8 +766,8 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
   }, [refreshParent, setExpanded, workspace]);
 
   // S-FT-027: best-effort lock detection. Map of path → boolean. Polled at
-   // a low cadence for the currently visible file rows; failures land as
-   // `false` so we never falsely flag clean files. Folders are skipped.
+  // a low cadence for the currently visible file rows; failures land as
+  // `false` so we never falsely flag clean files. Folders are skipped.
   const [locked, setLocked] = useState<Record<string, boolean>>({});
   useEffect(() => {
     let cancelled = false;
@@ -843,13 +814,10 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
   }, [flat, workspace]);
 
   // S-FT-013: floating context menu state. Position is screen-space pixels.
-  const [menu, setMenu] = useState<{ x: number; y: number; path: string } | null>(
-    null,
-  );
+  const [menu, setMenu] = useState<{ x: number; y: number; path: string } | null>(null);
 
   const buildMenuItems = useCallback(
     (path: string, isDir: boolean): ContextMenuEntry[] => {
-      const lastSep = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
       const wsPrefix = workspace.replace(/[/\\]+$/, "");
       const relative =
         path.startsWith(`${wsPrefix}/`) || path.startsWith(`${wsPrefix}\\`)
@@ -947,7 +915,6 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
           },
         },
       ];
-      void lastSep;
     },
     [flat, pushToast, trashFocused, workspace],
   );
@@ -1019,9 +986,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
       // S-FT-026: accepts either one path (legacy single-row drag) or many
       // (multi-select drag). Each move is best-effort; failures don't abort
       // the batch, and a single progress toast tracks throughput.
-      const sources = Array.isArray(sourcePathsRaw)
-        ? sourcePathsRaw
-        : [sourcePathsRaw];
+      const sources = Array.isArray(sourcePathsRaw) ? sourcePathsRaw : [sourcePathsRaw];
       if (sources.length === 0 || !destDir) return;
       let progressId: string | null = null;
       if (sources.length > 1) {
@@ -1037,6 +1002,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
       let skipped = 0;
       let failed = 0;
       for (let i = 0; i < sources.length; i++) {
+        // biome-ignore lint/style/noNonNullAssertion: i is bounded by sources.length
         const sourcePath = sources[i]!;
         if (
           sourcePath === destDir ||
@@ -1053,12 +1019,8 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
           }
           continue;
         }
-        const lastSep = Math.max(
-          sourcePath.lastIndexOf("/"),
-          sourcePath.lastIndexOf("\\"),
-        );
-        const sourceParent =
-          lastSep > 0 ? sourcePath.slice(0, lastSep) : workspace;
+        const lastSep = Math.max(sourcePath.lastIndexOf("/"), sourcePath.lastIndexOf("\\"));
+        const sourceParent = lastSep > 0 ? sourcePath.slice(0, lastSep) : workspace;
         parents.add(sourceParent);
         if (sourceParent === destDir) {
           skipped += 1;
@@ -1129,7 +1091,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
 
   const cancelRename = useCallback(() => setRenaming(null), []);
   const clearRenameError = useCallback(() => {
-    setRenaming((r) => (r && r.error ? { ...r, error: null } : r));
+    setRenaming((r) => (r?.error ? { ...r, error: null } : r));
   }, []);
 
   const submitRename = useCallback(
@@ -1140,10 +1102,7 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
         setRenaming(null);
         return;
       }
-      const lastSep = Math.max(
-        renaming.path.lastIndexOf("/"),
-        renaming.path.lastIndexOf("\\"),
-      );
+      const lastSep = Math.max(renaming.path.lastIndexOf("/"), renaming.path.lastIndexOf("\\"));
       const parentPath = lastSep > 0 ? renaming.path.slice(0, lastSep) : workspace;
       const sep = renaming.path.includes("\\") ? "\\" : "/";
       const newPath = `${parentPath}${sep}${trimmed}`;
@@ -1373,142 +1332,134 @@ export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
             : t("filetree.label.show_hidden_off", "·")}
         </button>
       </div>
-    <div
-      className="flex-1 overflow-auto outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]"
-      role="tree"
-      data-filetree-root="true"
-      aria-label={t("filetree.aria.tree", "File tree")}
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      onDragOver={(e) => {
-        if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-      }}
-      onDrop={(e) => {
-        const raw = e.dataTransfer.getData(DRAG_MIME);
-        if (!raw) return;
-        e.preventDefault();
-        setDragOverPath(null);
-        let sources: string[];
-        try {
-          const parsed = JSON.parse(raw);
-          sources = Array.isArray(parsed) ? parsed : [String(parsed)];
-        } catch {
-          sources = [raw];
-        }
-        // Drop onto whitespace falls through to workspace root.
-        if (sources.length > 0) void handleDropMove(sources, workspace);
-      }}
-      onContextMenu={(e) => {
-        // Right-click in empty whitespace anchors the menu at the workspace
-        // root so users can still get to "New File / New Folder".
-        if (e.target === e.currentTarget) {
+      <div
+        className="flex-1 overflow-auto outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]"
+        role="tree"
+        data-filetree-root="true"
+        aria-label={t("filetree.aria.tree", "File tree")}
+        onKeyDown={handleKeyDown}
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
           e.preventDefault();
-          openContextMenu(e.clientX, e.clientY, workspace);
-        }
-      }}
-    >
-      {menu && (
-        <ContextMenu
-          x={menu.x}
-          y={menu.y}
-          items={buildMenuItems(
-            menu.path,
-            flat.find((n) => n.path === menu.path)?.isDir ?? true,
-          )}
-          onClose={() => setMenu(null)}
-        />
-      )}
-      {rows.length > VIRTUAL_THRESHOLD ? (
-        <VirtualList
-          items={rows}
-          focusedIdx={focusedIdx}
-          onToggle={(path) => {
-            toggle(workspace, path);
-            void loadChildren(path);
-          }}
-          onFocus={(idx) => setFocusedIdx(idx)}
-          onOpen={handleOpen}
-          creatingError={creating?.error ?? null}
-          onSubmitCreate={submitCreate}
-          onCancelCreate={cancelCreate}
-          onCreateChange={clearCreateError}
-          renamingPath={renaming?.path ?? null}
-          renamingName={renaming?.name ?? ""}
-          renamingError={renaming?.error ?? null}
-          onSubmitRename={submitRename}
-          onCancelRename={cancelRename}
-          onRenameChange={clearRenameError}
-          dragOverPath={dragOverPath}
-          onDragStartPath={() => setDragOverPath(null)}
-          onDragOverDir={setDragOverPath}
-          onDropMove={(s, d) => void handleDropMove(s, d)}
-          onContextMenuOpen={openContextMenu}
-          glowing={glowing}
-          locked={locked}
-          selected={selected}
-          onSelectClick={(idx, path, mods) =>
-            onRowClickSelect(idx, path, mods)
+          e.dataTransfer.dropEffect = "move";
+        }}
+        onDrop={(e) => {
+          const raw = e.dataTransfer.getData(DRAG_MIME);
+          if (!raw) return;
+          e.preventDefault();
+          setDragOverPath(null);
+          let sources: string[];
+          try {
+            const parsed = JSON.parse(raw);
+            sources = Array.isArray(parsed) ? parsed : [String(parsed)];
+          } catch {
+            sources = [raw];
           }
-        />
-      ) : (
-        <ul className="flex flex-col">
-          {rows.map((row, idx) =>
-            row.kind === "input" ? (
-              <InlineCreateRow
-                key="__inline-create"
-                depth={row.depth}
-                error={creating?.error ?? null}
-                onSubmit={submitCreate}
-                onCancel={cancelCreate}
-                onChange={clearCreateError}
-              />
-            ) : renaming?.path === row.path ? (
-              <InlineRenameRow
-                key={`rename-${row.path}`}
-                depth={row.depth}
-                isDir={row.isDir}
-                initial={renaming.name}
-                error={renaming.error}
-                onSubmit={submitRename}
-                onCancel={cancelRename}
-                onChange={clearRenameError}
-              />
-            ) : (
-              <FileRow
-                key={row.path}
-                ref={(el) => {
-                  rowRefs.current[idx] = el;
-                }}
-                node={row}
-                focused={idx === focusedIdx}
-                onToggle={() => {
-                  toggle(workspace, row.path);
-                  void loadChildren(row.path);
-                }}
-                onFocus={() => setFocusedIdx(idx)}
-                onOpen={handleOpen}
-                dragOver={dragOverPath === row.path}
-                onDragStartPath={() => setDragOverPath(null)}
-                onDragOverDir={setDragOverPath}
-                onDropMove={(s, d) => void handleDropMove(s, d)}
-                onContextMenuOpen={openContextMenu}
-                glow={glowing.has(row.path)}
-                locked={!!locked[row.path]}
-                selected={selected.has(row.path)}
-                {...(selected.size > 1 && selected.has(row.path)
-                  ? { selectionPaths: Array.from(selected) }
-                  : {})}
-                onSelectClick={(mods) =>
-                  onRowClickSelect(idx, row.path, mods)
-                }
-              />
-            ),
-          )}
-        </ul>
-      )}
-    </div>
+          // Drop onto whitespace falls through to workspace root.
+          if (sources.length > 0) void handleDropMove(sources, workspace);
+        }}
+        onContextMenu={(e) => {
+          // Right-click in empty whitespace anchors the menu at the workspace
+          // root so users can still get to "New File / New Folder".
+          if (e.target === e.currentTarget) {
+            e.preventDefault();
+            openContextMenu(e.clientX, e.clientY, workspace);
+          }
+        }}
+      >
+        {menu && (
+          <ContextMenu
+            x={menu.x}
+            y={menu.y}
+            items={buildMenuItems(menu.path, flat.find((n) => n.path === menu.path)?.isDir ?? true)}
+            onClose={() => setMenu(null)}
+          />
+        )}
+        {rows.length > VIRTUAL_THRESHOLD ? (
+          <VirtualList
+            items={rows}
+            focusedIdx={focusedIdx}
+            onToggle={(path) => {
+              toggle(workspace, path);
+              void loadChildren(path);
+            }}
+            onFocus={(idx) => setFocusedIdx(idx)}
+            onOpen={handleOpen}
+            creatingError={creating?.error ?? null}
+            onSubmitCreate={submitCreate}
+            onCancelCreate={cancelCreate}
+            onCreateChange={clearCreateError}
+            renamingPath={renaming?.path ?? null}
+            renamingName={renaming?.name ?? ""}
+            renamingError={renaming?.error ?? null}
+            onSubmitRename={submitRename}
+            onCancelRename={cancelRename}
+            onRenameChange={clearRenameError}
+            dragOverPath={dragOverPath}
+            onDragStartPath={() => setDragOverPath(null)}
+            onDragOverDir={setDragOverPath}
+            onDropMove={(s, d) => void handleDropMove(s, d)}
+            onContextMenuOpen={openContextMenu}
+            glowing={glowing}
+            locked={locked}
+            selected={selected}
+            onSelectClick={(idx, path, mods) => onRowClickSelect(idx, path, mods)}
+          />
+        ) : (
+          <ul className="flex flex-col">
+            {rows.map((row, idx) =>
+              row.kind === "input" ? (
+                <InlineCreateRow
+                  key="__inline-create"
+                  depth={row.depth}
+                  error={creating?.error ?? null}
+                  onSubmit={submitCreate}
+                  onCancel={cancelCreate}
+                  onChange={clearCreateError}
+                />
+              ) : renaming?.path === row.path ? (
+                <InlineRenameRow
+                  key={`rename-${row.path}`}
+                  depth={row.depth}
+                  isDir={row.isDir}
+                  initial={renaming.name}
+                  error={renaming.error}
+                  onSubmit={submitRename}
+                  onCancel={cancelRename}
+                  onChange={clearRenameError}
+                />
+              ) : (
+                <FileRow
+                  key={row.path}
+                  ref={(el) => {
+                    rowRefs.current[idx] = el;
+                  }}
+                  node={row}
+                  focused={idx === focusedIdx}
+                  onToggle={() => {
+                    toggle(workspace, row.path);
+                    void loadChildren(row.path);
+                  }}
+                  onFocus={() => setFocusedIdx(idx)}
+                  onOpen={handleOpen}
+                  dragOver={dragOverPath === row.path}
+                  onDragStartPath={() => setDragOverPath(null)}
+                  onDragOverDir={setDragOverPath}
+                  onDropMove={(s, d) => void handleDropMove(s, d)}
+                  onContextMenuOpen={openContextMenu}
+                  glow={glowing.has(row.path)}
+                  locked={!!locked[row.path]}
+                  selected={selected.has(row.path)}
+                  {...(selected.size > 1 && selected.has(row.path)
+                    ? { selectionPaths: Array.from(selected) }
+                    : {})}
+                  onSelectClick={(mods) => onRowClickSelect(idx, row.path, mods)}
+                />
+              ),
+            )}
+          </ul>
+        )}
+      </div>
     </div>
   );
 });
@@ -1553,6 +1504,7 @@ const FileRow = ({
 }: FileRowProps & { ref?: React.Ref<HTMLLIElement> }) => {
   const { t } = useTranslation();
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: treeitem keyboard nav handled at the tree container level
     <li
       ref={ref}
       role="treeitem"
@@ -1570,9 +1522,7 @@ const FileRow = ({
         // S-FT-026: when the dragged row is part of a multi-selection, ship
         // the whole set so the receiver can route a single bulk move.
         const sources =
-          selected && selectionPaths && selectionPaths.length > 1
-            ? selectionPaths
-            : [node.path];
+          selected && selectionPaths && selectionPaths.length > 1 ? selectionPaths : [node.path];
         e.dataTransfer.setData(DRAG_MIME, JSON.stringify(sources));
         e.dataTransfer.effectAllowed = "move";
         onDragStartPath?.(node.path);
@@ -1629,9 +1579,7 @@ const FileRow = ({
       {node.isDir ? (
         <span
           aria-hidden="true"
-          className={`inline-block w-4 transition-transform ${
-            node.expanded ? "rotate-90" : ""
-          }`}
+          className={`inline-block w-4 transition-transform ${node.expanded ? "rotate-90" : ""}`}
         >
           ▸
         </span>
@@ -1701,11 +1649,7 @@ function VirtualList({
   glowing: Set<string>;
   locked: Record<string, boolean>;
   selected: Set<string>;
-  onSelectClick: (
-    idx: number,
-    path: string,
-    mods: { meta: boolean; shift: boolean },
-  ) => void;
+  onSelectClick: (idx: number, path: string, mods: { meta: boolean; shift: boolean }) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -1745,10 +1689,7 @@ function VirtualList({
       className="relative h-full overflow-auto"
       onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
     >
-      <ul
-        style={{ height: items.length * ROW_HEIGHT }}
-        className="relative"
-      >
+      <ul style={{ height: items.length * ROW_HEIGHT }} className="relative">
         <div style={{ position: "absolute", top: startIdx * ROW_HEIGHT, left: 0, right: 0 }}>
           {slice.map((row, i) => {
             const idx = startIdx + i;
@@ -1920,7 +1861,9 @@ function InlineRenameRow({
       className="flex items-center text-sm"
     >
       {isDir ? (
-        <span aria-hidden="true" className="inline-block w-4">▸</span>
+        <span aria-hidden="true" className="inline-block w-4">
+          ▸
+        </span>
       ) : (
         <span aria-hidden="true" className="inline-block w-4" />
       )}

@@ -248,11 +248,7 @@ pub async fn plugin_storage_get(plugin_id: String, key: String) -> AppResult<Opt
 }
 
 #[tauri::command]
-pub async fn plugin_storage_set(
-    plugin_id: String,
-    key: String,
-    value: String,
-) -> AppResult<()> {
+pub async fn plugin_storage_set(plugin_id: String, key: String, value: String) -> AppResult<()> {
     validate_plugin_id(&plugin_id)?;
     let conn = open_db()?;
     // S-PL-024: soft quota — sum every value the plugin holds, minus the
@@ -465,8 +461,8 @@ fn marketplace_base() -> AppResult<Option<String>> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(e) => return Err(AppError::Io(e)),
     };
-    let v: serde_json::Value =
-        serde_json::from_str(&raw).map_err(|e| AppError::Invalid(format!("settings parse: {e}")))?;
+    let v: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| AppError::Invalid(format!("settings parse: {e}")))?;
     Ok(v.get("pluginMarketplaceUrl")
         .and_then(|x| x.as_str())
         .map(|s| s.trim_end_matches('/').to_string()))
@@ -503,9 +499,8 @@ pub async fn plugin_marketplace_search(
 #[tauri::command]
 pub async fn plugin_marketplace_get(id: String) -> AppResult<MarketplaceListing> {
     validate_plugin_id(&id)?;
-    let base = marketplace_base()?.ok_or_else(|| {
-        AppError::Invalid("no plugin marketplace configured".into())
-    })?;
+    let base = marketplace_base()?
+        .ok_or_else(|| AppError::Invalid("no plugin marketplace configured".into()))?;
     let url = format!("{base}/plugins/{id}");
     let resp = reqwest::get(&url)
         .await
@@ -715,7 +710,12 @@ pub async fn plugin_install(plugin_id: String, version: String) -> AppResult<Ins
     // Download tarball.
     let resp = match reqwest::get(&listing.dist.tarball).await {
         Ok(r) if r.status().is_success() => r,
-        Ok(r) => return Ok(install_fail("EDOWNLOAD", format!("registry returned {}", r.status()))),
+        Ok(r) => {
+            return Ok(install_fail(
+                "EDOWNLOAD",
+                format!("registry returned {}", r.status()),
+            ))
+        }
         Err(e) => return Ok(install_fail("EDOWNLOAD", e.to_string())),
     };
     let bytes = match resp.bytes().await {
@@ -800,10 +800,7 @@ fn extract_tgz(bytes: &[u8], dest: &Path) -> AppResult<()> {
             .map_err(|e| AppError::Invalid(format!("tar path: {e}")))?
             .into_owned();
         // npm tarballs nest everything under `package/`.
-        let rel: PathBuf = path
-            .components()
-            .skip(1)
-            .collect::<PathBuf>();
+        let rel: PathBuf = path.components().skip(1).collect::<PathBuf>();
         if rel.as_os_str().is_empty() {
             continue;
         }

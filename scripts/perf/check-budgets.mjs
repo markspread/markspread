@@ -27,7 +27,9 @@ if (!reportPath) {
 
 let lines;
 try {
-  lines = readFileSync(reportPath, "utf8").split("\n").filter((l) => l.trim());
+  lines = readFileSync(reportPath, "utf8")
+    .split("\n")
+    .filter((l) => l.trim());
 } catch (err) {
   console.error(`::error::cannot read report ${reportPath}: ${err.message}`);
   process.exit(1);

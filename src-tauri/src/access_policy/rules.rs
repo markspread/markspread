@@ -63,8 +63,8 @@ pub fn match_pol_rule(relative: &Path) -> Option<RuleId> {
         match *seg {
             ".git" | ".hg" | ".svn" => return Some(RuleId::PolVcsInternal),
             "node_modules" => return Some(RuleId::PolNodeModules),
-            "dist" | "build" | "out" | ".next" | ".nuxt" | ".turbo" | ".svelte-kit"
-            | ".astro" | "target" | "bin" | "obj" => return Some(RuleId::PolBuildOutput),
+            "dist" | "build" | "out" | ".next" | ".nuxt" | ".turbo" | ".svelte-kit" | ".astro"
+            | "target" | "bin" | "obj" => return Some(RuleId::PolBuildOutput),
             "__pycache__" | ".venv" | "venv" | ".tox" | ".gradle" | ".mvn" | ".cargo"
             | ".rustup" => return Some(RuleId::PolLangCache),
             ".idea" | ".vscode" | ".cursor" => return Some(RuleId::PolIdeInternal),

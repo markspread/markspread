@@ -17,7 +17,9 @@ const cachedBundles: Partial<Record<SupportedLocale, true>> = { en: true };
 // en and the key is missing from that locale's bundle (so en supplied the
 // value via fallbackLng). Production builds skip the registration entirely so
 // no marker overhead reaches users.
-const IS_DEV = typeof import.meta !== "undefined" && Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
+const IS_DEV =
+  typeof import.meta !== "undefined" &&
+  Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
 if (IS_DEV) {
   i18n.use({
     type: "postProcessor",

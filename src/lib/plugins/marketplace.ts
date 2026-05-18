@@ -72,14 +72,22 @@ export async function fetchListing(id: string): Promise<MarketplaceListing> {
 // installing"). Strict — we'd rather alert than silently allow exotic
 // terms.
 const SAFE_LICENCES = new Set([
-  "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0",
-  "0BSD", "Unlicense", "CC0-1.0",
+  "MIT",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "MPL-2.0",
+  "0BSD",
+  "Unlicense",
+  "CC0-1.0",
 ]);
 
 export function licenceWarning(license: string | null): string | null {
   if (!license) return "no licence declared — proceed at your own risk";
   if (SAFE_LICENCES.has(license)) return null;
-  if (license.toUpperCase().startsWith("GPL")) return "GPL-licensed plugins may impose copy-left obligations";
+  if (license.toUpperCase().startsWith("GPL"))
+    return "GPL-licensed plugins may impose copy-left obligations";
   return `unfamiliar licence: ${license}`;
 }
 
@@ -161,7 +169,10 @@ export interface UpdateAvailable {
   permissionDelta: PluginPermission[]; // empty when no new perms
 }
 
-export function permissionDelta(prev: PluginPermission[], next: PluginPermission[]): PluginPermission[] {
+export function permissionDelta(
+  prev: PluginPermission[],
+  next: PluginPermission[],
+): PluginPermission[] {
   const key = (p: PluginPermission) => (typeof p === "string" ? p : JSON.stringify(p));
   const prevKeys = new Set(prev.map(key));
   return next.filter((p) => !prevKeys.has(key(p)));

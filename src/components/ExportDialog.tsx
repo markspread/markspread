@@ -4,13 +4,13 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useFocusTrap } from "../lib/focus-trap";
 import {
   BUILTIN_TEMPLATES,
-  exportDocument,
   type ExportFormat,
   type ExportTemplate,
+  exportDocument,
 } from "../lib/export/export";
+import { useFocusTrap } from "../lib/focus-trap";
 
 interface ExportDialogProps {
   open: boolean;
@@ -36,6 +36,7 @@ export function ExportDialog({
 }: ExportDialogProps) {
   const { t } = useTranslation();
   const [format, setFormat] = useState<ExportFormat>("pdf");
+  // biome-ignore lint/style/noNonNullAssertion: BUILTIN_TEMPLATES is a non-empty constant array
   const [template, setTemplate] = useState<ExportTemplate>(BUILTIN_TEMPLATES[0]!);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -73,6 +74,7 @@ export function ExportDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("export.aria", "Export document")}
@@ -83,9 +85,7 @@ export function ExportDialog({
       >
         <h2 className="font-semibold text-base">{t("export.title", "Export")}</h2>
         <label className="mt-4 flex items-center gap-2 text-xs">
-          <span className="w-20 text-[var(--color-muted)]">
-            {t("export.format", "Format")}
-          </span>
+          <span className="w-20 text-[var(--color-muted)]">{t("export.format", "Format")}</span>
           <select
             className="flex-1 rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs"
             value={format}
@@ -99,9 +99,7 @@ export function ExportDialog({
           </select>
         </label>
         <label className="mt-2 flex items-center gap-2 text-xs">
-          <span className="w-20 text-[var(--color-muted)]">
-            {t("export.template", "Template")}
-          </span>
+          <span className="w-20 text-[var(--color-muted)]">{t("export.template", "Template")}</span>
           <select
             className="flex-1 rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs"
             value={template.id}
@@ -117,9 +115,7 @@ export function ExportDialog({
             ))}
           </select>
         </label>
-        {status && (
-          <p className="mt-3 text-[var(--color-muted)] text-xs">{status}</p>
-        )}
+        {status && <p className="mt-3 text-[var(--color-muted)] text-xs">{status}</p>}
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"

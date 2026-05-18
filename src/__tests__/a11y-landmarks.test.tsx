@@ -1,5 +1,5 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Main mounts FileTree, which registers a `fs:event` listener and issues
 // `invoke` calls on boot. There is no Tauri runtime under jsdom, so we
@@ -26,7 +26,9 @@ describe("a11y/landmarks", () => {
 
   it("Main exposes labelled landmarks", () => {
     const { container } = render(<Main />);
-    const main = container.querySelector("main[role='main']");
+    // <main> carries the `main` landmark role implicitly — no explicit
+    // role attribute needed (and Biome flags it as redundant).
+    const main = container.querySelector("main");
     expect(main).not.toBeNull();
     expect(main?.getAttribute("aria-label")).toBeTruthy();
 

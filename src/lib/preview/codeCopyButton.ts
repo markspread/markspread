@@ -28,9 +28,9 @@ export function attachCodeCopyButtons(
   labels: { copy: string; copied: string } = { copy: "Copy", copied: "Copied" },
 ): void {
   const blocks = root.querySelectorAll<HTMLPreElement>("pre > code");
-  blocks.forEach((code) => {
+  for (const code of blocks) {
     const pre = code.parentElement;
-    if (!pre || pre.getAttribute(STAMP) === "true") return;
+    if (!pre || pre.getAttribute(STAMP) === "true") continue;
     pre.setAttribute(STAMP, "true");
     pre.classList.add("ms-code-block");
     const btn = document.createElement("button");
@@ -52,5 +52,5 @@ export function attachCodeCopyButtons(
       }
     });
     pre.appendChild(btn);
-  });
+  }
 }

@@ -13,29 +13,60 @@
 // post-pass on the markdown HTML output, before insertion into the DOM.
 
 const ALLOWED_TAGS = new Set([
-  "h1","h2","h3","h4","h5","h6",
-  "p","br","hr",
-  "blockquote","pre","code",
-  "ul","ol","li",
-  "table","thead","tbody","tr","th","td",
-  "a","strong","em","s","del","mark","sub","sup","kbd","abbr","cite","small",
-  "img","figure","figcaption",
-  "details","summary",
-  "div","span",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "p",
+  "br",
+  "hr",
+  "blockquote",
+  "pre",
+  "code",
+  "ul",
+  "ol",
+  "li",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
+  "a",
+  "strong",
+  "em",
+  "s",
+  "del",
+  "mark",
+  "sub",
+  "sup",
+  "kbd",
+  "abbr",
+  "cite",
+  "small",
+  "img",
+  "figure",
+  "figcaption",
+  "details",
+  "summary",
+  "div",
+  "span",
 ]);
 
 const ALLOWED_ATTRS: Record<string, Set<string>> = {
-  "*":   new Set(["class","id","title","lang","dir"]),
-  "a":   new Set(["href","rel","target"]),
-  "img": new Set(["src","alt","width","height","loading"]),
-  "th":  new Set(["scope"]),
-  "td":  new Set(["colspan","rowspan"]),
-  "ol":  new Set(["start"]),
-  "li":  new Set(["value"]),
-  "table": new Set(["align"]),
-  "code":  new Set(["data-lang"]),
-  "abbr":  new Set(["title"]),
-  "details": new Set(["open"]),
+  "*": new Set(["class", "id", "title", "lang", "dir"]),
+  a: new Set(["href", "rel", "target"]),
+  img: new Set(["src", "alt", "width", "height", "loading"]),
+  th: new Set(["scope"]),
+  td: new Set(["colspan", "rowspan"]),
+  ol: new Set(["start"]),
+  li: new Set(["value"]),
+  table: new Set(["align"]),
+  code: new Set(["data-lang"]),
+  abbr: new Set(["title"]),
+  details: new Set(["open"]),
 };
 
 // Schemes we accept for href / src. javascript:, data:, vbscript: are
@@ -57,7 +88,10 @@ export const DEFAULT_SANITISE_OPTIONS: SanitiseOptions = {
   hardenLinks: true,
 };
 
-export function sanitiseMarkdownHtml(html: string, opts: SanitiseOptions = DEFAULT_SANITISE_OPTIONS): string {
+export function sanitiseMarkdownHtml(
+  html: string,
+  opts: SanitiseOptions = DEFAULT_SANITISE_OPTIONS,
+): string {
   // Parse via DOMParser so we get a real tree to walk. The parsed
   // document is a separate window — its scripts never execute, but
   // serialising it back to a string and then injecting into our doc
@@ -76,7 +110,15 @@ function walk(node: Element, opts: SanitiseOptions): void {
     // S-SE-015 / S-SE-016: drop the entire element. Keep no text — script
     // tags often hide intent in their inner text and we don't want to
     // accidentally surface it as content.
-    if (tag === "script" || tag === "style" || tag === "iframe" || tag === "object" || tag === "embed" || tag === "frame" || tag === "frameset") {
+    if (
+      tag === "script" ||
+      tag === "style" ||
+      tag === "iframe" ||
+      tag === "object" ||
+      tag === "embed" ||
+      tag === "frame" ||
+      tag === "frameset"
+    ) {
       child.remove();
       continue;
     }
@@ -93,7 +135,10 @@ function walk(node: Element, opts: SanitiseOptions): void {
       const name = attr.name.toLowerCase();
       // S-SE-015: never let on* handlers through, even if a tag's
       // allow-list contains them by accident.
-      if (name.startsWith("on")) { child.removeAttribute(attr.name); continue; }
+      if (name.startsWith("on")) {
+        child.removeAttribute(attr.name);
+        continue;
+      }
 
       const allowList = ALLOWED_ATTRS[tag] ?? new Set<string>();
       const wildcard = ALLOWED_ATTRS["*"] ?? new Set<string>();

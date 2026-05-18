@@ -52,12 +52,8 @@ export const MIGRATION_ADAPTERS: MigrationAdapter[] = [
         "Image folder (`<note>.assets/`) — copied alongside",
         "Math mode (TeX) — rendered via the same KaTeX pipeline",
       ],
-      partial: [
-        "Inline footnote shorthand — converted to GFM footnotes",
-      ],
-      skipped: [
-        "Typora-only Pandoc footnote inline forms",
-      ],
+      partial: ["Inline footnote shorthand — converted to GFM footnotes"],
+      skipped: ["Typora-only Pandoc footnote inline forms"],
     },
   },
   {
@@ -70,12 +66,8 @@ export const MIGRATION_ADAPTERS: MigrationAdapter[] = [
         "Content blocks (`/path/to/file.md`) — resolved to wiki-links",
         "Tags",
       ],
-      partial: [
-        "Smart Tables — converted to GFM tables when shape allows",
-      ],
-      skipped: [
-        "Word-count snapshots (non-portable)",
-      ],
+      partial: ["Smart Tables — converted to GFM tables when shape allows"],
+      skipped: ["Word-count snapshots (non-portable)"],
     },
   },
   {
@@ -108,12 +100,8 @@ export const MIGRATION_ADAPTERS: MigrationAdapter[] = [
         "Block references → footnote-style citations",
         "Tags and properties (front-matter)",
       ],
-      partial: [
-        "Block-level outline: collapsed into headed paragraphs",
-      ],
-      skipped: [
-        "Clojure-side queries (`{{query …}}`) — left as code blocks",
-      ],
+      partial: ["Block-level outline: collapsed into headed paragraphs"],
+      skipped: ["Clojure-side queries (`{{query …}}`) — left as code blocks"],
     },
   },
 ];

@@ -21,8 +21,8 @@
 // pre-reconcile head; if the new doc is shorter, we clamp to the new
 // length.
 
-import type { EditorView } from "@codemirror/view";
 import { EditorSelection } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 
 export interface ReconcileResult {
   applied: boolean;
@@ -44,9 +44,7 @@ export function reconcileExternalChange(
   view.dispatch({
     changes: { from: 0, to: view.state.doc.length, insert: nextDoc },
     selection: EditorSelection.cursor(clampedHead),
-    userEvent: hasLocalChanges
-      ? "external.replace.dirty"
-      : "external.replace",
+    userEvent: hasLocalChanges ? "external.replace.dirty" : "external.replace",
     scrollIntoView: false,
   });
 

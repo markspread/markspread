@@ -21,8 +21,8 @@
 // preview component uses to coalesce keystrokes.
 
 import { BUILTIN_MARKDOWN_ID, getParserRegistry } from "../parsers/registry";
-import { renderInSandbox, type SandboxTransport } from "../parsers/renderer-host";
-import { sanitizeHtml, type SanitizeOptions } from "./sanitize";
+import { type SandboxTransport, renderInSandbox } from "../parsers/renderer-host";
+import { type SanitizeOptions, sanitizeHtml } from "./sanitize";
 
 // We keep dependencies optional to make this module safe to import
 // in unit-test environments that don't ship the full markdown
@@ -107,10 +107,7 @@ export interface RenderOptions extends SanitizeOptions {
   encoding?: string;
 }
 
-export async function render(
-  md: string,
-  opts: RenderOptions = {},
-): Promise<string> {
+export async function render(md: string, opts: RenderOptions = {}): Promise<string> {
   if (opts.path && opts.transport) {
     const matched = getParserRegistry().match({
       path: opts.path,
@@ -184,10 +181,7 @@ async function applyCodeHighlight(
 export function createDebouncedRenderer(delay = 300) {
   let timer: number | undefined;
   let token = 0;
-  return function debouncedRender(
-    md: string,
-    opts?: RenderOptions,
-  ): Promise<string | null> {
+  return function debouncedRender(md: string, opts?: RenderOptions): Promise<string | null> {
     const my = ++token;
     return new Promise((resolve) => {
       if (timer) window.clearTimeout(timer);

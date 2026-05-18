@@ -55,6 +55,7 @@ export function InsertTableDialog() {
   return (
     <div
       className="ms-modal-backdrop"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("md.table.title", "Insert table")}
@@ -77,7 +78,6 @@ export function InsertTableDialog() {
             min={1}
             max={50}
             value={rows}
-            autoFocus
             onChange={(e) => setRows(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
           />
         </label>
@@ -94,6 +94,7 @@ export function InsertTableDialog() {
         <fieldset className="ms-table-aligns">
           <legend>{t("md.table.align", "Column alignment")}</legend>
           {align.map((a, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: align entries are positional per column; index is the stable identity
             <label key={i}>
               <span>#{i + 1}</span>
               <select

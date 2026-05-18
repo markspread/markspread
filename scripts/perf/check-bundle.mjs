@@ -7,7 +7,7 @@
 //
 // Usage:  node scripts/perf/check-bundle.mjs
 
-import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 

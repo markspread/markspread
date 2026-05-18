@@ -4,11 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  listSnapshots,
-  restoreSnapshot,
-  type SnapshotRecord,
-} from "../lib/backup/backup";
+import { type SnapshotRecord, listSnapshots, restoreSnapshot } from "../lib/backup/backup";
 import { useWorkspace } from "../store/workspace";
 
 function fmtDate(ts: number): string {
@@ -61,9 +57,7 @@ export function SettingsBackup() {
       aria-label={t("settings.backup.title", "Backup & Restore")}
       className="flex flex-col gap-3 border-[var(--color-border)] border-b p-4 text-sm"
     >
-      <h2 className="font-semibold text-base">
-        {t("settings.backup.title", "Backup & Restore")}
-      </h2>
+      <h2 className="font-semibold text-base">{t("settings.backup.title", "Backup & Restore")}</h2>
       {error && (
         <p role="alert" className="text-red-500 text-xs">
           {error}

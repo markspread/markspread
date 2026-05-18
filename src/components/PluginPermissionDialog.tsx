@@ -18,7 +18,10 @@ interface PluginPermissionDialogProps {
   onDeny: () => void;
 }
 
-function describePermission(p: PluginPermission, t: (k: string, fallback: string) => string): string {
+function describePermission(
+  p: PluginPermission,
+  t: (k: string, fallback: string) => string,
+): string {
   if (typeof p === "string") {
     switch (p) {
       case "fs.workspace-read":
@@ -83,6 +86,7 @@ export function PluginPermissionDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("plugin.perm.aria", "Plugin permissions")}

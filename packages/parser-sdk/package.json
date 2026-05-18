@@ -11,9 +11,7 @@
     "./manifest": "./src/manifest.ts",
     "./register": "./src/register.ts"
   },
-  "files": [
-    "src"
-  ],
+  "files": ["src"],
   "scripts": {
     "test": "vitest run"
   },

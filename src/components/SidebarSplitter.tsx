@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  SIDEBAR_MAX_PX,
-  SIDEBAR_MIN_PX,
-  clampSidebarWidth,
-  useLayout,
-} from "../store/layout";
+import { SIDEBAR_MAX_PX, SIDEBAR_MIN_PX, clampSidebarWidth, useLayout } from "../store/layout";
 
 interface Props {
   workspace: string;
@@ -44,7 +39,7 @@ export function SidebarSplitter({ workspace, containerRef }: Props) {
       // Constrain against the container so the splitter can't push past the
       // editor minimum either — leave at least 240px for the editor pane.
       const containerWidth =
-        containerRef.current?.getBoundingClientRect().width ?? Infinity;
+        containerRef.current?.getBoundingClientRect().width ?? Number.POSITIVE_INFINITY;
       const editorMin = 240;
       const upper = Math.min(SIDEBAR_MAX_PX, containerWidth - editorMin);
       const next = clampSidebarWidth(startWidth.current + delta);
@@ -53,14 +48,11 @@ export function SidebarSplitter({ workspace, containerRef }: Props) {
     [containerRef, setWidth, workspace],
   );
 
-  const onPointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      }
-    },
-    [],
-  );
+  const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, []);
 
   // Keyboard nudge: ←/→ adjust by 8px, Shift for 32px. Home/End jump to bounds.
   const onKeyDown = useCallback(

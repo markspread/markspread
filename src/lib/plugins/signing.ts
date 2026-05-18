@@ -24,12 +24,19 @@ export interface SignatureVerification {
   verifiedAt: number;
 }
 
-export async function verifySignature(tarballUrl: string, sha512: string): Promise<SignatureVerification> {
-  return invoke<SignatureVerification>("plugin_marketplace_verify_signature", { tarballUrl, sha512 });
+export async function verifySignature(
+  tarballUrl: string,
+  sha512: string,
+): Promise<SignatureVerification> {
+  return invoke<SignatureVerification>("plugin_marketplace_verify_signature", {
+    tarballUrl,
+    sha512,
+  });
 }
 
 // Pinned project key fingerprint — derived from the public key bytes
 // shipped with the build. The renderer uses this only for display ("This
 // plugin was signed by Markspread <fp>"); the actual cryptographic check
 // lives in Rust.
-export const MARKSPREAD_KEY_FINGERPRINT = "ms1:ed25519:0000000000000000000000000000000000000000000000000000000000000000";
+export const MARKSPREAD_KEY_FINGERPRINT =
+  "ms1:ed25519:0000000000000000000000000000000000000000000000000000000000000000";

@@ -8,24 +8,24 @@
 // compartments and dispatches a single transaction with an effect per
 // changed compartment.
 
-import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import { indentUnit } from "@codemirror/language";
+import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 
 import { lineNumberClickExtension } from "./extensions/lineNumberClick";
 
 export interface EditorPrefs {
-  showLineNumbers: boolean;     // S-ED-015
+  showLineNumbers: boolean; // S-ED-015
   // S-ED-025/026
   indentWithTabs: boolean;
-  indentSize: number;           // 2 or 4
-  tabSize: number;              // visual width when indentWithTabs
+  indentSize: number; // 2 or 4
+  tabSize: number; // visual width when indentWithTabs
   // S-ED-027
   softWrap: boolean;
   // S-ED-028..030
   fontFamily: string;
-  fontSize: number;             // px
-  lineHeight: number;           // multiplier (1.4, 1.6, ...)
+  fontSize: number; // px
+  lineHeight: number; // multiplier (1.4, 1.6, ...)
 }
 
 // S-ED-014: defaults tuned for the "non-developer markdown reviewer" use
@@ -93,11 +93,7 @@ function buildAppearance(p: EditorPrefs): Extension {
 }
 
 /** S-ED-029: bump font size by ±1px (clamped). Returns the new size. */
-export function adjustFontSize(
-  view: EditorView,
-  prefs: EditorPrefs,
-  delta: number,
-): number {
+export function adjustFontSize(view: EditorView, prefs: EditorPrefs, delta: number): number {
   const next = { ...prefs, fontSize: prefs.fontSize + delta };
   view.dispatch({
     effects: compartments.appearance.reconfigure(buildAppearance(next)),
@@ -136,10 +132,7 @@ export function toggleSoftWrap(view: EditorView, prefs: EditorPrefs): boolean {
   return next.softWrap;
 }
 
-export function reconfigureFromSettings(
-  view: EditorView,
-  prefs: EditorPrefs,
-): void {
+export function reconfigureFromSettings(view: EditorView, prefs: EditorPrefs): void {
   view.dispatch({
     effects: [
       compartments.lineNumbers.reconfigure(buildLineNumbers(prefs)),

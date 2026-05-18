@@ -134,10 +134,7 @@ export function fromLegacyTabs(
  * `false` to short-circuit. Used by store helpers (close tab, find
  * active pane, etc.).
  */
-export function forEachPane(
-  node: LayoutNode,
-  visit: (pane: PaneNode) => boolean | void,
-): boolean {
+export function forEachPane(node: LayoutNode, visit: (pane: PaneNode) => unknown): boolean {
   if (node.type === "pane") {
     return visit(node) !== false;
   }
@@ -192,24 +189,25 @@ export function pruneEditorLayout(
   isMissing: (path: string) => boolean,
 ): WorkspaceLayout {
   const root = pruneNode(layout.root, isMissing);
-  const safeRoot: LayoutNode =
-    root ?? { type: "pane", id: `pane-${cryptoId()}`, tabs: [], activeTabId: null };
+  const safeRoot: LayoutNode = root ?? {
+    type: "pane",
+    id: `pane-${cryptoId()}`,
+    tabs: [],
+    activeTabId: null,
+  };
   const activePaneId = findPane(safeRoot, layout.activePaneId)
     ? layout.activePaneId
-    : firstPane(safeRoot)?.id ?? safeRoot.id;
+    : (firstPane(safeRoot)?.id ?? safeRoot.id);
   return { ...layout, root: safeRoot, activePaneId };
 }
 
-function pruneNode(
-  node: LayoutNode,
-  isMissing: (path: string) => boolean,
-): LayoutNode | null {
+function pruneNode(node: LayoutNode, isMissing: (path: string) => boolean): LayoutNode | null {
   if (node.type === "pane") {
     const nextTabs = node.tabs.filter((tab) => !isMissing(tab.path));
     if (nextTabs.length === 0) return null;
     const activeTabId = nextTabs.some((t) => t.id === node.activeTabId)
       ? node.activeTabId
-      : nextTabs[0]?.id ?? null;
+      : (nextTabs[0]?.id ?? null);
     return { ...node, tabs: nextTabs, activeTabId };
   }
   const kept: LayoutNode[] = [];
@@ -254,7 +252,7 @@ export function parseEditorLayout(raw: unknown): WorkspaceLayout | null {
   const activePaneId =
     typeof obj.activePaneId === "string" && findPane(root, obj.activePaneId)
       ? obj.activePaneId
-      : firstPane(root)?.id ?? root.id;
+      : (firstPane(root)?.id ?? root.id);
   return { schemaVersion: 1, root, activePaneId };
 }
 
@@ -277,7 +275,7 @@ function parsePaneNode(obj: Record<string, unknown>): PaneNode | null {
   const activeTabId =
     typeof obj.activeTabId === "string" && tabs.some((t) => t.id === obj.activeTabId)
       ? obj.activeTabId
-      : tabs[0]?.id ?? null;
+      : (tabs[0]?.id ?? null);
   return { type: "pane", id: obj.id, tabs, activeTabId };
 }
 

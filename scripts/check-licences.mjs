@@ -9,9 +9,19 @@
 import { execSync } from "node:child_process";
 
 const ALLOW = new Set([
-  "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0",
-  "0BSD", "Unlicense", "CC0-1.0", "CC-BY-3.0", "CC-BY-4.0",
-  "Python-2.0", "BlueOak-1.0.0",
+  "MIT",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "MPL-2.0",
+  "0BSD",
+  "Unlicense",
+  "CC0-1.0",
+  "CC-BY-3.0",
+  "CC-BY-4.0",
+  "Python-2.0",
+  "BlueOak-1.0.0",
   // SIL Open Font License — the @fontsource* packages ship fonts under it.
   "OFL-1.1",
 ]);
@@ -61,4 +71,6 @@ if (failures.length > 0) {
   for (const f of failures) console.error(`  ${f.name}@${f.version} — ${f.licence}`);
   process.exit(1);
 }
-console.log(`ok — all ${Object.values(groups).reduce((a, p) => a + p.length, 0)} packages on the allow-list.`);
+console.log(
+  `ok — all ${Object.values(groups).reduce((a, p) => a + p.length, 0)} packages on the allow-list.`,
+);

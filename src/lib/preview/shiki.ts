@@ -53,10 +53,7 @@ export async function configureShiki(cfg: ShikiConfig): Promise<void> {
   })();
 }
 
-export async function highlightCode(
-  code: string,
-  lang: string,
-): Promise<string> {
+export async function highlightCode(code: string, lang: string): Promise<string> {
   if (!shikiPromise || !activeConfig) {
     return fallback(code, lang);
   }
@@ -79,9 +76,6 @@ export async function highlightCode(
 
 function fallback(code: string, lang: string): string {
   const cls = lang ? ` class="language-${lang}"` : "";
-  const escaped = code
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return `<pre><code${cls}>${escaped}</code></pre>`;
 }

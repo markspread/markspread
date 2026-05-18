@@ -20,7 +20,7 @@ let state: SettingsDialogState = {
 const listeners = new Set<() => void>();
 
 function emit() {
-  listeners.forEach((fn) => fn());
+  for (const fn of listeners) fn();
 }
 
 export function getSettingsDialogState(): SettingsDialogState {

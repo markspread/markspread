@@ -51,11 +51,7 @@ export function extractHeadings(md: string): Heading[] {
     }
     // Setext: a non-empty line followed by `===` or `---` of >= 1 char
     const next = lines[i + 1];
-    if (
-      next !== undefined &&
-      raw.trim().length > 0 &&
-      SETEXT_UNDER_RE.test(next)
-    ) {
+    if (next !== undefined && raw.trim().length > 0 && SETEXT_UNDER_RE.test(next)) {
       const depth = next.trim().startsWith("=") ? 1 : 2;
       out.push({
         text: raw.trim(),
@@ -68,10 +64,7 @@ export function extractHeadings(md: string): Heading[] {
   return out;
 }
 
-export function findActiveHeading(
-  headings: Heading[],
-  cursorLine: number,
-): Heading | null {
+export function findActiveHeading(headings: Heading[], cursorLine: number): Heading | null {
   let active: Heading | null = null;
   for (const h of headings) {
     if (h.line <= cursorLine) active = h;

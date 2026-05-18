@@ -86,8 +86,7 @@ export const useSettings = create<SettingsState>()(
       setUiFontFamily: (v) => set({ uiFontFamily: v }),
       setEditorFontFamily: (v) => set({ editorFontFamily: v }),
       setFontSizePx: (v) => set({ fontSizePx: clampFontSize(v) }),
-      setLineHeight: (v) =>
-        set({ lineHeight: LINE_HEIGHTS.includes(v) ? v : LINE_HEIGHT_DEFAULT }),
+      setLineHeight: (v) => set({ lineHeight: LINE_HEIGHTS.includes(v) ? v : LINE_HEIGHT_DEFAULT }),
       setLetterSpacingPx: (v) => set({ letterSpacingPx: clampLetterSpacing(v) }),
       setFontWeight: (v) =>
         set({

@@ -25,16 +25,11 @@ const STAMP = "data-ms-task";
 
 const TASK_RE = /^(\s*[-*+]\s+\[)([ xX])(\])/;
 
-export function attachCheckboxToggles(
-  root: ParentNode,
-  host: CheckboxToggleHost,
-): void {
-  const boxes = root.querySelectorAll<HTMLInputElement>(
-    'input[type="checkbox"]',
-  );
+export function attachCheckboxToggles(root: ParentNode, host: CheckboxToggleHost): void {
+  const boxes = root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
   let counter = 0;
-  boxes.forEach((box) => {
-    if (box.getAttribute(STAMP) === "true") return;
+  for (const box of boxes) {
+    if (box.getAttribute(STAMP) === "true") continue;
     box.setAttribute(STAMP, "true");
     box.disabled = false;
     const lineAttr = box.getAttribute("data-task-line");
@@ -42,9 +37,7 @@ export function attachCheckboxToggles(
     box.addEventListener("click", (e) => {
       e.preventDefault();
       const src = host.getSource();
-      const target = lineAttr
-        ? Number(lineAttr) - 1
-        : findTaskLineByOrdinal(src, ordinal);
+      const target = lineAttr ? Number(lineAttr) - 1 : findTaskLineByOrdinal(src, ordinal);
       if (target < 0) return;
       const lines = src.split(/\r?\n/);
       const line = lines[target];
@@ -59,7 +52,7 @@ export function attachCheckboxToggles(
         nextLine: newLine,
       });
     });
-  });
+  }
 }
 
 function findTaskLineByOrdinal(src: string, ordinal: number): number {

@@ -198,11 +198,7 @@ async fn fetch_data_url(url: &str) -> Option<String> {
 
 async fn compose_html(req: &ExportRequest) -> String {
     let css = resolve_css(&req.template, req.document_path.as_deref());
-    let page = req
-        .page_setup
-        .as_ref()
-        .map(page_css)
-        .unwrap_or_default();
+    let page = req.page_setup.as_ref().map(page_css).unwrap_or_default();
     let body = if req.inline_external_assets {
         inline_assets(&req.body_html).await
     } else {
@@ -226,11 +222,7 @@ fn run_pandoc(html: &str, format: &str, output: &Path) -> Result<(), String> {
     std::fs::write(&tmp, html.as_bytes()).map_err(|e| format!("temp write: {e}"))?;
 
     let mut cmd = std::process::Command::new("pandoc");
-    cmd.arg(&tmp)
-        .arg("-f")
-        .arg("html")
-        .arg("-o")
-        .arg(output);
+    cmd.arg(&tmp).arg("-f").arg("html").arg("-o").arg(output);
     if format == "pdf" {
         // wkhtmltopdf keeps the HTML/CSS fidelity the preview produced;
         // pandoc falls back to its default engine if it is unavailable.

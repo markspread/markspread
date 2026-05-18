@@ -39,20 +39,34 @@ function parse(expr: string): Node {
 
   function parseOr(): Node {
     let left = parseAnd();
-    while (peek() === "OR") { eat(); left = { kind: "or", left, right: parseAnd() }; }
+    while (peek() === "OR") {
+      eat();
+      left = { kind: "or", left, right: parseAnd() };
+    }
     return left;
   }
   function parseAnd(): Node {
     let left = parseAtom();
-    while (peek() === "AND") { eat(); left = { kind: "and", left, right: parseAtom() }; }
+    while (peek() === "AND") {
+      eat();
+      left = { kind: "and", left, right: parseAtom() };
+    }
     return left;
   }
   function parseAtom(): Node {
     const t = eat();
-    if (t === "(") { const inner = parseOr(); eat(); return inner; }
+    if (t === "(") {
+      const inner = parseOr();
+      eat();
+      return inner;
+    }
     // SPDX `WITH` exceptions: re-attach the exception to the id so the
     // allow-list can list `Apache-2.0 WITH LLVM-exception` literally.
-    if (peek() === "WITH") { eat(); const exc = eat(); return { kind: "id", value: `${t} WITH ${exc}` }; }
+    if (peek() === "WITH") {
+      eat();
+      const exc = eat();
+      return { kind: "id", value: `${t} WITH ${exc}` };
+    }
     return { kind: "id", value: t ?? "" };
   }
 
@@ -61,8 +75,13 @@ function parse(expr: string): Node {
 
 function evaluate(node: Node): boolean {
   if (node.kind === "id") return SAFE_LICENCES.has(node.value ?? "");
-  if (node.kind === "or") return evaluate(node.left!) || evaluate(node.right!);
-  if (node.kind === "and") return evaluate(node.left!) && evaluate(node.right!);
+  if (node.kind === "or" || node.kind === "and") {
+    const { left, right } = node;
+    if (left === undefined || right === undefined) return false;
+    return node.kind === "or"
+      ? evaluate(left) || evaluate(right)
+      : evaluate(left) && evaluate(right);
+  }
   return false;
 }
 

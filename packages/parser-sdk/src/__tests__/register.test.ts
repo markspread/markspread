@@ -3,12 +3,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ParserManifest } from "../manifest";
-import {
-  registerParser,
-  registerRenderer,
-  setRegistryHost,
-  type RendererSpec,
-} from "../register";
+import { type RendererSpec, registerParser, registerRenderer, setRegistryHost } from "../register";
 
 const manifest: ParserManifest = {
   id: "demo",
@@ -25,9 +20,7 @@ afterEach(() => {
 
 describe("registerParser / registerRenderer", () => {
   it("throws when no host is installed", () => {
-    expect(() => registerParser(manifest, () => ({ ast: null }))).toThrow(
-      /host registry/,
-    );
+    expect(() => registerParser(manifest, () => ({ ast: null }))).toThrow(/host registry/);
   });
 
   it("delegates to the installed host", () => {

@@ -9,12 +9,18 @@
 //   2. Same file in two panes → edit one → other's live buffer updates.
 //   3. Reload → layout / active pane / active tabs restored.
 
-import { expect, test, type Page } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 type Layout = {
   schemaVersion: 1;
   activePaneId: string;
-  root: { type: string; id: string; children?: Layout["root"][]; tabs?: { id: string; path: string }[]; activeTabId?: string | null };
+  root: {
+    type: string;
+    id: string;
+    children?: Layout["root"][];
+    tabs?: { id: string; path: string }[];
+    activeTabId?: string | null;
+  };
 };
 
 type DevStores = {
@@ -26,12 +32,21 @@ type DevStores = {
       layouts: Record<string, Layout>;
       ensureLayout: (ws: string) => Layout;
       setLayout: (ws: string, l: Layout) => void;
-      splitPane: (ws: string, paneId: string, dir: "horizontal" | "vertical", side: "before" | "after") => string | null;
+      splitPane: (
+        ws: string,
+        paneId: string,
+        dir: "horizontal" | "vertical",
+        side: "before" | "after",
+      ) => string | null;
     };
   };
   docCache: {
     getState: () => {
-      setBaseline: (ws: string, path: string, baseline: { content: string; encoding: string }) => void;
+      setBaseline: (
+        ws: string,
+        path: string,
+        baseline: { content: string; encoding: string },
+      ) => void;
       setLive: (ws: string, path: string, content: string) => void;
       getLive: (ws: string, path: string) => string | undefined;
       getBaseline: (ws: string, path: string) => { content: string } | undefined;
@@ -80,9 +95,11 @@ test("scenario 1: split right, open a different file, edit both, autosave dirty 
         } as Layout["root"],
       });
       dc.setBaseline(ws, "/a.md", { content: "alpha", encoding: "utf-8" });
-      const rightId = el.splitPane(ws, leftId, "horizontal", "after")!;
+      const rightId = el.splitPane(ws, leftId, "horizontal", "after");
+      if (!rightId) throw new Error("expected split pane id");
       const after = el.getState ? null : null;
-      const layout = el.layouts[ws]!;
+      const layout = el.layouts[ws];
+      if (!layout) throw new Error("expected layout for workspace");
       el.setLayout(ws, {
         ...layout,
         root: {
@@ -103,8 +120,8 @@ test("scenario 1: split right, open a different file, edit both, autosave dirty 
       dc.setLive(ws, "/a.md", "alpha edited");
       dc.setLive(ws, "/b.md", "beta edited");
       return {
-        aDirty: dc.getLive(ws, "/a.md") !== dc.getBaseline(ws, "/a.md")!.content,
-        bDirty: dc.getLive(ws, "/b.md") !== dc.getBaseline(ws, "/b.md")!.content,
+        aDirty: dc.getLive(ws, "/a.md") !== dc.getBaseline(ws, "/a.md")?.content,
+        bDirty: dc.getLive(ws, "/b.md") !== dc.getBaseline(ws, "/b.md")?.content,
         leftId,
         rightId,
         _after: after,

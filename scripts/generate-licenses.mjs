@@ -6,7 +6,7 @@
 
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -17,11 +17,10 @@ function rustDeps() {
   // cargo-about emits one-license-per-line JSON; we just want a
   // flat array of {name, version, license, repository, text}.
   try {
-    const raw = execFileSync(
-      "cargo",
-      ["about", "generate", "--format", "json", "about.hbs"],
-      { cwd: resolve(ROOT, "src-tauri"), encoding: "utf8" },
-    );
+    const raw = execFileSync("cargo", ["about", "generate", "--format", "json", "about.hbs"], {
+      cwd: resolve(ROOT, "src-tauri"),
+      encoding: "utf8",
+    });
     const parsed = JSON.parse(raw);
     return (parsed.licenses ?? []).flatMap((l) =>
       l.used_by.map((u) => ({
@@ -40,11 +39,11 @@ function rustDeps() {
 
 function npmDeps() {
   try {
-    const raw = execFileSync(
-      "pnpm",
-      ["licenses", "list", "--json", "--prod"],
-      { cwd: ROOT, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 },
-    );
+    const raw = execFileSync("pnpm", ["licenses", "list", "--json", "--prod"], {
+      cwd: ROOT,
+      encoding: "utf8",
+      maxBuffer: 32 * 1024 * 1024,
+    });
     const parsed = JSON.parse(raw);
     const out = [];
     for (const [license, deps] of Object.entries(parsed)) {
@@ -65,8 +64,6 @@ function npmDeps() {
   }
 }
 
-const all = [...rustDeps(), ...npmDeps()].sort((a, b) =>
-  a.name.localeCompare(b.name),
-);
+const all = [...rustDeps(), ...npmDeps()].sort((a, b) => a.name.localeCompare(b.name));
 writeFileSync(OUT, `${JSON.stringify(all, null, 2)}\n`);
 console.log(`Wrote ${OUT} (${all.length} entries).`);

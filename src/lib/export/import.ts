@@ -56,7 +56,7 @@ export const PDF_IMPORT_CAVEATS = [
 export const IMPORT_FILTERS: { source: ImportSource; extensions: string[] }[] = [
   { source: "docx", extensions: ["docx"] },
   { source: "html", extensions: ["html", "htm"] },
-  { source: "pdf",  extensions: ["pdf"] },
+  { source: "pdf", extensions: ["pdf"] },
 ];
 
 export function detectSourceByExtension(path: string): ImportSource | null {

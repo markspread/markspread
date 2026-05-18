@@ -79,6 +79,7 @@ export function LinkDialog() {
   return (
     <div
       className="ms-modal-backdrop"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("md.link.title", "Insert link")}
@@ -109,17 +110,15 @@ export function LinkDialog() {
             ref={urlRef}
             type="text"
             value={url}
-            autoFocus
             onChange={(e) => setUrl(e.target.value)}
             placeholder={t("md.link.url.placeholder", "https://… or ./relative/path.md")}
           />
         </label>
         {hits.length > 0 && (
-          <ul className="ms-link-suggestions" role="listbox">
+          <ul className="ms-link-suggestions">
             {hits.map((p) => (
               <li
                 key={p}
-                role="option"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   setUrl(p);

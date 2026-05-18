@@ -48,9 +48,7 @@ export const ParserMessageSchema = z.discriminatedUnion("type", [
 ]);
 export type ParserMessage = z.infer<typeof ParserMessageSchema>;
 
-export type ValidationResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; reason: string };
+export type ValidationResult<T> = { ok: true; value: T } | { ok: false; reason: string };
 
 /**
  * Host 가 sandbox 로부터 받은 raw 메시지를 검증한다. 알 수 없는 필드는

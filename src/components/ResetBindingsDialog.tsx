@@ -44,14 +44,17 @@ export function ResetBindingsDialog({ onClose, onDone }: Props) {
   }
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-close; Escape handled within dialog
     <div
       className="fixed inset-0 flex items-center justify-center bg-black/50"
       style={{ zIndex: "var(--z-dialog)" }}
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-labelledby="reset-bind-title"
       onClick={onClose}
     >
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation wrapper; not an interactive control */}
       <div
         className="w-full max-w-md rounded-lg border border-surface-border bg-surface-bg p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -73,16 +76,13 @@ export function ResetBindingsDialog({ onClose, onDone }: Props) {
               htmlFor="reset-confirm-input"
               className="mt-4 block text-xs text-surface-fg-muted"
             >
-              {t(
-                "keybindings.reset.tokenPrompt",
-                "Type {{token}} to confirm.",
-                { token: CONFIRM_TOKEN },
-              )}
+              {t("keybindings.reset.tokenPrompt", "Type {{token}} to confirm.", {
+                token: CONFIRM_TOKEN,
+              })}
             </label>
             <input
               id="reset-confirm-input"
               type="text"
-              autoFocus
               value={token}
               onChange={(e) => setToken(e.target.value)}
               className="mt-1 w-full rounded-md border border-surface-border bg-surface-bg-subtle px-2 py-1 text-sm font-mono"
@@ -93,11 +93,9 @@ export function ResetBindingsDialog({ onClose, onDone }: Props) {
 
         {backupPath && (
           <p className="mt-3 rounded-md border border-info-border bg-info-bg p-2 text-xs text-info-fg break-all">
-            {t(
-              "keybindings.reset.backupSaved",
-              "Previous bindings saved to {{path}}",
-              { path: backupPath },
-            )}
+            {t("keybindings.reset.backupSaved", "Previous bindings saved to {{path}}", {
+              path: backupPath,
+            })}
           </p>
         )}
 

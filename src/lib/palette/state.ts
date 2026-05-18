@@ -20,7 +20,7 @@ let state: PaletteState = { open: false, mode: "all" };
 const listeners = new Set<() => void>();
 
 function emit() {
-  listeners.forEach((fn) => fn());
+  for (const fn of listeners) fn();
 }
 
 export function getPaletteState(): PaletteState {

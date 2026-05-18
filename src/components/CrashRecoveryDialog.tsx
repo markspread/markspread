@@ -5,9 +5,9 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { type RecoveryProposal, proposeRecovery, restoreSnapshot } from "../lib/backup/backup";
+import { clearBeacon, readBeacon } from "../lib/errors/crash-recovery";
 import { useFocusTrap } from "../lib/focus-trap";
-import { readBeacon, clearBeacon } from "../lib/errors/crash-recovery";
-import { proposeRecovery, restoreSnapshot, type RecoveryProposal } from "../lib/backup/backup";
 import { useWorkspace } from "../store/workspace";
 
 export function CrashRecoveryDialog() {
@@ -68,6 +68,7 @@ export function CrashRecoveryDialog() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("recovery.aria", "Recover unsaved changes")}
@@ -92,9 +93,7 @@ export function CrashRecoveryDialog() {
               className="flex items-center justify-between gap-2 rounded border border-[var(--color-border)] px-3 py-1.5 text-xs"
             >
               <span className="flex flex-col">
-                <span className="font-medium">
-                  {new Date(s.ts).toLocaleString()}
-                </span>
+                <span className="font-medium">{new Date(s.ts).toLocaleString()}</span>
                 <span className="text-[var(--color-muted)]">
                   +{s.newBlobs} blobs · {(s.bytesAdded / 1024).toFixed(1)} KiB
                 </span>

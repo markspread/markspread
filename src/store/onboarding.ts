@@ -1,20 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type TourStep =
-  | "filetree"
-  | "editor"
-  | "spread"
-  | "ai"
-  | "command-palette";
+export type TourStep = "filetree" | "editor" | "spread" | "ai" | "command-palette";
 
-export const TOUR_STEPS: TourStep[] = [
-  "filetree",
-  "editor",
-  "spread",
-  "ai",
-  "command-palette",
-];
+export const TOUR_STEPS: TourStep[] = ["filetree", "editor", "spread", "ai", "command-palette"];
 
 interface OnboardingState {
   welcomeBannerDismissed: boolean;
@@ -37,8 +26,7 @@ export const useOnboarding = create<OnboardingState>()(
       tourStep: null,
       shortcutHintDismissed: false,
       dismissBanner: () => set({ welcomeBannerDismissed: true }),
-      resetBanner: () =>
-        set({ welcomeBannerDismissed: false, tourCompleted: false }),
+      resetBanner: () => set({ welcomeBannerDismissed: false, tourCompleted: false }),
       startTour: () => set({ tourStep: 0, welcomeBannerDismissed: true }),
       nextTourStep: () => {
         const cur = get().tourStep;
@@ -49,8 +37,7 @@ export const useOnboarding = create<OnboardingState>()(
           set({ tourStep: cur + 1 });
         }
       },
-      endTour: (completed) =>
-        set({ tourStep: null, tourCompleted: completed }),
+      endTour: (completed) => set({ tourStep: null, tourCompleted: completed }),
       dismissShortcutHint: () => set({ shortcutHintDismissed: true }),
     }),
     { name: "markspread.onboarding" },

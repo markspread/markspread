@@ -1,7 +1,7 @@
 // S-ESP-012: verify the editor-layout commands surface in the palette.
 
-import { beforeEach, describe, expect, it } from "vitest";
 import i18next from "i18next";
+import { beforeEach, describe, expect, it } from "vitest";
 import { bootstrapSidebarPaletteItems } from "../lib/palette/bootstrap";
 import { clearPaletteItems, query } from "../lib/palette/registry";
 
@@ -42,9 +42,7 @@ describe("palette bootstrap (editor-layout)", () => {
     expect(results).toContain("view.split_down");
 
     const close = query({ raw: "close editor", limit: 50 });
-    expect(close.find((it) => it.id === "tabs.close_active")?.label).toBe(
-      "Close Editor",
-    );
+    expect(close.find((it) => it.id === "tabs.close_active")?.label).toBe("Close Editor");
 
     const move = query({ raw: "move editor", limit: 50 });
     expect(move.find((it) => it.id === "view.move_editor_to_next_group")?.label).toBe(

@@ -35,10 +35,7 @@ export const useAiQueue = create<QueueState>((set, get) => ({
   items: [],
   enqueue(item) {
     set({
-      items: [
-        ...get().items,
-        { ...item, status: "pending", enqueuedAt: Date.now() },
-      ],
+      items: [...get().items, { ...item, status: "pending", enqueuedAt: Date.now() }],
     });
   },
   start(id) {
@@ -73,9 +70,7 @@ export const useAiQueue = create<QueueState>((set, get) => ({
   },
   clearFinished() {
     set({
-      items: get().items.filter(
-        (it) => it.status === "pending" || it.status === "running",
-      ),
+      items: get().items.filter((it) => it.status === "pending" || it.status === "running"),
     });
   },
 }));

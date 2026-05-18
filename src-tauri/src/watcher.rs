@@ -95,159 +95,162 @@ pub fn fs_watch_start(
     let pending_removals: Arc<Mutex<Vec<PendingRemoval>>> = Arc::new(Mutex::new(Vec::new()));
     let pending_clone = pending_removals.clone();
     // 50ms debounce — coalesces save bursts and editor temp-file flurries.
-    let mut deb = new_debouncer(Duration::from_millis(50), move |res: DebounceEventResult| {
-        let events = match res {
-            Ok(e) => e,
-            Err(err) => {
-                // Buffer overrun on Windows (ReadDirectoryChangesW) and inotify
-                // queue overflow on Linux both surface here. We can't recover
-                // individual events — tell the frontend to do a full rescan
-                // and rebuild its index from scratch.
-                let reason = err.to_string();
-                tracing::warn!(reason, "fs watcher errors → requesting rescan");
-                let _ = app_for_events.emit(
-                    "fs:rescan",
-                    FsRescan {
-                        workspace: workspace_for_events.clone(),
-                        reason,
-                    },
-                );
-                return;
-            }
-        };
-        // First pass: infer per-event kind from path existence at delivery
-        // time. notify-debouncer-mini collapses every flavour into "any".
-        let mut classified: Vec<(&'static str, PathBuf)> = Vec::with_capacity(events.len());
-        for ev in events {
-            let kind = match ev.kind {
-                DebouncedEventKind::Any => {
-                    if ev.path.exists() {
-                        // Distinguish first-sight vs change. The "created"
-                        // tag matters for the rename-pair below.
-                        "modified"
-                    } else {
-                        "removed"
-                    }
+    let mut deb = new_debouncer(
+        Duration::from_millis(50),
+        move |res: DebounceEventResult| {
+            let events = match res {
+                Ok(e) => e,
+                Err(err) => {
+                    // Buffer overrun on Windows (ReadDirectoryChangesW) and inotify
+                    // queue overflow on Linux both surface here. We can't recover
+                    // individual events — tell the frontend to do a full rescan
+                    // and rebuild its index from scratch.
+                    let reason = err.to_string();
+                    tracing::warn!(reason, "fs watcher errors → requesting rescan");
+                    let _ = app_for_events.emit(
+                        "fs:rescan",
+                        FsRescan {
+                            workspace: workspace_for_events.clone(),
+                            reason,
+                        },
+                    );
+                    return;
                 }
-                _ => "modified",
             };
-            classified.push((kind, ev.path));
-        }
-
-        // Second pass: rename heuristic. Same-batch `removed` + `modified`
-        // (existing path) with matching basenames become `renamed`. Then we
-        // try to pair any leftover `removed` events with a recent removal
-        // pending from a previous batch.
-        let mut pending = pending_clone.lock().expect("rename pending poisoned");
-        // Drop stale entries.
-        let now = Instant::now();
-        pending.retain(|p| now.duration_since(p.at) < RENAME_WINDOW);
-
-        // Within-batch pairing.
-        let mut consumed = vec![false; classified.len()];
-        let mut emitted_renames: Vec<(String, String)> = Vec::new();
-        for i in 0..classified.len() {
-            if consumed[i] {
-                continue;
+            // First pass: infer per-event kind from path existence at delivery
+            // time. notify-debouncer-mini collapses every flavour into "any".
+            let mut classified: Vec<(&'static str, PathBuf)> = Vec::with_capacity(events.len());
+            for ev in events {
+                let kind = match ev.kind {
+                    DebouncedEventKind::Any => {
+                        if ev.path.exists() {
+                            // Distinguish first-sight vs change. The "created"
+                            // tag matters for the rename-pair below.
+                            "modified"
+                        } else {
+                            "removed"
+                        }
+                    }
+                    _ => "modified",
+                };
+                classified.push((kind, ev.path));
             }
-            if classified[i].0 != "removed" {
-                continue;
-            }
-            let removed_path = classified[i].1.clone();
-            let removed_base = removed_path.file_name().map(|s| s.to_owned());
-            for j in 0..classified.len() {
-                if i == j || consumed[j] {
+
+            // Second pass: rename heuristic. Same-batch `removed` + `modified`
+            // (existing path) with matching basenames become `renamed`. Then we
+            // try to pair any leftover `removed` events with a recent removal
+            // pending from a previous batch.
+            let mut pending = pending_clone.lock().expect("rename pending poisoned");
+            // Drop stale entries.
+            let now = Instant::now();
+            pending.retain(|p| now.duration_since(p.at) < RENAME_WINDOW);
+
+            // Within-batch pairing.
+            let mut consumed = vec![false; classified.len()];
+            let mut emitted_renames: Vec<(String, String)> = Vec::new();
+            for i in 0..classified.len() {
+                if consumed[i] {
                     continue;
                 }
-                if classified[j].0 != "modified" {
+                if classified[i].0 != "removed" {
                     continue;
                 }
-                // Only treat newly-existing files (i.e., the existing path
-                // didn't exist before) as creates. The debouncer can't tell
-                // us that directly, so we approximate via basename equality.
-                let created_base = classified[j].1.file_name().map(|s| s.to_owned());
-                if removed_base.is_some() && removed_base == created_base {
-                    emitted_renames.push((
-                        removed_path.display().to_string(),
-                        classified[j].1.display().to_string(),
-                    ));
-                    consumed[i] = true;
-                    consumed[j] = true;
-                    break;
-                }
-            }
-        }
-
-        // Cross-batch pairing for leftover creates.
-        let mut leftover_events: Vec<(&'static str, PathBuf)> = Vec::new();
-        for (i, (kind, path)) in classified.into_iter().enumerate() {
-            if consumed[i] {
-                continue;
-            }
-            if kind == "modified" {
-                let base = path.file_name().map(|s| s.to_owned());
-                if let Some(ref needle) = base {
-                    if let Some(pos) = pending
-                        .iter()
-                        .position(|p| p.path.file_name() == Some(needle))
-                    {
-                        let removed = pending.remove(pos);
-                        emitted_renames.push((
-                            removed.path.display().to_string(),
-                            path.display().to_string(),
-                        ));
+                let removed_path = classified[i].1.clone();
+                let removed_base = removed_path.file_name().map(|s| s.to_owned());
+                for j in 0..classified.len() {
+                    if i == j || consumed[j] {
                         continue;
                     }
+                    if classified[j].0 != "modified" {
+                        continue;
+                    }
+                    // Only treat newly-existing files (i.e., the existing path
+                    // didn't exist before) as creates. The debouncer can't tell
+                    // us that directly, so we approximate via basename equality.
+                    let created_base = classified[j].1.file_name().map(|s| s.to_owned());
+                    if removed_base.is_some() && removed_base == created_base {
+                        emitted_renames.push((
+                            removed_path.display().to_string(),
+                            classified[j].1.display().to_string(),
+                        ));
+                        consumed[i] = true;
+                        consumed[j] = true;
+                        break;
+                    }
                 }
             }
-            leftover_events.push((kind, path));
-        }
 
-        // Anything still tagged "removed" gets parked for the next batch
-        // window in case the matching create lands shortly.
-        let mut leftover_after_park: Vec<(&'static str, PathBuf)> = Vec::new();
-        for (kind, path) in leftover_events {
-            if kind == "removed" {
-                pending.push(PendingRemoval {
-                    path: path.clone(),
-                    at: now,
-                });
-                // Still emit the removed event so consumers don't miss
-                // genuinely deleted files. The frontend's tab orphan logic
-                // tolerates an immediate `renamed` follow-up by clearing the
-                // orphan flag on rebind.
-                leftover_after_park.push((kind, path));
-            } else {
-                leftover_after_park.push((kind, path));
+            // Cross-batch pairing for leftover creates.
+            let mut leftover_events: Vec<(&'static str, PathBuf)> = Vec::new();
+            for (i, (kind, path)) in classified.into_iter().enumerate() {
+                if consumed[i] {
+                    continue;
+                }
+                if kind == "modified" {
+                    let base = path.file_name().map(|s| s.to_owned());
+                    if let Some(ref needle) = base {
+                        if let Some(pos) = pending
+                            .iter()
+                            .position(|p| p.path.file_name() == Some(needle))
+                        {
+                            let removed = pending.remove(pos);
+                            emitted_renames.push((
+                                removed.path.display().to_string(),
+                                path.display().to_string(),
+                            ));
+                            continue;
+                        }
+                    }
+                }
+                leftover_events.push((kind, path));
             }
-        }
-        drop(pending);
 
-        let any_change = !leftover_after_park.is_empty() || !emitted_renames.is_empty();
-        for (kind, path) in leftover_after_park {
-            let payload = FsEvent {
-                workspace: workspace_for_events.clone(),
-                kind,
-                paths: vec![path.display().to_string()],
-            };
-            let _ = app_for_events.emit("fs:event", payload);
-        }
-        for (old, new) in emitted_renames {
-            let payload = FsEvent {
-                workspace: workspace_for_events.clone(),
-                kind: "renamed",
-                paths: vec![old, new],
-            };
-            let _ = app_for_events.emit("fs:event", payload);
-        }
-        // S-IDX-004: any FS change in this workspace invalidates the search
-        // index. Mark it Stale so the next query forces a rebuild.
-        if any_change {
-            if let Some(search) = app_for_events.try_state::<SearchState>() {
-                search.mark_stale(&workspace_for_events);
+            // Anything still tagged "removed" gets parked for the next batch
+            // window in case the matching create lands shortly.
+            let mut leftover_after_park: Vec<(&'static str, PathBuf)> = Vec::new();
+            for (kind, path) in leftover_events {
+                if kind == "removed" {
+                    pending.push(PendingRemoval {
+                        path: path.clone(),
+                        at: now,
+                    });
+                    // Still emit the removed event so consumers don't miss
+                    // genuinely deleted files. The frontend's tab orphan logic
+                    // tolerates an immediate `renamed` follow-up by clearing the
+                    // orphan flag on rebind.
+                    leftover_after_park.push((kind, path));
+                } else {
+                    leftover_after_park.push((kind, path));
+                }
             }
-        }
-    })
+            drop(pending);
+
+            let any_change = !leftover_after_park.is_empty() || !emitted_renames.is_empty();
+            for (kind, path) in leftover_after_park {
+                let payload = FsEvent {
+                    workspace: workspace_for_events.clone(),
+                    kind,
+                    paths: vec![path.display().to_string()],
+                };
+                let _ = app_for_events.emit("fs:event", payload);
+            }
+            for (old, new) in emitted_renames {
+                let payload = FsEvent {
+                    workspace: workspace_for_events.clone(),
+                    kind: "renamed",
+                    paths: vec![old, new],
+                };
+                let _ = app_for_events.emit("fs:event", payload);
+            }
+            // S-IDX-004: any FS change in this workspace invalidates the search
+            // index. Mark it Stale so the next query forces a rebuild.
+            if any_change {
+                if let Some(search) = app_for_events.try_state::<SearchState>() {
+                    search.mark_stale(&workspace_for_events);
+                }
+            }
+        },
+    )
     .map_err(|e| AppError::Invalid(format!("watcher init: {e}")))?;
 
     deb.watcher()
@@ -407,7 +410,11 @@ async fn walk_modified(
             if meta.is_dir() {
                 // Skip the meta dir itself — we don't want polling churn from
                 // index.db WAL turnover.
-                if path.file_name().map(|n| n == ".markspread").unwrap_or(false) {
+                if path
+                    .file_name()
+                    .map(|n| n == ".markspread")
+                    .unwrap_or(false)
+                {
                     continue;
                 }
                 stack.push(path);

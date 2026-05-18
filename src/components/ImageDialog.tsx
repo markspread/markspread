@@ -87,6 +87,7 @@ export function ImageDialog() {
   return (
     <div
       className="ms-modal-backdrop"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("md.image.title", "Insert image")}
@@ -115,18 +116,16 @@ export function ImageDialog() {
           <span>{t("md.image.url", "URL or path")}</span>
           <input
             type="text"
-            autoFocus
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder={t("md.image.url.placeholder", "./assets/figure.png  or  https://…")}
           />
         </label>
         {hits.length > 0 && (
-          <ul className="ms-link-suggestions" role="listbox">
+          <ul className="ms-link-suggestions">
             {hits.map((p) => (
               <li
                 key={p}
-                role="option"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   setUrl(p);
@@ -141,9 +140,7 @@ export function ImageDialog() {
         <div className="ms-modal-actions">
           {req.pickFile && (
             <button type="button" onClick={pick} disabled={picking}>
-              {picking
-                ? t("md.image.picking", "Saving…")
-                : t("md.image.pick", "Pick file…")}
+              {picking ? t("md.image.picking", "Saving…") : t("md.image.pick", "Pick file…")}
             </button>
           )}
           <button type="button" onClick={() => close(null)}>

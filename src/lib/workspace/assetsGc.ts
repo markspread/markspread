@@ -46,27 +46,25 @@ function normalise(path: string, ownerDir: string): string {
   return parts.join("/");
 }
 
-export async function findUnusedAssets(
-  adapter: WorkspaceAssetsGcAdapter,
-): Promise<string[]> {
-  const [docs, assets] = await Promise.all([
-    adapter.listMarkdownFiles(),
-    adapter.listAssets(),
-  ]);
+export async function findUnusedAssets(adapter: WorkspaceAssetsGcAdapter): Promise<string[]> {
+  const [docs, assets] = await Promise.all([adapter.listMarkdownFiles(), adapter.listAssets()]);
   const referenced = new Set<string>();
   for (const doc of docs) {
     const text = await adapter.readMarkdown(doc);
     const dir = doc.includes("/") ? doc.slice(0, doc.lastIndexOf("/")) : "";
     LINK_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = LINK_RE.exec(text))) {
-      const norm = normalise(m[2] ?? "", dir);
+    let linkM = LINK_RE.exec(text);
+    while (linkM !== null) {
+      const norm = normalise(linkM[2] ?? "", dir);
       if (norm) referenced.add(norm);
+      linkM = LINK_RE.exec(text);
     }
     REFDEF_RE.lastIndex = 0;
-    while ((m = REFDEF_RE.exec(text))) {
-      const norm = normalise(m[1] ?? "", dir);
+    let refM = REFDEF_RE.exec(text);
+    while (refM !== null) {
+      const norm = normalise(refM[1] ?? "", dir);
       if (norm) referenced.add(norm);
+      refM = REFDEF_RE.exec(text);
     }
   }
   return assets.filter((a) => !referenced.has(a));

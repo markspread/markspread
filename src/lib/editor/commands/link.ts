@@ -14,8 +14,8 @@
 // The completion source is supplied by a host registration so this
 // module stays decoupled from the FS unit's workspace index.
 
-import type { EditorView } from "@codemirror/view";
 import { EditorSelection } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 
 export interface WorkspaceLinkProvider {
   /** Return up to N relative paths matching the query. */
@@ -65,9 +65,7 @@ async function readClipboardUrl(): Promise<string> {
 
 export async function insertLink(view: EditorView): Promise<boolean> {
   const sel = view.state.selection.main;
-  const initialText = sel.empty
-    ? ""
-    : view.state.sliceDoc(sel.from, sel.to);
+  const initialText = sel.empty ? "" : view.state.sliceDoc(sel.from, sel.to);
   const initialUrl = await readClipboardUrl();
   const result = await new Promise<LinkDialogResult | null>((resolve) => {
     linkDialogOpener({

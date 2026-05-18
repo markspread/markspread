@@ -1,12 +1,12 @@
 // S-AI-AUTH-004: 토큰 자동 갱신 스케줄러 회귀.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SubscriptionCredential } from "../credentials";
 import {
+  type RefreshFailureReason,
   classifyRefreshError,
   createAuthRefreshScheduler,
-  type RefreshFailureReason,
 } from "../auth-refresh";
+import type { SubscriptionCredential } from "../credentials";
 
 const BASE: SubscriptionCredential = {
   kind: "subscription",

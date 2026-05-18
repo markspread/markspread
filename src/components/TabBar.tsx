@@ -141,6 +141,7 @@ export const TabBar = memo(function TabBar({ workspace, pane }: TabBarProps) {
           <div
             key={tab.key}
             role="tab"
+            tabIndex={0}
             aria-selected={active}
             title={tab.path}
             draggable
@@ -151,6 +152,12 @@ export const TabBar = memo(function TabBar({ workspace, pane }: TabBarProps) {
                 : "text-[var(--color-muted)] hover:text-[var(--color-fg)]"
             } ${tab.preview ? "italic" : ""}`}
             onClick={() => onSelect(tab)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect(tab);
+              }
+            }}
             onAuxClick={(e) => {
               if (e.button === 1) {
                 e.preventDefault();
@@ -220,9 +227,7 @@ export const TabBar = memo(function TabBar({ workspace, pane }: TabBarProps) {
             )}
             <button
               type="button"
-              aria-label={
-                tab.pinned ? t("tabs.unpin", "Unpin tab") : t("tabs.pin", "Pin tab")
-              }
+              aria-label={tab.pinned ? t("tabs.unpin", "Unpin tab") : t("tabs.pin", "Pin tab")}
               className="ml-1 rounded px-1 text-[var(--color-muted)] opacity-0 transition-opacity hover:bg-[var(--color-border)]/40 hover:text-[var(--color-fg)] group-hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();

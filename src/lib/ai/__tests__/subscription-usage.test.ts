@@ -41,8 +41,7 @@ describe("parseUsageHeaders", () => {
 
   it("parses x-claude-subscription-quota as key=val", () => {
     const snap = parseUsageHeaders({
-      "x-claude-subscription-quota":
-        "used=4500000; limit=6000000; resetAt=1782345600",
+      "x-claude-subscription-quota": "used=4500000; limit=6000000; resetAt=1782345600",
     });
     expect(snap.quarterly?.used).toBe(4_500_000);
     expect(snap.quarterly?.limit).toBe(6_000_000);
@@ -105,8 +104,7 @@ describe("daysUntilReset", () => {
     const now = Date.parse("2026-05-14T00:00:00Z");
     const snap = parseUsageHeaders(
       {
-        "x-claude-subscription-quota":
-          '{"used":1,"limit":2,"resetAt":"2026-05-24T00:00:00Z"}',
+        "x-claude-subscription-quota": '{"used":1,"limit":2,"resetAt":"2026-05-24T00:00:00Z"}',
       },
       now,
     );
@@ -116,8 +114,7 @@ describe("daysUntilReset", () => {
   it("returns 0 when reset already passed", () => {
     const now = Date.parse("2026-05-14T00:00:00Z");
     const snap = parseUsageHeaders({
-      "x-claude-subscription-quota":
-        '{"used":1,"limit":2,"resetAt":"2026-05-01T00:00:00Z"}',
+      "x-claude-subscription-quota": '{"used":1,"limit":2,"resetAt":"2026-05-01T00:00:00Z"}',
     });
     expect(daysUntilReset(snap, now)).toBe(0);
   });

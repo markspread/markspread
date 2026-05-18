@@ -22,18 +22,15 @@
 // — to avoid touching the lezer parser. lang-markdown still parses
 // the link as plain text; we only paint and intercept clicks.
 
+import type { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
+import { type Extension, RangeSetBuilder } from "@codemirror/state";
 import {
   Decoration,
   type DecorationSet,
   EditorView,
-  type ViewUpdate,
   ViewPlugin,
+  type ViewUpdate,
 } from "@codemirror/view";
-import {
-  type CompletionContext,
-  type CompletionResult,
-} from "@codemirror/autocomplete";
-import { type Extension, RangeSetBuilder } from "@codemirror/state";
 
 import { addCompletionSource } from "./autocompletion";
 
@@ -65,9 +62,7 @@ const HEADING_TRIGGER_RE = /\[\[([^\]\n|#]+)#([^\]\n|]*)$/;
 
 // -- S-MD-050 / S-MD-051 / S-MD-052: completion -----------------
 
-function fileCompletion(
-  context: CompletionContext,
-): Promise<CompletionResult | null> | null {
+function fileCompletion(context: CompletionContext): Promise<CompletionResult | null> | null {
   if (!provider) return null;
   const line = context.state.doc.lineAt(context.pos);
   const before = line.text.slice(0, context.pos - line.from);
@@ -104,8 +99,8 @@ addCompletionSource(fileCompletion as never);
 function wikilinkAtPos(line: { text: string; from: number }, pos: number) {
   const local = pos - line.from;
   WIKI_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = WIKI_RE.exec(line.text))) {
+  let m = WIKI_RE.exec(line.text);
+  while (m !== null) {
     if (local >= m.index && local <= m.index + m[0].length) {
       return {
         from: line.from + m.index,
@@ -114,6 +109,7 @@ function wikilinkAtPos(line: { text: string; from: number }, pos: number) {
         heading: m[2]?.trim(),
       };
     }
+    m = WIKI_RE.exec(line.text);
   }
   return null;
 }
@@ -129,12 +125,12 @@ const clickHandler = EditorView.domEventHandlers({
     e.preventDefault();
     void provider.exists(hit.file, hit.heading).then(async (ok) => {
       if (ok) {
-        await provider!.open(hit.file, hit.heading);
+        await provider?.open(hit.file, hit.heading);
       } else {
         // S-MD-055: prompt is delegated to the host's create() impl,
         // which can run an "Are you sure?" UI before returning.
-        const created = await provider!.create(hit.file);
-        if (created) await provider!.open(created, hit.heading);
+        const created = await provider?.create(hit.file);
+        if (created) await provider?.open(created, hit.heading);
       }
     });
     return true;
@@ -172,8 +168,8 @@ const brokenLinkPlugin = ViewPlugin.fromClass(
       for (const { from, to } of view.visibleRanges) {
         const text = view.state.sliceDoc(from, to);
         WIKI_RE.lastIndex = 0;
-        let m: RegExpExecArray | null;
-        while ((m = WIKI_RE.exec(text))) {
+        let m = WIKI_RE.exec(text);
+        while (m !== null) {
           const start = from + m.index;
           const end = start + m[0].length;
           const fileName = (m[1] ?? "").trim();
@@ -190,6 +186,7 @@ const brokenLinkPlugin = ViewPlugin.fromClass(
               ...(headingName !== undefined && { heading: headingName }),
             });
           }
+          m = WIKI_RE.exec(text);
         }
       }
       this.decorations = builder.finish();
@@ -198,8 +195,10 @@ const brokenLinkPlugin = ViewPlugin.fromClass(
         Promise.all(
           pending.map(async (p) => {
             try {
-              const ok = await provider!.exists(p.file, p.heading);
-              brokenCache.set(p.key, ok);
+              const ok = await provider?.exists(p.file, p.heading);
+              // No provider means we can't verify — treat as valid, same
+              // as the catch branch, to avoid false "broken link" noise.
+              brokenCache.set(p.key, ok ?? true);
             } catch {
               brokenCache.set(p.key, true); // treat errors as "valid" to avoid noise
             }
@@ -218,20 +217,17 @@ const brokenLinkPlugin = ViewPlugin.fromClass(
 
 // -- public API -------------------------------------------------
 
-export function followWikilink(
-  view: EditorView,
-  pos: number,
-): Promise<boolean> {
+export function followWikilink(view: EditorView, pos: number): Promise<boolean> {
   if (!provider) return Promise.resolve(false);
   const line = view.state.doc.lineAt(pos);
   const hit = wikilinkAtPos(line, pos);
   if (!hit) return Promise.resolve(false);
   return provider.exists(hit.file, hit.heading).then(async (ok) => {
     if (ok) {
-      await provider!.open(hit.file, hit.heading);
+      await provider?.open(hit.file, hit.heading);
     } else {
-      const created = await provider!.create(hit.file);
-      if (created) await provider!.open(created, hit.heading);
+      const created = await provider?.create(hit.file);
+      if (created) await provider?.open(created, hit.heading);
     }
     return true;
   });

@@ -25,9 +25,7 @@ export const useFileTree = create<FileTreeState>()(
       },
       toggle: (workspace, path) => {
         const list = get().expanded[workspace] ?? [];
-        const next = list.includes(path)
-          ? list.filter((p) => p !== path)
-          : [...list, path];
+        const next = list.includes(path) ? list.filter((p) => p !== path) : [...list, path];
         set({ expanded: { ...get().expanded, [workspace]: next } });
       },
       setExpanded: (workspace, path, expanded) => {

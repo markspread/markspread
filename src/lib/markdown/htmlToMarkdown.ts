@@ -106,16 +106,12 @@ function nodeToMarkdown(node: Node, listDepth: number): string {
 
   if (tag === "UL" || tag === "OL") {
     const ordered = tag === "OL";
-    const items = Array.from(el.children).filter(
-      (c) => c.tagName === "LI",
-    );
+    const items = Array.from(el.children).filter((c) => c.tagName === "LI");
     const lines = items.map((li, i) => {
-      const marker = ordered ? `${i + 1}. ` : `- `;
+      const marker = ordered ? `${i + 1}. ` : "- ";
       const inner = childrenToMarkdown(li, listDepth + 1).trim();
       const [first, ...rest] = inner.split("\n");
-      const cont = rest.length
-        ? "\n" + indent(rest.join("\n"), "  ")
-        : "";
+      const cont = rest.length ? `\n${indent(rest.join("\n"), "  ")}` : "";
       return `${marker}${first}${cont}`;
     });
     return `\n\n${indent(lines.join("\n"), "  ".repeat(listDepth))}\n\n`;
@@ -138,7 +134,9 @@ function childrenToMarkdown(el: Element, listDepth: number): string {
 }
 
 function tableToMarkdown(table: Element): string | null {
-  const rows = Array.from(table.querySelectorAll(":scope > thead > tr, :scope > tbody > tr, :scope > tr"));
+  const rows = Array.from(
+    table.querySelectorAll(":scope > thead > tr, :scope > tbody > tr, :scope > tr"),
+  );
   if (rows.length === 0) return null;
   const cells: string[][] = rows.map((tr) =>
     Array.from(tr.children).map((td) =>

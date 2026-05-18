@@ -9,7 +9,7 @@
 // resubscribe via reference identity.
 
 import { create } from "zustand";
-import { persist, type PersistOptions } from "zustand/middleware";
+import { type PersistOptions, persist } from "zustand/middleware";
 import {
   type LayoutNode,
   type PaneId,
@@ -288,244 +288,250 @@ const persistOptions: PersistOptions<EditorLayoutState, Pick<EditorLayoutState, 
   partialize: (state) => ({ layouts: state.layouts }),
 };
 
-export const useEditorLayout = create<EditorLayoutState>()(persist((set, get) => ({
-  layouts: {},
-  getLayout: (workspace) => get().layouts[workspace] ?? emptyLayout(),
-  ensureLayout: (workspace) => {
-    const existing = get().layouts[workspace];
-    if (existing) return existing;
-    const fresh = emptyLayout();
-    set({ layouts: { ...get().layouts, [workspace]: fresh } });
-    return fresh;
-  },
-  setLayout: (workspace, layout) => {
-    set({ layouts: { ...get().layouts, [workspace]: layout } });
-  },
-  splitPane: (workspace, paneId, direction, side) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return null;
-    const source = findPane(layout.root, paneId);
-    if (!source) return null;
-    const fresh = clonePane(source);
-    const nextRoot = splitAt(layout.root, paneId, direction, side, fresh);
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: {
-          ...layout,
-          root: nextRoot,
-          activePaneId: fresh.id,
-        },
+export const useEditorLayout = create<EditorLayoutState>()(
+  persist(
+    (set, get) => ({
+      layouts: {},
+      getLayout: (workspace) => get().layouts[workspace] ?? emptyLayout(),
+      ensureLayout: (workspace) => {
+        const existing = get().layouts[workspace];
+        if (existing) return existing;
+        const fresh = emptyLayout();
+        set({ layouts: { ...get().layouts, [workspace]: fresh } });
+        return fresh;
       },
-    });
-    return fresh.id;
-  },
-  closePane: (workspace, paneId) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return;
-    const res = replaceNode(layout.root, paneId, () => null);
-    if (!res.changed) return;
-    // If we collapsed the whole tree away, fall back to an empty pane.
-    const nextRoot: LayoutNode = res.root ?? {
-      type: "pane",
-      id: `pane-${randId()}`,
-      tabs: [],
-      activeTabId: null,
-    };
-    const nextActive = findPane(nextRoot, layout.activePaneId)
-      ? layout.activePaneId
-      : firstPaneId(nextRoot);
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: {
-          ...layout,
-          root: nextRoot,
-          activePaneId: nextActive,
-        },
+      setLayout: (workspace, layout) => {
+        set({ layouts: { ...get().layouts, [workspace]: layout } });
       },
-    });
-  },
-  setSizes: (workspace, splitId, sizes) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return;
-    const res = replaceNode(layout.root, splitId, (node) => {
-      if (node.type !== "split") return node;
-      if (node.sizes.length !== sizes.length) return node;
-      const total = sizes.reduce((a, b) => a + b, 0) || 1;
-      return { ...node, sizes: sizes.map((s) => s / total) };
-    });
-    if (!res.changed || !res.root) return;
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: { ...layout, root: res.root },
+      splitPane: (workspace, paneId, direction, side) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return null;
+        const source = findPane(layout.root, paneId);
+        if (!source) return null;
+        const fresh = clonePane(source);
+        const nextRoot = splitAt(layout.root, paneId, direction, side, fresh);
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: {
+              ...layout,
+              root: nextRoot,
+              activePaneId: fresh.id,
+            },
+          },
+        });
+        return fresh.id;
       },
-    });
-  },
-  moveTab: (workspace, fromPaneId, tabId, toPaneId, toIndex) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return false;
-    const src = findPane(layout.root, fromPaneId);
-    if (!src) return false;
-    const tab = src.tabs.find((t) => t.id === tabId);
-    if (!tab) return false;
-    // No-op reorder within the same pane to the same slot.
-    if (fromPaneId === toPaneId) {
-      const curIdx = src.tabs.findIndex((t) => t.id === tabId);
-      const insertAt = toIndex == null ? src.tabs.length - 1 : Math.min(toIndex, src.tabs.length - 1);
-      if (curIdx === insertAt) return false;
-    }
-    const nextRoot = applyMoveTab(layout.root, fromPaneId, tabId, toPaneId, toIndex);
-    if (!nextRoot.changed || !nextRoot.root) return false;
-    const finalRoot = nextRoot.root;
-    const activePaneId = findPane(finalRoot, toPaneId) ? toPaneId : firstPaneId(finalRoot);
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: {
-          ...layout,
-          root: finalRoot,
-          activePaneId,
-        },
+      closePane: (workspace, paneId) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return;
+        const res = replaceNode(layout.root, paneId, () => null);
+        if (!res.changed) return;
+        // If we collapsed the whole tree away, fall back to an empty pane.
+        const nextRoot: LayoutNode = res.root ?? {
+          type: "pane",
+          id: `pane-${randId()}`,
+          tabs: [],
+          activeTabId: null,
+        };
+        const nextActive = findPane(nextRoot, layout.activePaneId)
+          ? layout.activePaneId
+          : firstPaneId(nextRoot);
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: {
+              ...layout,
+              root: nextRoot,
+              activePaneId: nextActive,
+            },
+          },
+        });
       },
-    });
-    return true;
-  },
-  splitWithTab: (workspace, fromPaneId, tabId, targetPaneId, direction, side) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return null;
-    const src = findPane(layout.root, fromPaneId);
-    const tgt = findPane(layout.root, targetPaneId);
-    if (!src || !tgt) return null;
-    const tab = src.tabs.find((t) => t.id === tabId);
-    if (!tab) return null;
-    // Only-tab-in-only-pane edge case: nothing to split into.
-    if (fromPaneId === targetPaneId && src.tabs.length === 1) return null;
-    const newPane: PaneNode = {
-      type: "pane",
-      id: `pane-${randId()}`,
-      tabs: [],
-      activeTabId: null,
-    };
-    // Insert new pane next to target, then move the tab into it.
-    const afterSplit = splitAt(layout.root, targetPaneId, direction, side, newPane);
-    const moved = applyMoveTab(afterSplit, fromPaneId, tabId, newPane.id, null);
-    if (!moved.changed || !moved.root) return null;
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: {
-          ...layout,
-          root: moved.root,
-          activePaneId: newPane.id,
-        },
+      setSizes: (workspace, splitId, sizes) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return;
+        const res = replaceNode(layout.root, splitId, (node) => {
+          if (node.type !== "split") return node;
+          if (node.sizes.length !== sizes.length) return node;
+          const total = sizes.reduce((a, b) => a + b, 0) || 1;
+          return { ...node, sizes: sizes.map((s) => s / total) };
+        });
+        if (!res.changed || !res.root) return;
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: { ...layout, root: res.root },
+          },
+        });
       },
-    });
-    return newPane.id;
-  },
-  setTabPosition: (workspace, paneId, tabId, position) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return;
-    const res = replaceNode(layout.root, paneId, (node) => {
-      if (node.type !== "pane") return node;
-      let touched = false;
-      const nextTabs = node.tabs.map((tab) => {
-        if (tab.id !== tabId) return tab;
-        if (
-          tab.position.line === position.line &&
-          tab.position.column === position.column &&
-          tab.position.scrollTop === position.scrollTop
-        ) {
-          return tab;
+      moveTab: (workspace, fromPaneId, tabId, toPaneId, toIndex) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return false;
+        const src = findPane(layout.root, fromPaneId);
+        if (!src) return false;
+        const tab = src.tabs.find((t) => t.id === tabId);
+        if (!tab) return false;
+        // No-op reorder within the same pane to the same slot.
+        if (fromPaneId === toPaneId) {
+          const curIdx = src.tabs.findIndex((t) => t.id === tabId);
+          const insertAt =
+            toIndex == null ? src.tabs.length - 1 : Math.min(toIndex, src.tabs.length - 1);
+          if (curIdx === insertAt) return false;
         }
-        touched = true;
-        return { ...tab, position };
-      });
-      if (!touched) return node;
-      return { ...node, tabs: nextTabs };
-    });
-    if (!res.changed || !res.root) return;
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: { ...layout, root: res.root },
+        const nextRoot = applyMoveTab(layout.root, fromPaneId, tabId, toPaneId, toIndex);
+        if (!nextRoot.changed || !nextRoot.root) return false;
+        const finalRoot = nextRoot.root;
+        const activePaneId = findPane(finalRoot, toPaneId) ? toPaneId : firstPaneId(finalRoot);
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: {
+              ...layout,
+              root: finalRoot,
+              activePaneId,
+            },
+          },
+        });
+        return true;
       },
-    });
-  },
-  setActiveTab: (workspace, paneId, tabId) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return;
-    const res = replaceNode(layout.root, paneId, (node) => {
-      if (node.type !== "pane") return node;
-      if (node.activeTabId === tabId) return node;
-      if (!node.tabs.some((t) => t.id === tabId)) return node;
-      return { ...node, activeTabId: tabId };
-    });
-    if (!res.changed || !res.root) return;
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: { ...layout, root: res.root, activePaneId: paneId },
+      splitWithTab: (workspace, fromPaneId, tabId, targetPaneId, direction, side) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return null;
+        const src = findPane(layout.root, fromPaneId);
+        const tgt = findPane(layout.root, targetPaneId);
+        if (!src || !tgt) return null;
+        const tab = src.tabs.find((t) => t.id === tabId);
+        if (!tab) return null;
+        // Only-tab-in-only-pane edge case: nothing to split into.
+        if (fromPaneId === targetPaneId && src.tabs.length === 1) return null;
+        const newPane: PaneNode = {
+          type: "pane",
+          id: `pane-${randId()}`,
+          tabs: [],
+          activeTabId: null,
+        };
+        // Insert new pane next to target, then move the tab into it.
+        const afterSplit = splitAt(layout.root, targetPaneId, direction, side, newPane);
+        const moved = applyMoveTab(afterSplit, fromPaneId, tabId, newPane.id, null);
+        if (!moved.changed || !moved.root) return null;
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: {
+              ...layout,
+              root: moved.root,
+              activePaneId: newPane.id,
+            },
+          },
+        });
+        return newPane.id;
       },
-    });
-  },
-  setActivePane: (workspace, paneId) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return;
-    if (layout.activePaneId === paneId) return;
-    if (!findPane(layout.root, paneId)) return;
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: { ...layout, activePaneId: paneId },
+      setTabPosition: (workspace, paneId, tabId, position) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return;
+        const res = replaceNode(layout.root, paneId, (node) => {
+          if (node.type !== "pane") return node;
+          let touched = false;
+          const nextTabs = node.tabs.map((tab) => {
+            if (tab.id !== tabId) return tab;
+            if (
+              tab.position.line === position.line &&
+              tab.position.column === position.column &&
+              tab.position.scrollTop === position.scrollTop
+            ) {
+              return tab;
+            }
+            touched = true;
+            return { ...tab, position };
+          });
+          if (!touched) return node;
+          return { ...node, tabs: nextTabs };
+        });
+        if (!res.changed || !res.root) return;
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: { ...layout, root: res.root },
+          },
+        });
       },
-    });
-  },
-  closeTab: (workspace, paneId, tabId) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return;
-    const res = replaceNode(layout.root, paneId, (node) => {
-      if (node.type !== "pane") return node;
-      const idx = node.tabs.findIndex((t) => t.id === tabId);
-      if (idx < 0) return node;
-      const nextTabs = node.tabs.filter((t) => t.id !== tabId);
-      let nextActive = node.activeTabId;
-      if (node.activeTabId === tabId) {
-        const neighbour = nextTabs[idx] ?? nextTabs[idx - 1] ?? null;
-        nextActive = neighbour?.id ?? null;
-      }
-      return { ...node, tabs: nextTabs, activeTabId: nextActive };
-    });
-    if (!res.changed || !res.root) return;
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: { ...layout, root: res.root },
+      setActiveTab: (workspace, paneId, tabId) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return;
+        const res = replaceNode(layout.root, paneId, (node) => {
+          if (node.type !== "pane") return node;
+          if (node.activeTabId === tabId) return node;
+          if (!node.tabs.some((t) => t.id === tabId)) return node;
+          return { ...node, activeTabId: tabId };
+        });
+        if (!res.changed || !res.root) return;
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: { ...layout, root: res.root, activePaneId: paneId },
+          },
+        });
       },
-    });
-  },
-  setTabPinned: (workspace, paneId, tabId, pinned) => {
-    const layout = get().layouts[workspace];
-    if (!layout) return;
-    const res = replaceNode(layout.root, paneId, (node) => {
-      if (node.type !== "pane") return node;
-      let touched = false;
-      const nextTabs = node.tabs.map((tab) => {
-        if (tab.id !== tabId) return tab;
-        if ((tab.pinned ?? false) === pinned) return tab;
-        touched = true;
-        return { ...tab, pinned };
-      });
-      if (!touched) return node;
-      return { ...node, tabs: nextTabs };
-    });
-    if (!res.changed || !res.root) return;
-    set({
-      layouts: {
-        ...get().layouts,
-        [workspace]: { ...layout, root: res.root },
+      setActivePane: (workspace, paneId) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return;
+        if (layout.activePaneId === paneId) return;
+        if (!findPane(layout.root, paneId)) return;
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: { ...layout, activePaneId: paneId },
+          },
+        });
       },
-    });
-  },
-}), persistOptions));
+      closeTab: (workspace, paneId, tabId) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return;
+        const res = replaceNode(layout.root, paneId, (node) => {
+          if (node.type !== "pane") return node;
+          const idx = node.tabs.findIndex((t) => t.id === tabId);
+          if (idx < 0) return node;
+          const nextTabs = node.tabs.filter((t) => t.id !== tabId);
+          let nextActive = node.activeTabId;
+          if (node.activeTabId === tabId) {
+            const neighbour = nextTabs[idx] ?? nextTabs[idx - 1] ?? null;
+            nextActive = neighbour?.id ?? null;
+          }
+          return { ...node, tabs: nextTabs, activeTabId: nextActive };
+        });
+        if (!res.changed || !res.root) return;
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: { ...layout, root: res.root },
+          },
+        });
+      },
+      setTabPinned: (workspace, paneId, tabId, pinned) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return;
+        const res = replaceNode(layout.root, paneId, (node) => {
+          if (node.type !== "pane") return node;
+          let touched = false;
+          const nextTabs = node.tabs.map((tab) => {
+            if (tab.id !== tabId) return tab;
+            if ((tab.pinned ?? false) === pinned) return tab;
+            touched = true;
+            return { ...tab, pinned };
+          });
+          if (!touched) return node;
+          return { ...node, tabs: nextTabs };
+        });
+        if (!res.changed || !res.root) return;
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: { ...layout, root: res.root },
+          },
+        });
+      },
+    }),
+    persistOptions,
+  ),
+);

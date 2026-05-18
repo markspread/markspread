@@ -6,16 +6,8 @@
 // constraints (PANE_MIN_WIDTH_PX / PANE_MIN_HEIGHT_PX).
 
 import { useCallback, useRef } from "react";
-import type {
-  LayoutNode,
-  PaneNode,
-  SplitNode,
-} from "../lib/editor/layout-model";
-import {
-  PANE_MIN_HEIGHT_PX,
-  PANE_MIN_WIDTH_PX,
-  useEditorLayout,
-} from "../store/editor-layout";
+import type { LayoutNode, PaneNode, SplitNode } from "../lib/editor/layout-model";
+import { PANE_MIN_HEIGHT_PX, PANE_MIN_WIDTH_PX, useEditorLayout } from "../store/editor-layout";
 
 interface PaneTreeProps {
   workspace: string;
@@ -26,10 +18,7 @@ interface PaneTreeProps {
 export function PaneTree({ workspace, node, renderPane }: PaneTreeProps) {
   if (node.type === "pane") {
     return (
-      <div
-        data-pane-id={node.id}
-        className="flex min-h-0 min-w-0 flex-1 flex-col"
-      >
+      <div data-pane-id={node.id} className="flex min-h-0 min-w-0 flex-1 flex-col">
         {renderPane(node)}
       </div>
     );
@@ -149,9 +138,7 @@ function PaneSplitter({
       const sizes = startSizes.current.slice();
       const a = sizes[beforeIdx] ?? 0;
       const b = sizes[beforeIdx + 1] ?? 0;
-      const minRatio =
-        (isHorizontal ? PANE_MIN_WIDTH_PX : PANE_MIN_HEIGHT_PX) /
-        totalPx.current;
+      const minRatio = (isHorizontal ? PANE_MIN_WIDTH_PX : PANE_MIN_HEIGHT_PX) / totalPx.current;
       let nextA = a + deltaRatio;
       let nextB = b - deltaRatio;
       if (nextA < minRatio) {
@@ -169,19 +156,17 @@ function PaneSplitter({
     [beforeIdx, isHorizontal, setSizes, split.id, workspace],
   );
 
-  const onPointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      }
-    },
-    [],
-  );
+  const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, []);
 
   return (
     <div
       ref={handleRef}
       role="separator"
+      tabIndex={0}
       aria-orientation={isHorizontal ? "vertical" : "horizontal"}
       className={
         isHorizontal

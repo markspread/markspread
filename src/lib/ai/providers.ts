@@ -65,7 +65,12 @@ export const PROVIDERS: ProviderDefinition[] = [
     // can sign in with their Claude Pro/Max plan instead of an API key.
     supportedAuthModes: ["api-key", "subscription"],
     models: [
-      { id: "claude-opus-4-7", label: "Claude Opus 4.7", contextWindow: 200_000, recommended: true },
+      {
+        id: "claude-opus-4-7",
+        label: "Claude Opus 4.7",
+        contextWindow: 200_000,
+        recommended: true,
+      },
       { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", contextWindow: 200_000 },
       { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", contextWindow: 200_000 },
     ],
@@ -93,7 +98,12 @@ export const PROVIDERS: ProviderDefinition[] = [
     apiKeyHelp: "https://aistudio.google.com/apikey",
     supportedAuthModes: ["api-key"],
     models: [
-      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", contextWindow: 2_000_000, recommended: true },
+      {
+        id: "gemini-2.5-pro",
+        label: "Gemini 2.5 Pro",
+        contextWindow: 2_000_000,
+        recommended: true,
+      },
       { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", contextWindow: 1_000_000 },
     ],
   },
@@ -132,7 +142,12 @@ export const PROVIDERS: ProviderDefinition[] = [
     apiKeyHelp: "https://console.mistral.ai/api-keys",
     supportedAuthModes: ["api-key"],
     models: [
-      { id: "mistral-large-latest", label: "Mistral Large", contextWindow: 128_000, recommended: true },
+      {
+        id: "mistral-large-latest",
+        label: "Mistral Large",
+        contextWindow: 128_000,
+        recommended: true,
+      },
       { id: "mistral-small-latest", label: "Mistral Small", contextWindow: 32_000 },
     ],
   },
@@ -180,7 +195,10 @@ export function validateAlias(alias: string): { ok: true } | { ok: false; reason
   if (alias.length < 2) return { ok: false, reason: "alias must be at least 2 characters" };
   if (alias.length > 40) return { ok: false, reason: "alias must be at most 40 characters" };
   if (!ALIAS_RE.test(alias)) {
-    return { ok: false, reason: "alias may only contain a-z, 0-9, and hyphen (no leading/trailing hyphen)" };
+    return {
+      ok: false,
+      reason: "alias may only contain a-z, 0-9, and hyphen (no leading/trailing hyphen)",
+    };
   }
   return { ok: true };
 }

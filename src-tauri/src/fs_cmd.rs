@@ -113,11 +113,7 @@ pub(crate) fn ensure_within(workspace: &Path, target: &Path) -> AppResult<PathBu
     })
 }
 
-fn map_write_io_error(
-    e: std::io::Error,
-    parent: Option<&Path>,
-    needed: u64,
-) -> AppError {
+fn map_write_io_error(e: std::io::Error, parent: Option<&Path>, needed: u64) -> AppError {
     if let Some(err) = enospc_with_space(&e, parent, needed) {
         return err;
     }
@@ -134,11 +130,7 @@ fn map_write_io_error(
     e.into()
 }
 
-fn enospc_with_space(
-    e: &std::io::Error,
-    parent: Option<&Path>,
-    needed: u64,
-) -> Option<AppError> {
+fn enospc_with_space(e: &std::io::Error, parent: Option<&Path>, needed: u64) -> Option<AppError> {
     let raw = e.raw_os_error()?;
     let is_full = if cfg!(windows) {
         raw == 112 || raw == 39
@@ -508,11 +500,7 @@ pub async fn fs_rename(workspace: String, from: String, to: String) -> AppResult
 }
 
 #[tauri::command]
-pub async fn fs_remove_dir(
-    workspace: String,
-    path: String,
-    recursive: bool,
-) -> AppResult<()> {
+pub async fn fs_remove_dir(workspace: String, path: String, recursive: bool) -> AppResult<()> {
     validate_input_path(&path)?;
     let target = ensure_within(Path::new(&workspace), Path::new(&path))?;
     if recursive {
@@ -890,13 +878,9 @@ mod tests {
         let ws = dir.path().display().to_string();
         let path = dir.path().join("a.md");
         std::fs::write(&path, "abc").unwrap();
-        let r = fs_read_file(
-            ws,
-            "a.md".into(),
-            Some(FsReadOptions { with_sha256: true }),
-        )
-        .await
-        .unwrap();
+        let r = fs_read_file(ws, "a.md".into(), Some(FsReadOptions { with_sha256: true }))
+            .await
+            .unwrap();
         assert_eq!(
             r.sha256.unwrap(),
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
@@ -963,7 +947,10 @@ mod tests {
         match r {
             Err(AppError::PermissionDenied(msg)) => {
                 assert!(msg.contains("저장할 권한"), "msg was: {msg}");
-                assert!(msg.contains("읽기 전용"), "expected read-only suggestion: {msg}");
+                assert!(
+                    msg.contains("읽기 전용"),
+                    "expected read-only suggestion: {msg}"
+                );
             }
             other => panic!("expected PermissionDenied, got {other:?}"),
         }
@@ -1106,9 +1093,14 @@ mod tests {
         let dir = tempdir().unwrap();
         let ws = dir.path().display().to_string();
         std::fs::write(dir.path().join("src.md"), b"hello").unwrap();
-        let n = fs_copy(ws, "src.md".into(), "dst/copy.md".into()).await.unwrap();
+        let n = fs_copy(ws, "src.md".into(), "dst/copy.md".into())
+            .await
+            .unwrap();
         assert_eq!(n, 5);
-        assert_eq!(std::fs::read(dir.path().join("dst/copy.md")).unwrap(), b"hello");
+        assert_eq!(
+            std::fs::read(dir.path().join("dst/copy.md")).unwrap(),
+            b"hello"
+        );
         assert!(dir.path().join("src.md").exists());
     }
 
@@ -1117,7 +1109,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let ws = dir.path().display().to_string();
         std::fs::write(dir.path().join("a.md"), "v1").unwrap();
-        fs_rename(ws, "a.md".into(), "sub/b.md".into()).await.unwrap();
+        fs_rename(ws, "a.md".into(), "sub/b.md".into())
+            .await
+            .unwrap();
         assert!(!dir.path().join("a.md").exists());
         assert_eq!(std::fs::read(dir.path().join("sub/b.md")).unwrap(), b"v1");
     }
@@ -1128,7 +1122,10 @@ mod tests {
         let ws = dir.path().display().to_string();
         std::fs::write(dir.path().join("a.md"), "v1").unwrap();
         let r = fs_rename(ws, "a.md".into(), "../escape.md".into()).await;
-        assert!(is_outside_workspace_deny(&r), "expected BND/SEC escape: {r:?}");
+        assert!(
+            is_outside_workspace_deny(&r),
+            "expected BND/SEC escape: {r:?}"
+        );
     }
 
     #[tokio::test]
@@ -1180,7 +1177,10 @@ mod tests {
         let dir = tempdir().unwrap();
         let ws = dir.path().display().to_string();
         let r = fs_create_dir(ws, "../escape".into()).await;
-        assert!(is_outside_workspace_deny(&r), "expected BND/SEC escape: {r:?}");
+        assert!(
+            is_outside_workspace_deny(&r),
+            "expected BND/SEC escape: {r:?}"
+        );
     }
 
     #[tokio::test]
@@ -1219,7 +1219,9 @@ mod tests {
     async fn fs_write_without_bom_by_default() {
         let dir = tempdir().unwrap();
         let ws = dir.path().display().to_string();
-        fs_write(ws, "plain.md".into(), "hi".into(), None).await.unwrap();
+        fs_write(ws, "plain.md".into(), "hi".into(), None)
+            .await
+            .unwrap();
         let raw = std::fs::read(dir.path().join("plain.md")).unwrap();
         assert_eq!(raw, b"hi");
     }
@@ -1229,7 +1231,10 @@ mod tests {
         let dir = tempdir().unwrap();
         let ws = dir.path().display().to_string();
         let r = fs_read_file(ws, "../etc/passwd".into(), None).await;
-        assert!(is_outside_workspace_deny(&r), "expected BND/SEC escape: {r:?}");
+        assert!(
+            is_outside_workspace_deny(&r),
+            "expected BND/SEC escape: {r:?}"
+        );
     }
 
     #[cfg(unix)]
@@ -1242,13 +1247,11 @@ mod tests {
         let ws = tempdir().unwrap();
         symlink(outside.path().join("secret.md"), ws.path().join("link.md")).unwrap();
 
-        let r = fs_read_file(
-            ws.path().display().to_string(),
-            "link.md".into(),
-            None,
-        )
-        .await;
-        assert!(is_outside_workspace_deny(&r), "expected BND/SEC escape: {r:?}");
+        let r = fs_read_file(ws.path().display().to_string(), "link.md".into(), None).await;
+        assert!(
+            is_outside_workspace_deny(&r),
+            "expected BND/SEC escape: {r:?}"
+        );
     }
 
     #[cfg(unix)]
@@ -1259,13 +1262,9 @@ mod tests {
         std::fs::write(ws.path().join("real.md"), "hello").unwrap();
         symlink(ws.path().join("real.md"), ws.path().join("alias.md")).unwrap();
 
-        let r = fs_read_file(
-            ws.path().display().to_string(),
-            "alias.md".into(),
-            None,
-        )
-        .await
-        .unwrap();
+        let r = fs_read_file(ws.path().display().to_string(), "alias.md".into(), None)
+            .await
+            .unwrap();
         assert_eq!(r.content, "hello");
     }
 
@@ -1290,7 +1289,10 @@ mod tests {
         let dir = tempdir().unwrap();
         let ws = dir.path().display().to_string();
         let r = fs_read_file(ws, "../../../etc/passwd".into(), None).await;
-        assert!(is_outside_workspace_deny(&r), "expected BND/SEC escape: {r:?}");
+        assert!(
+            is_outside_workspace_deny(&r),
+            "expected BND/SEC escape: {r:?}"
+        );
     }
 
     #[cfg(unix)]
@@ -1326,7 +1328,10 @@ mod tests {
         let dir = tempdir().unwrap();
         let ws = dir.path().display().to_string();
         let r = fs_read_file(ws, "/etc/hosts".into(), None).await;
-        assert!(is_outside_workspace_deny(&r), "expected BND/SEC escape: {r:?}");
+        assert!(
+            is_outside_workspace_deny(&r),
+            "expected BND/SEC escape: {r:?}"
+        );
         if let Err(e) = r {
             assert_eq!(e.code(), "EOUTSIDE_WORKSPACE");
         }
@@ -1342,13 +1347,9 @@ mod tests {
         std::fs::create_dir_all(&sub).unwrap();
         std::fs::write(sub.join("note book.md"), "ok").unwrap();
         let ws = dir.path().display().to_string();
-        let r = fs_read_file(
-            ws,
-            "My Documents/Project A/note book.md".into(),
-            None,
-        )
-        .await
-        .unwrap();
+        let r = fs_read_file(ws, "My Documents/Project A/note book.md".into(), None)
+            .await
+            .unwrap();
         assert_eq!(r.content, "ok");
     }
 }

@@ -67,10 +67,16 @@ export async function eraseAllData(opts: EraseOptions): Promise<EraseReport> {
 export function summariseReport(r: EraseReport): { label: string; detail: string }[] {
   const out: { label: string; detail: string }[] = [];
   if (r.appDataRemoved.length > 0) {
-    out.push({ label: "App data", detail: `${r.appDataRemoved.length} files (${formatBytes(sum(r.appDataRemoved))})` });
+    out.push({
+      label: "App data",
+      detail: `${r.appDataRemoved.length} files (${formatBytes(sum(r.appDataRemoved))})`,
+    });
   }
   if (r.workspaceStateRemoved.length > 0) {
-    out.push({ label: "Workspace state", detail: `${r.workspaceStateRemoved.length} files (${formatBytes(sum(r.workspaceStateRemoved))})` });
+    out.push({
+      label: "Workspace state",
+      detail: `${r.workspaceStateRemoved.length} files (${formatBytes(sum(r.workspaceStateRemoved))})`,
+    });
   }
   if (r.keychainItemsRemoved.length > 0) {
     out.push({ label: "Keychain", detail: `${r.keychainItemsRemoved.length} aliases removed` });
@@ -90,9 +96,12 @@ function sum(items: { bytes: number }[]): number {
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
-  const units = ["KB","MB","GB","TB"];
+  const units = ["KB", "MB", "GB", "TB"];
   let v = n / 1024;
   let i = 0;
-  while (v >= 1024 && i < units.length - 1) { v /= 1024; i += 1; }
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
   return `${v.toFixed(1)} ${units[i]}`;
 }

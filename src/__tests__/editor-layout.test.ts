@@ -1,16 +1,16 @@
 // S-ESP-003: split / close / resize semantics for the editor layout store.
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { regionForPoint } from "../components/PaneDropZone";
 import {
-  findPane,
-  forEachPane,
   type LayoutNode,
   type PaneNode,
   type SplitNode,
   type WorkspaceLayout,
+  findPane,
+  forEachPane,
 } from "../lib/editor/layout-model";
 import { useEditorLayout } from "../store/editor-layout";
-import { regionForPoint } from "../components/PaneDropZone";
 
 const WS = "/tmp/test-ws";
 
@@ -45,9 +45,7 @@ describe("editor-layout store", () => {
 
   it("splits horizontally on the right", () => {
     const initial = layout().root.id;
-    const newPaneId = useEditorLayout
-      .getState()
-      .splitPane(WS, initial, "horizontal", "after");
+    const newPaneId = useEditorLayout.getState().splitPane(WS, initial, "horizontal", "after");
     expect(newPaneId).not.toBeNull();
     const l = layout();
     expect(l.root.type).toBe("split");
@@ -62,9 +60,7 @@ describe("editor-layout store", () => {
 
   it("splits vertically on the left (before)", () => {
     const initial = layout().root.id;
-    const newId = useEditorLayout
-      .getState()
-      .splitPane(WS, initial, "vertical", "before");
+    const newId = useEditorLayout.getState().splitPane(WS, initial, "vertical", "before");
     const split = layout().root as SplitNode;
     expect(split.direction).toBe("vertical");
     expect(split.children[0]?.id).toBe(newId);
@@ -74,9 +70,8 @@ describe("editor-layout store", () => {
   it("keeps the tree flat when extending an existing split", () => {
     const a = layout().root.id;
     const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after");
-    const c = useEditorLayout
-      .getState()
-      .splitPane(WS, b!, "horizontal", "after");
+    if (!b) throw new Error("expected split pane id");
+    const c = useEditorLayout.getState().splitPane(WS, b, "horizontal", "after");
     const root = layout().root as SplitNode;
     expect(root.type).toBe("split");
     expect(root.children).toHaveLength(3);
@@ -87,7 +82,8 @@ describe("editor-layout store", () => {
   it("nests when the new split is perpendicular", () => {
     const a = layout().root.id;
     const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after");
-    const c = useEditorLayout.getState().splitPane(WS, b!, "vertical", "after");
+    if (!b) throw new Error("expected split pane id");
+    const c = useEditorLayout.getState().splitPane(WS, b, "vertical", "after");
     const root = layout().root as SplitNode;
     expect(root.direction).toBe("horizontal");
     expect(root.children).toHaveLength(2);
@@ -100,7 +96,8 @@ describe("editor-layout store", () => {
   it("collapses the parent split when only one child remains", () => {
     const a = layout().root.id;
     const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after");
-    useEditorLayout.getState().closePane(WS, b!);
+    if (!b) throw new Error("expected split pane id");
+    useEditorLayout.getState().closePane(WS, b);
     const root = layout().root;
     expect(root.type).toBe("pane");
     expect(root.id).toBe(a);
@@ -108,8 +105,10 @@ describe("editor-layout store", () => {
 
   it("removes a single child from a 3-way split without flattening", () => {
     const a = layout().root.id;
-    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after")!;
-    const c = useEditorLayout.getState().splitPane(WS, b, "horizontal", "after")!;
+    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after");
+    if (!b) throw new Error("expected split pane id");
+    const c = useEditorLayout.getState().splitPane(WS, b, "horizontal", "after");
+    if (!c) throw new Error("expected split pane id");
     useEditorLayout.getState().closePane(WS, b);
     const root = layout().root as SplitNode;
     expect(root.type).toBe("split");
@@ -146,7 +145,8 @@ describe("editor-layout store", () => {
   it("moves a tab between panes and collapses the source when empty", () => {
     // Set up: pane A with one tab, split right to create pane B (empty).
     const a = layout().root.id;
-    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after")!;
+    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after");
+    if (!b) throw new Error("expected split pane id");
     // Inject a tab directly into A.
     const tab = {
       id: "tab-1",
@@ -154,12 +154,17 @@ describe("editor-layout store", () => {
       position: { line: 0, column: 0, scrollTop: 0 },
     };
     useEditorLayout.setState((s) => {
-      const root = s.layouts[WS]!.root as SplitNode;
+      const root = s.layouts[WS]?.root as SplitNode;
       const aPane = root.children[0] as PaneNode;
       const newRoot: SplitNode = {
         ...root,
-        children: [{ ...aPane, tabs: [tab], activeTabId: tab.id }, root.children[1]!],
+        children: [
+          { ...aPane, tabs: [tab], activeTabId: tab.id },
+          // biome-ignore lint/style/noNonNullAssertion: test fixture guarantees presence
+          root.children[1]!,
+        ],
       };
+      // biome-ignore lint/style/noNonNullAssertion: test fixture guarantees presence
       return { layouts: { ...s.layouts, [WS]: { ...s.layouts[WS]!, root: newRoot } } };
     });
     const ok = useEditorLayout.getState().moveTab(WS, a, "tab-1", b, null);
@@ -175,17 +180,23 @@ describe("editor-layout store", () => {
 
   it("splitWithTab creates a new pane and moves the tab into it", () => {
     const a = layout().root.id;
-    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after")!;
+    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after");
+    if (!b) throw new Error("expected split pane id");
     // Inject two tabs into A so the source pane survives the move.
     const tabA = { id: "tab-a", path: "/ws/a.md", position: { line: 0, column: 0, scrollTop: 0 } };
     const tabB = { id: "tab-b", path: "/ws/b.md", position: { line: 0, column: 0, scrollTop: 0 } };
     useEditorLayout.setState((s) => {
-      const root = s.layouts[WS]!.root as SplitNode;
+      const root = s.layouts[WS]?.root as SplitNode;
       const aPane = root.children[0] as PaneNode;
       const newRoot: SplitNode = {
         ...root,
-        children: [{ ...aPane, tabs: [tabA, tabB], activeTabId: tabA.id }, root.children[1]!],
+        children: [
+          { ...aPane, tabs: [tabA, tabB], activeTabId: tabA.id },
+          // biome-ignore lint/style/noNonNullAssertion: test fixture guarantees presence
+          root.children[1]!,
+        ],
       };
+      // biome-ignore lint/style/noNonNullAssertion: test fixture guarantees presence
       return { layouts: { ...s.layouts, [WS]: { ...s.layouts[WS]!, root: newRoot } } };
     });
     const newPaneId = useEditorLayout
@@ -216,6 +227,7 @@ describe("editor-layout store", () => {
       layouts: {
         ...s.layouts,
         [WS]: {
+          // biome-ignore lint/style/noNonNullAssertion: test fixture guarantees presence
           ...s.layouts[WS]!,
           root: { type: "pane", id: a, tabs: [tab], activeTabId: tab.id },
         },
@@ -230,7 +242,8 @@ describe("editor-layout store", () => {
   it("setTabPosition stores per-pane positions independently", () => {
     // Two panes both pointing at the same path; their positions must not bleed.
     const a = layout().root.id;
-    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after")!;
+    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after");
+    if (!b) throw new Error("expected split pane id");
     const tabA = {
       id: "tab-a",
       path: "/ws/same.md",
@@ -242,7 +255,7 @@ describe("editor-layout store", () => {
       position: { line: 0, column: 0, scrollTop: 0 },
     };
     useEditorLayout.setState((s) => {
-      const root = s.layouts[WS]!.root as SplitNode;
+      const root = s.layouts[WS]?.root as SplitNode;
       const aPane = root.children[0] as PaneNode;
       const bPane = root.children[1] as PaneNode;
       const next: SplitNode = {
@@ -252,10 +265,15 @@ describe("editor-layout store", () => {
           { ...bPane, tabs: [tabB], activeTabId: "tab-b" },
         ],
       };
+      // biome-ignore lint/style/noNonNullAssertion: test fixture guarantees presence
       return { layouts: { ...s.layouts, [WS]: { ...s.layouts[WS]!, root: next } } };
     });
-    useEditorLayout.getState().setTabPosition(WS, a, "tab-a", { line: 10, column: 5, scrollTop: 200 });
-    useEditorLayout.getState().setTabPosition(WS, b, "tab-b", { line: 42, column: 0, scrollTop: 1500 });
+    useEditorLayout
+      .getState()
+      .setTabPosition(WS, a, "tab-a", { line: 10, column: 5, scrollTop: 200 });
+    useEditorLayout
+      .getState()
+      .setTabPosition(WS, b, "tab-b", { line: 42, column: 0, scrollTop: 1500 });
     const root = layout().root as SplitNode;
     const aPane = root.children[0] as PaneNode;
     const bPane = root.children[1] as PaneNode;
@@ -265,17 +283,25 @@ describe("editor-layout store", () => {
 
   it("setActiveTab focuses the pane and selects the tab", () => {
     const a = layout().root.id;
-    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after")!;
+    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after");
+    if (!b) throw new Error("expected split pane id");
     const t1 = { id: "t1", path: "/ws/a.md", position: { line: 0, column: 0, scrollTop: 0 } };
     const t2 = { id: "t2", path: "/ws/b.md", position: { line: 0, column: 0, scrollTop: 0 } };
     useEditorLayout.setState((s) => {
-      const root = s.layouts[WS]!.root as SplitNode;
+      const root = s.layouts[WS]?.root as SplitNode;
       const aPane = root.children[0] as PaneNode;
       const next: SplitNode = {
         ...root,
-        children: [{ ...aPane, tabs: [t1, t2], activeTabId: "t1" }, root.children[1]!],
+        children: [
+          { ...aPane, tabs: [t1, t2], activeTabId: "t1" },
+          // biome-ignore lint/style/noNonNullAssertion: test fixture guarantees presence
+          root.children[1]!,
+        ],
       };
-      return { layouts: { ...s.layouts, [WS]: { ...s.layouts[WS]!, root: next, activePaneId: b } } };
+      return {
+        // biome-ignore lint/style/noNonNullAssertion: test fixture guarantees presence
+        layouts: { ...s.layouts, [WS]: { ...s.layouts[WS]!, root: next, activePaneId: b } },
+      };
     });
     useEditorLayout.getState().setActiveTab(WS, a, "t2");
     const root = layout().root as SplitNode;
@@ -302,8 +328,10 @@ describe("editor-layout store", () => {
 
   it("findPane locates panes by id across the tree", () => {
     const a = layout().root.id;
-    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after")!;
-    const c = useEditorLayout.getState().splitPane(WS, b, "vertical", "after")!;
+    const b = useEditorLayout.getState().splitPane(WS, a, "horizontal", "after");
+    if (!b) throw new Error("expected split pane id");
+    const c = useEditorLayout.getState().splitPane(WS, b, "vertical", "after");
+    if (!c) throw new Error("expected split pane id");
     expect(findPane(layout().root, a)?.id).toBe(a);
     expect(findPane(layout().root, b)?.id).toBe(b);
     expect(findPane(layout().root, c)?.id).toBe(c);

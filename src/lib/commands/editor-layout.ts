@@ -5,10 +5,10 @@
 // All commands no-op when there is no current workspace — the welcome
 // screen has no panes.
 
-import { findPane, forEachPane, type PaneId } from "../editor/layout-model";
 import { useEditorLayout } from "../../store/editor-layout";
 import { useTabs } from "../../store/tabs";
 import { useWorkspace } from "../../store/workspace";
+import { type PaneId, findPane, forEachPane } from "../editor/layout-model";
 
 export function splitRightCommand(): void {
   const ws = useWorkspace.getState().current;
@@ -61,12 +61,7 @@ export function closeActiveTabCommand(): void {
       if (pane && activeTab) {
         // Mirror the close into the legacy flat store so any subscriber
         // still reading useTabs (status bar, recent picker) stays in sync.
-        const stillOpenElsewhere = pathOpenElsewhere(
-          ws,
-          pane.id,
-          activeTab.id,
-          activeTab.path,
-        );
+        const stillOpenElsewhere = pathOpenElsewhere(ws, pane.id, activeTab.id, activeTab.path);
         const nextTabs = pane.tabs.filter((t) => t.id !== activeTab.id);
         if (nextTabs.length === 0) {
           // Pane becomes empty → collapse it via closePane (which itself
@@ -113,8 +108,9 @@ export function moveEditorToNextGroupCommand(): void {
   const fromIdx = order.indexOf(layout.activePaneId);
   if (fromIdx < 0) return;
   const toIdx = (fromIdx + 1) % order.length;
-  const fromPaneId = order[fromIdx]!;
-  const toPaneId = order[toIdx]!;
+  const fromPaneId = order[fromIdx];
+  const toPaneId = order[toIdx];
+  if (fromPaneId === undefined || toPaneId === undefined) return;
   const pane = findPane(layout.root, fromPaneId);
   if (!pane || !pane.activeTabId) return;
   useEditorLayout.getState().moveTab(ws, fromPaneId, pane.activeTabId, toPaneId, null);

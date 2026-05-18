@@ -27,8 +27,8 @@ import {
   moveLineUp,
   selectLine,
 } from "@codemirror/commands";
-import { keymap } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 
 export function lineCommandsExtension(): Extension {
   return keymap.of([

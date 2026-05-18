@@ -13,8 +13,8 @@
 // ("decoration은 viewport 단위만 적용").
 
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { tags as t } from "@lezer/highlight";
 import type { Extension } from "@codemirror/state";
+import { tags as t } from "@lezer/highlight";
 
 const markdownHighlightStyle = HighlightStyle.define([
   { tag: t.heading1, fontSize: "1.8em", fontWeight: "700", color: "var(--ms-md-h1, #2b6cb0)" },

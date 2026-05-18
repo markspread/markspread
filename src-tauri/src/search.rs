@@ -100,8 +100,8 @@ fn apply_shared_pragmas(conn: &Connection) -> AppResult<()> {
 }
 
 fn open_in_memory_fts() -> AppResult<Connection> {
-    let conn = Connection::open_in_memory()
-        .map_err(|e| AppError::Invalid(format!("sqlite open: {e}")))?;
+    let conn =
+        Connection::open_in_memory().map_err(|e| AppError::Invalid(format!("sqlite open: {e}")))?;
     conn.execute_batch(
         "CREATE VIRTUAL TABLE docs USING fts5(
             path UNINDEXED,

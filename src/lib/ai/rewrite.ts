@@ -24,10 +24,7 @@ export interface RewritePrompt {
 
 export function buildRewritePrompt(selection: string, tone: RewriteTone): RewritePrompt {
   return {
-    system:
-      `${REWRITE_GUIDANCE[tone]}\n\n` +
-      "Output only the rewritten passage; no preamble, no quotation marks, " +
-      "no commentary.",
+    system: `${REWRITE_GUIDANCE[tone]}\n\nOutput only the rewritten passage; no preamble, no quotation marks, no commentary.`,
     user: selection,
   };
 }

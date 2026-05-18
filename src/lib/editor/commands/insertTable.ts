@@ -44,15 +44,19 @@ function alignToken(align: ColumnAlign): string {
 
 export function buildTableMarkdown(result: InsertTableResult): string {
   const { rows, cols, align } = result;
-  const header = "|" + " ".repeat(cols).split("").map(() => "  ").join("|") + "|";
-  const sep = "|" + align
+  const header = `|${" "
+    .repeat(cols)
+    .split("")
+    .map(() => "  ")
+    .join("|")}|`;
+  const sep = `|${align
     .slice(0, cols)
     .concat(Array(Math.max(0, cols - align.length)).fill("default" as ColumnAlign))
     .map((a) => ` ${alignToken(a)} `)
-    .join("|") + "|";
+    .join("|")}|`;
   const body = Array(rows)
     .fill(0)
-    .map(() => "|" + "  |".repeat(cols))
+    .map(() => `|${"  |".repeat(cols)}`)
     .join("\n");
   return [header, sep, body].filter(Boolean).join("\n");
 }

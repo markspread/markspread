@@ -21,8 +21,8 @@
 // spec ID grep-discoverable.
 
 import { selectNextOccurrence, selectSelectionMatches } from "@codemirror/search";
-import { EditorView, keymap } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
 
 export { selectNextOccurrence, selectSelectionMatches };
 

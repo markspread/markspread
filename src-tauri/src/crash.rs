@@ -190,8 +190,7 @@ pub async fn error_recovery_list() -> AppResult<Vec<RecoveryCandidate>> {
         }
         // Autosave snapshots are keyed by the buffer sha256 the beacon
         // recorded, so a recovered body can be matched back exactly.
-        let recovered_body =
-            std::fs::read_to_string(autosave_dir.join(&buf.sha256)).ok();
+        let recovered_body = std::fs::read_to_string(autosave_dir.join(&buf.sha256)).ok();
         out.push(RecoveryCandidate {
             key: buf.key,
             bytes: buf.bytes,

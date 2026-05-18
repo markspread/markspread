@@ -46,9 +46,9 @@ export function chunkDocument(doc: string): TranslateChunk[] {
   const chunks: TranslateChunk[] = [];
   for (let i = 0; i < paragraphs.length; i += CHUNK_PARAGRAPH_GROUP) {
     const slice = paragraphs.slice(i, i + CHUNK_PARAGRAPH_GROUP);
-    if (slice.length === 0) continue;
-    const first = slice[0]!;
-    const last = slice[slice.length - 1]!;
+    const first = slice[0];
+    const last = slice[slice.length - 1];
+    if (first === undefined || last === undefined) continue;
     const startLine = first.start;
     const endLine = last.end;
     const source = slice.map((p) => p.text.join("\n")).join("\n\n");
@@ -108,14 +108,19 @@ export function unmaskUntranslatable({ segments }: MaskedText, translated: strin
  * translated so the chunk reviewer can warn the user when the model
  * mangled a code fence.
  */
-export function comparePlaceholders(masked: string, modelOutput: string): {
+export function comparePlaceholders(
+  masked: string,
+  modelOutput: string,
+): {
   expected: number;
   found: number;
   missing: number[];
 } {
-  const expected = (masked.match(/MS\d+/g) ?? []).length;
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: \x01 delimits placeholder markers by design
+  const expected = (masked.match(/\x01MS\d+\x01/g) ?? []).length;
   const present = new Set<number>();
-  for (const m of modelOutput.matchAll(/MS(\d+)/g)) {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: \x01 delimits placeholder markers by design
+  for (const m of modelOutput.matchAll(/\x01MS(\d+)\x01/g)) {
     present.add(Number(m[1]));
   }
   const missing: number[] = [];
@@ -136,7 +141,11 @@ export function assembleDocument(originalDoc: string, chunks: TranslateChunk[]):
   const ordered = [...chunks].sort((a, b) => b.startLine - a.startLine);
   for (const ch of ordered) {
     if (ch.decision === "accept" && ch.translated !== undefined) {
-      lines.splice(ch.startLine - 1, ch.endLine - ch.startLine + 1, ...ch.translated.split(/\r?\n/));
+      lines.splice(
+        ch.startLine - 1,
+        ch.endLine - ch.startLine + 1,
+        ...ch.translated.split(/\r?\n/),
+      );
     } else if (ch.decision === "edit" && ch.edited !== undefined) {
       lines.splice(ch.startLine - 1, ch.endLine - ch.startLine + 1, ...ch.edited.split(/\r?\n/));
     }

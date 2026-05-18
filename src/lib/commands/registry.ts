@@ -1,3 +1,4 @@
+import { closeWorkspaceCommand } from "./close-workspace";
 import {
   closeActiveTabCommand,
   focusPaneCommand,
@@ -6,7 +7,6 @@ import {
   splitRightCommand,
 } from "./editor-layout";
 import { exportKeybindingsCommand, importKeybindingsCommand } from "./keybindings-io";
-import { closeWorkspaceCommand } from "./close-workspace";
 import { locateWorkspaceCommand } from "./locate-workspace";
 import { newFileCommand, newFolderCommand } from "./new-file";
 import { newWindowCommand } from "./new-window";

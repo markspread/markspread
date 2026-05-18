@@ -8,16 +8,9 @@
 // 401 응답으로 호출 자체가 거부될 때 자동 fallback 은 없다 — 의도적
 // 사용자 행동(다시 로그인)이 필요하다.
 
-import {
-  shouldRefreshSubscription,
-  type SubscriptionCredential,
-} from "./credentials";
+import { type SubscriptionCredential, shouldRefreshSubscription } from "./credentials";
 
-export type RefreshFailureReason =
-  | "network"
-  | "denied"
-  | "invalid_token"
-  | "internal";
+export type RefreshFailureReason = "network" | "denied" | "invalid_token" | "internal";
 
 export type RefreshTransport = {
   /**
@@ -69,10 +62,7 @@ export function createAuthRefreshScheduler(
       const next = await opts.transport.refresh(current);
       opts.onCredentialUpdate(next);
     } catch (e) {
-      opts.onRefreshFailed(
-        classifyRefreshError(e),
-        e instanceof Error ? e : new Error(String(e)),
-      );
+      opts.onRefreshFailed(classifyRefreshError(e), e instanceof Error ? e : new Error(String(e)));
     } finally {
       inflight = false;
     }

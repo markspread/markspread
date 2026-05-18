@@ -23,8 +23,8 @@ const ROOT = ".github/workflows";
 const COMPOSITE_ACTIONS_ROOT = ".github/actions";
 
 const TRUSTED_PREFIXES = [
-  "actions/",          // GitHub
-  "./",                // our own composite actions
+  "actions/", // GitHub
+  "./", // our own composite actions
 ];
 
 const SHA_RE = /@[0-9a-f]{40}\b/;
@@ -69,4 +69,6 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.error(`OK — ${files.length} workflow file(s) scanned, all third-party actions pinned to SHA.`);
+console.error(
+  `OK — ${files.length} workflow file(s) scanned, all third-party actions pinned to SHA.`,
+);

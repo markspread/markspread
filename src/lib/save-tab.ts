@@ -18,11 +18,7 @@ interface SaveOptions {
  * Returns true on successful write, false on cancel or failure (callers should
  * keep the in-memory dirty state). Toasts surface failure cases.
  */
-export async function saveTab({
-  workspace,
-  path,
-  content,
-}: SaveOptions): Promise<boolean> {
+export async function saveTab({ workspace, path, content }: SaveOptions): Promise<boolean> {
   const tab = useTabs.getState().tabs.find((t) => t.path === path);
   const orphaned = !!tab?.orphaned;
 

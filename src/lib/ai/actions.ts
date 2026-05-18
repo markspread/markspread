@@ -7,12 +7,7 @@
 // (provider selection, streaming, undo group) lives in `runner.ts` once the
 // AI provider layer (S-AIK) is wired in.
 
-export type ActionCategory =
-  | "edit"
-  | "generate"
-  | "translate"
-  | "summarize"
-  | "custom";
+export type ActionCategory = "edit" | "generate" | "translate" | "summarize" | "custom";
 
 export interface AiAction {
   id: string;
@@ -41,19 +36,69 @@ export interface ActionContext {
 
 export const ACTIONS: AiAction[] = [
   // --- Edit group -------------------------------------------------------
-  { id: "review", category: "edit", labelKey: "ai.actions.review", requires: "anywhere", hint: "⌘.", available: (c) => c.documentLength > 0 },
-  { id: "translate", category: "translate", labelKey: "ai.actions.translate", requires: "anywhere" },
-  { id: "rewrite-formal", category: "edit", labelKey: "ai.actions.rewrite_formal", requires: "selection" },
-  { id: "rewrite-casual", category: "edit", labelKey: "ai.actions.rewrite_casual", requires: "selection" },
+  {
+    id: "review",
+    category: "edit",
+    labelKey: "ai.actions.review",
+    requires: "anywhere",
+    hint: "⌘.",
+    available: (c) => c.documentLength > 0,
+  },
+  {
+    id: "translate",
+    category: "translate",
+    labelKey: "ai.actions.translate",
+    requires: "anywhere",
+  },
+  {
+    id: "rewrite-formal",
+    category: "edit",
+    labelKey: "ai.actions.rewrite_formal",
+    requires: "selection",
+  },
+  {
+    id: "rewrite-casual",
+    category: "edit",
+    labelKey: "ai.actions.rewrite_casual",
+    requires: "selection",
+  },
   { id: "format", category: "edit", labelKey: "ai.actions.format", requires: "anywhere" },
   // --- Generate group ---------------------------------------------------
   { id: "continue", category: "generate", labelKey: "ai.actions.continue", requires: "anywhere" },
-  { id: "brainstorm", category: "generate", labelKey: "ai.actions.brainstorm", requires: "anywhere" },
-  { id: "outline", category: "generate", labelKey: "ai.actions.outline", requires: "document", available: (c) => c.documentLength > 0 },
-  { id: "title", category: "generate", labelKey: "ai.actions.title", requires: "document", available: (c) => c.documentLength > 0 },
+  {
+    id: "brainstorm",
+    category: "generate",
+    labelKey: "ai.actions.brainstorm",
+    requires: "anywhere",
+  },
+  {
+    id: "outline",
+    category: "generate",
+    labelKey: "ai.actions.outline",
+    requires: "document",
+    available: (c) => c.documentLength > 0,
+  },
+  {
+    id: "title",
+    category: "generate",
+    labelKey: "ai.actions.title",
+    requires: "document",
+    available: (c) => c.documentLength > 0,
+  },
   // --- Summarize / inspect group ---------------------------------------
-  { id: "summarize", category: "summarize", labelKey: "ai.actions.summarize", requires: "document", available: (c) => c.documentLength > 0 },
-  { id: "fact-check", category: "summarize", labelKey: "ai.actions.fact_check", requires: "selection" },
+  {
+    id: "summarize",
+    category: "summarize",
+    labelKey: "ai.actions.summarize",
+    requires: "document",
+    available: (c) => c.documentLength > 0,
+  },
+  {
+    id: "fact-check",
+    category: "summarize",
+    labelKey: "ai.actions.fact_check",
+    requires: "selection",
+  },
 ];
 
 const CATEGORY_RANK: Record<ActionCategory, number> = {

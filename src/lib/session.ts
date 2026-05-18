@@ -1,11 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { fromLegacyTabs } from "./editor/layout-model";
 import { useEditorLayout } from "../store/editor-layout";
 import { useSingleFile } from "../store/single-file";
 import { useTabs } from "../store/tabs";
 import { useToasts } from "../store/toasts";
 import { useWorkspace } from "../store/workspace";
 import { routeCliPathArg } from "./cli-route";
+import { fromLegacyTabs } from "./editor/layout-model";
 
 interface CliFlags {
   no_restore: boolean;

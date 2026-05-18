@@ -14,8 +14,8 @@
 //   - delta updates: scoped to v2 (S-UP-019), stub here
 
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { isDowngrade, type UpdateManifest } from "../security/update-verify";
+import { type UnlistenFn, listen } from "@tauri-apps/api/event";
+import { type UpdateManifest, isDowngrade } from "../security/update-verify";
 
 // S-REL-014: three-channel split. `stable` is the default for
 // production users; `beta` is opt-in for users who want the
@@ -27,7 +27,7 @@ export type UpdateChannel = "stable" | "beta" | "alpha";
 export type InstallPolicy = "auto-download-manual-install" | "auto-both" | "manual-check";
 
 export interface UpdaterSettings {
-  enabled: boolean;        // S-UP-018
+  enabled: boolean; // S-UP-018
   channel: UpdateChannel;
   policy: InstallPolicy;
   /** Last successful check, epoch ms. */

@@ -23,9 +23,7 @@ afterEach(() => {
 
 describe("doc-cache store", () => {
   it("two panes sharing a path observe the same baseline", () => {
-    useDocCache
-      .getState()
-      .setBaseline(WS, "/ws/a.md", { content: "hello", encoding: "utf-8" });
+    useDocCache.getState().setBaseline(WS, "/ws/a.md", { content: "hello", encoding: "utf-8" });
     expect(useDocCache.getState().getBaseline(WS, "/ws/a.md")?.content).toBe("hello");
     // A second consumer reads the exact same baseline (reference identity).
     const b1 = useDocCache.getState().getBaseline(WS, "/ws/a.md");
@@ -34,9 +32,7 @@ describe("doc-cache store", () => {
   });
 
   it("seeds live content on first baseline load and tracks dirty", () => {
-    useDocCache
-      .getState()
-      .setBaseline(WS, "/ws/a.md", { content: "abc", encoding: "utf-8" });
+    useDocCache.getState().setBaseline(WS, "/ws/a.md", { content: "abc", encoding: "utf-8" });
     expect(useDocCache.getState().getLive(WS, "/ws/a.md")).toBe("abc");
     expect(isDirty(WS, "/ws/a.md")).toBe(false);
     useDocCache.getState().setLive(WS, "/ws/a.md", "abcd");
@@ -55,9 +51,7 @@ describe("doc-cache store", () => {
   it("setError + clearError round-trip", () => {
     const decision = { ruleId: "fap.read.denied", category: "policy" } as const;
     useDocCache.getState().setError(WS, "/ws/a.md", decision as never);
-    expect(useDocCache.getState().getError(WS, "/ws/a.md")?.ruleId).toBe(
-      "fap.read.denied",
-    );
+    expect(useDocCache.getState().getError(WS, "/ws/a.md")?.ruleId).toBe("fap.read.denied");
     useDocCache.getState().clearError(WS, "/ws/a.md");
     expect(useDocCache.getState().getError(WS, "/ws/a.md")).toBeUndefined();
   });

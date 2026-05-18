@@ -54,7 +54,9 @@ export async function listAudit(query: AuditQuery = {}): Promise<AuditEntry[]> {
 export function formatAuditCsv(entries: AuditEntry[]): string {
   const header = "ts,plugin_id,api_kind,api_summary,decision,reason";
   const rows = entries.map((e) =>
-    [new Date(e.ts).toISOString(), e.pluginId, e.apiKind, e.apiSummary, e.decision, e.reason].map(csvEscape).join(","),
+    [new Date(e.ts).toISOString(), e.pluginId, e.apiKind, e.apiSummary, e.decision, e.reason]
+      .map(csvEscape)
+      .join(","),
   );
   return `﻿${header}\r\n${rows.join("\r\n")}\r\n`;
 }

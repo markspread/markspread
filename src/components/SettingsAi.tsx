@@ -152,9 +152,7 @@ export function SettingsAi() {
           </select>
         </label>
         <label className="flex items-center gap-2 text-xs">
-          <span className="w-20 text-[var(--color-muted)]">
-            {t("settings.ai.alias", "Alias")}
-          </span>
+          <span className="w-20 text-[var(--color-muted)]">{t("settings.ai.alias", "Alias")}</span>
           <input
             type="text"
             className="flex-1 rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs"
@@ -163,9 +161,7 @@ export function SettingsAi() {
           />
         </label>
         <label className="flex items-center gap-2 text-xs">
-          <span className="w-20 text-[var(--color-muted)]">
-            {t("settings.ai.key", "API Key")}
-          </span>
+          <span className="w-20 text-[var(--color-muted)]">{t("settings.ai.key", "API Key")}</span>
           <input
             type="password"
             className="flex-1 rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs"

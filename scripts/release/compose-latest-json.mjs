@@ -22,13 +22,16 @@ function arg(flag, fallback) {
   return argv[i + 1];
 }
 
-const tag      = arg("--tag");
-const channel  = arg("--channel", "stable");
-const distDir  = arg("--dist", "dist");
-const baseUrl  = arg("--base-url", "https://releases.markspread.app");
+const tag = arg("--tag");
+const channel = arg("--channel", "stable");
+const distDir = arg("--dist", "dist");
+const baseUrl = arg("--base-url", "https://releases.markspread.app");
 const notesPath = arg("--notes");
 
-if (!tag) { console.error("--tag is required"); exit(1); }
+if (!tag) {
+  console.error("--tag is required");
+  exit(1);
+}
 const version = tag.replace(/^v/, "").replace(/^nightly-/, "0.0.0-nightly-");
 
 // Map a filename to a Tauri platform key.
@@ -59,8 +62,11 @@ for (const file of walk(distDir)) {
   if (!platform) continue;
   const sigPath = `${file}.sig`;
   let signature = "";
-  try { signature = readFileSync(sigPath, "utf8").trim(); }
-  catch { /* sig only emitted when TAURI_SIGNING_PRIVATE_KEY was set */ }
+  try {
+    signature = readFileSync(sigPath, "utf8").trim();
+  } catch {
+    /* sig only emitted when TAURI_SIGNING_PRIVATE_KEY was set */
+  }
 
   const relativePath = file.replace(`${distDir}/`, "");
   platforms[platform] = {

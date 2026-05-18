@@ -34,7 +34,11 @@ fn boot() -> tauri::App<MockRuntime> {
     app
 }
 
-fn invoke(app: &tauri::App<MockRuntime>, cmd: &str, payload: serde_json::Value) -> serde_json::Value {
+fn invoke(
+    app: &tauri::App<MockRuntime>,
+    cmd: &str,
+    payload: serde_json::Value,
+) -> serde_json::Value {
     let window = app.get_webview_window("main").expect("main window present");
     tauri::test::get_ipc_response(
         &window,
@@ -73,7 +77,10 @@ fn workspace_open_returns_id_and_path() {
     let tmp = tempfile::tempdir().unwrap();
     let resp = invoke(&app, "workspace_open", json!({ "path": tmp.path() }));
     assert!(resp.get("id").is_some(), "expected id field, got {resp}");
-    assert_eq!(resp.get("path").and_then(|v| v.as_str()), Some(tmp.path().to_str().unwrap()));
+    assert_eq!(
+        resp.get("path").and_then(|v| v.as_str()),
+        Some(tmp.path().to_str().unwrap())
+    );
 }
 
 #[test]
@@ -88,7 +95,9 @@ fn ai_key_save_round_trips_alias() {
 
     let listed = invoke(&app, "ai_key_list", json!({}));
     let entries = listed.as_array().expect("list returns array");
-    assert!(entries.iter().any(|e| e.get("alias").and_then(|v| v.as_str()) == Some("test-alias")));
+    assert!(entries
+        .iter()
+        .any(|e| e.get("alias").and_then(|v| v.as_str()) == Some("test-alias")));
 }
 
 #[test]

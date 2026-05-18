@@ -35,7 +35,11 @@ for (const file of walk(srcRoot)) {
     // Match `tabIndex={N}` or `tabindex="N"` where N is a positive integer.
     const m = lines[i].match(/tab[Ii]ndex\s*=\s*[{"]\s*(\d+)/);
     if (m && Number(m[1]) > 0) {
-      violations.push({ file: relative(repoRoot, file).split(sep).join("/"), line: i + 1, value: m[1] });
+      violations.push({
+        file: relative(repoRoot, file).split(sep).join("/"),
+        line: i + 1,
+        value: m[1],
+      });
     }
   }
 }

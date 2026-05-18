@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { useUpdater } from "../store/updater";
-import { useTelemetry } from "../store/telemetry";
 import { useFocusTrap } from "../lib/focus-trap";
+import { useTelemetry } from "../store/telemetry";
+import { useUpdater } from "../store/updater";
 
 const SAMPLE_REPORT = `{
   "id": "<uuid>",
@@ -37,6 +37,7 @@ export function TelemetryConsent() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
       role="dialog"
       aria-modal="true"
       aria-label={t("telemetry.aria", "Anonymous usage statistics consent")}
@@ -67,7 +68,6 @@ export function TelemetryConsent() {
             type="button"
             className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm hover:bg-[var(--color-border)]/30"
             onClick={() => setConsent("disabled")}
-            autoFocus
           >
             {t("telemetry.disable", "Don't send")}
           </button>

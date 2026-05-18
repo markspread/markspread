@@ -7,10 +7,7 @@
 // 테스트는 `AuthTransport` 를 fake 로 주입해 Rust 명령 호출 없이 모든 분기를
 // 검증한다.
 
-import {
-  parseCredential,
-  type SubscriptionCredential,
-} from "./credentials";
+import { type SubscriptionCredential, parseCredential } from "./credentials";
 import type { ProviderId } from "./providers";
 
 export type AuthStage =
@@ -94,12 +91,7 @@ function makeError(code: AuthErrorCode): AuthError {
 }
 
 export function classifyRawError(raw: unknown): AuthError {
-  const msg =
-    raw instanceof Error
-      ? raw.message
-      : typeof raw === "string"
-      ? raw
-      : "";
+  const msg = raw instanceof Error ? raw.message : typeof raw === "string" ? raw : "";
   const lower = msg.toLowerCase();
   if (raw instanceof DOMException && raw.name === "AbortError") return makeError("cancelled");
   if (lower.includes("cancel")) return makeError("cancelled");
@@ -138,7 +130,11 @@ export function createSubscriptionAuthFlow(opts: AuthFlowOptions): AuthFlowHandl
     abort = new AbortController();
     const awaitingStage: AuthStage =
       begin.userCode != null
-        ? { kind: "awaiting-user", verificationUrl: begin.verificationUrl, userCode: begin.userCode }
+        ? {
+            kind: "awaiting-user",
+            verificationUrl: begin.verificationUrl,
+            userCode: begin.userCode,
+          }
         : { kind: "awaiting-user", verificationUrl: begin.verificationUrl };
     set(awaitingStage);
     try {

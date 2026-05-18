@@ -25,16 +25,12 @@ const FileMatchSchema = z
       (m.globs && m.globs.length > 0) ||
       (m.frontmatterSniff && Object.keys(m.frontmatterSniff).length > 0),
     {
-      message:
-        "fileMatch must declare at least one of: extensions, globs, frontmatterSniff",
+      message: "fileMatch must declare at least one of: extensions, globs, frontmatterSniff",
     },
   );
 
 export const ParserManifestSchema = z.object({
-  id: z
-    .string()
-    .min(1)
-    .regex(slugPattern, "id must be lowercase slug (a-z0-9-)"),
+  id: z.string().min(1).regex(slugPattern, "id must be lowercase slug (a-z0-9-)"),
   version: z.string().regex(semverPattern, "version must be semver MAJOR.MINOR.PATCH"),
   displayName: z.string().min(1).max(80),
   fileMatch: FileMatchSchema,

@@ -555,9 +555,7 @@ fn validate_plugin_id(id: &str) -> Result<(), AppError> {
 /// entries the plugin held. After this call the plugin's residual
 /// footprint is zero.
 #[tauri::command]
-pub async fn ops_cleanup_plugin_data(
-    plugin_id: String,
-) -> Result<PluginCleanupReport, AppError> {
+pub async fn ops_cleanup_plugin_data(plugin_id: String) -> Result<PluginCleanupReport, AppError> {
     validate_plugin_id(&plugin_id)?;
 
     let dir = data_dir()?;
@@ -628,7 +626,10 @@ fn read_update_prefs(settings: &serde_json::Value) -> UpdatePrefs {
         .get("autoUpdate")
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
-    UpdatePrefs { channel, auto_update }
+    UpdatePrefs {
+        channel,
+        auto_update,
+    }
 }
 
 fn read_settings_or_empty(path: &Path) -> Result<serde_json::Value, AppError> {
@@ -654,7 +655,9 @@ pub async fn ops_update_prefs_set(prefs: UpdatePrefs) -> Result<(), AppError> {
     let path = dir.join("settings.json");
     let mut v = read_settings_or_empty(&path)?;
     if !v.is_object() {
-        return Err(AppError::Invalid("settings.json root is not an object".into()));
+        return Err(AppError::Invalid(
+            "settings.json root is not an object".into(),
+        ));
     }
     let map = v.as_object_mut().unwrap();
     map.insert(
@@ -716,11 +719,14 @@ pub async fn ops_telemetry_set(enabled: bool) -> Result<(), AppError> {
     let path = dir.join("settings.json");
     let mut v = read_settings_or_empty(&path)?;
     if !v.is_object() {
-        return Err(AppError::Invalid("settings.json root is not an object".into()));
+        return Err(AppError::Invalid(
+            "settings.json root is not an object".into(),
+        ));
     }
-    v.as_object_mut()
-        .unwrap()
-        .insert("telemetryEnabled".to_string(), serde_json::Value::Bool(enabled));
+    v.as_object_mut().unwrap().insert(
+        "telemetryEnabled".to_string(),
+        serde_json::Value::Bool(enabled),
+    );
     write_atomic(&path, &v)?;
 
     if !enabled {
@@ -810,9 +816,10 @@ pub async fn ops_about_licenses(app: AppHandle) -> Result<AboutPayload, AppError
         dependencies: Vec::new(),
     };
 
-    let resource = app
-        .path()
-        .resolve("licenses/licenses.json", tauri::path::BaseDirectory::Resource);
+    let resource = app.path().resolve(
+        "licenses/licenses.json",
+        tauri::path::BaseDirectory::Resource,
+    );
     if let Ok(path) = resource {
         if let Ok(raw) = std::fs::read_to_string(&path) {
             match serde_json::from_str::<Vec<LicenseEntry>>(&raw) {
@@ -863,7 +870,9 @@ pub async fn ops_safe_mode_set(enabled: bool) -> Result<(), AppError> {
             serde_json::Value::Bool(enabled),
         );
     } else {
-        return Err(AppError::Invalid("settings.json root is not an object".into()));
+        return Err(AppError::Invalid(
+            "settings.json root is not an object".into(),
+        ));
     }
     write_atomic(&path, &v)?;
     Ok(())
@@ -919,9 +928,7 @@ pub async fn ops_keybindings_load() -> Result<serde_json::Value, AppError> {
 ///
 /// Atomic write so a crash mid-save can't leave the file half-written.
 #[tauri::command]
-pub async fn ops_keybindings_save(
-    overrides: serde_json::Value,
-) -> Result<(), AppError> {
+pub async fn ops_keybindings_save(overrides: serde_json::Value) -> Result<(), AppError> {
     let dir = data_dir()?;
     std::fs::create_dir_all(&dir).map_err(AppError::Io)?;
     write_atomic(&dir.join("keybindings.json"), &overrides)

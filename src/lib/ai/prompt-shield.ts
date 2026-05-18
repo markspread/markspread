@@ -46,12 +46,24 @@ export function wrapUserContent(body: string): string {
 // than false negatives degrade safety, since the delimiter + system
 // instruction already cover the common cases.
 const INJECTION_PATTERNS: { id: string; re: RegExp; severity: "warn" | "high" }[] = [
-  { id: "ignore-previous", re: /\b(?:ignore|disregard)\s+(?:all\s+)?(?:previous|prior|above)\s+instructions?/i, severity: "high" },
-  { id: "reveal-system", re: /\b(?:reveal|show|print|output)\s+(?:your|the)\s+(?:system|hidden)\s+prompt/i, severity: "high" },
+  {
+    id: "ignore-previous",
+    re: /\b(?:ignore|disregard)\s+(?:all\s+)?(?:previous|prior|above)\s+instructions?/i,
+    severity: "high",
+  },
+  {
+    id: "reveal-system",
+    re: /\b(?:reveal|show|print|output)\s+(?:your|the)\s+(?:system|hidden)\s+prompt/i,
+    severity: "high",
+  },
   { id: "you-are-now", re: /\byou\s+are\s+now\s+(?:a|an)\s+\w+/i, severity: "warn" },
   { id: "act-as", re: /\bact\s+as\s+(?:if|though)?\s*you\s+(?:are|were)\b/i, severity: "warn" },
   { id: "developer-mode", re: /\b(?:developer|dan|jailbreak)\s+mode\b/i, severity: "high" },
-  { id: "exfil-secrets", re: /\b(?:print|reveal|leak)\s+(?:all\s+)?(?:api\s+keys?|secrets?|credentials?)\b/i, severity: "high" },
+  {
+    id: "exfil-secrets",
+    re: /\b(?:print|reveal|leak)\s+(?:all\s+)?(?:api\s+keys?|secrets?|credentials?)\b/i,
+    severity: "high",
+  },
 ];
 
 export interface InjectionFinding {
@@ -67,7 +79,11 @@ export function scanForInjection(body: string): InjectionFinding[] {
     if (!m) continue;
     const start = Math.max(0, m.index - 20);
     const end = Math.min(body.length, m.index + m[0].length + 20);
-    findings.push({ id: p.id, severity: p.severity, excerpt: body.slice(start, end).replace(/\s+/g, " ") });
+    findings.push({
+      id: p.id,
+      severity: p.severity,
+      excerpt: body.slice(start, end).replace(/\s+/g, " "),
+    });
   }
   return findings;
 }

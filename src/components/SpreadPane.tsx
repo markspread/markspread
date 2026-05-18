@@ -20,7 +20,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PaneNode } from "../lib/editor/layout-model";
-import { getParserRegistry, BUILTIN_MARKDOWN_ID } from "../lib/parsers/registry";
+import { BUILTIN_MARKDOWN_ID, getParserRegistry } from "../lib/parsers/registry";
 import { getParserTransport } from "../lib/parsers/transport-registry";
 import { attachCheckboxToggles } from "../lib/preview/checkboxToggle";
 import { attachCodeCopyButtons } from "../lib/preview/codeCopyButton";
@@ -28,13 +28,8 @@ import { renderMathIn } from "../lib/preview/katex";
 import { attachLinkClickHandler } from "../lib/preview/linkClick";
 import { renderMermaidIn } from "../lib/preview/mermaid";
 import { createDebouncedRenderer } from "../lib/preview/render";
+import { emitScroll, isScrollSyncEnabled, onScroll, suppressEcho } from "../lib/preview/scrollSync";
 import { highlightCode } from "../lib/preview/shiki";
-import {
-  emitScroll,
-  isScrollSyncEnabled,
-  onScroll,
-  suppressEcho,
-} from "../lib/preview/scrollSync";
 import { useDocCache } from "../store/doc-cache";
 
 interface SpreadPaneProps {
@@ -59,15 +54,17 @@ export function SpreadPane({ workspace, pane, documentPath, content }: SpreadPan
     const parserId = matched?.parser.manifest.id;
     const transport =
       parserId && parserId !== BUILTIN_MARKDOWN_ID
-        ? getParserTransport(parserId) ?? undefined
+        ? (getParserTransport(parserId) ?? undefined)
         : undefined;
-    void renderRef.current(content, {
-      highlightCode: (code, lang) => highlightCode(code, lang),
-      path: documentPath,
-      ...(transport ? { transport } : {}),
-    }).then((next) => {
-      if (active && next !== null) setHtml(next);
-    });
+    void renderRef
+      .current(content, {
+        highlightCode: (code, lang) => highlightCode(code, lang),
+        path: documentPath,
+        ...(transport ? { transport } : {}),
+      })
+      .then((next) => {
+        if (active && next !== null) setHtml(next);
+      });
     return () => {
       active = false;
     };
@@ -168,6 +165,7 @@ export function SpreadPane({ workspace, pane, documentPath, content }: SpreadPan
       className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 prose dark:prose-invert"
       ref={rootRef}
     >
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: html is sanitized markdown render output for preview */}
       <div dangerouslySetInnerHTML={{ __html: html }} />
     </section>
   );

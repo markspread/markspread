@@ -49,7 +49,9 @@ export function createAiPanel(adapter: AiPanelAdapter): AiPanel {
   let messages: AiPanelMessage[] = [];
   const listeners = new Set<() => void>();
   let aborter: AbortController | null = null;
-  const notify = () => listeners.forEach((fn) => fn());
+  const notify = () => {
+    for (const fn of listeners) fn();
+  };
   return {
     get messages() {
       return messages;
@@ -85,9 +87,7 @@ export function createAiPanel(adapter: AiPanelAdapter): AiPanel {
         messages = [...messages];
         notify();
       } catch (err) {
-        assistant.content +=
-          (assistant.content ? "\n\n" : "") +
-          `*[error: ${(err as Error).message}]*`;
+        assistant.content += `${assistant.content ? "\n\n" : ""}*[error: ${(err as Error).message}]*`;
         messages = [...messages];
         notify();
       } finally {

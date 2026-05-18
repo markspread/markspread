@@ -16,7 +16,7 @@
 // fixture workspace, neither of which are wired in yet. The scenarios
 // here cover the functional acceptance.
 
-import { expect, test, type Page } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 type DevStores = {
   workspace: { getState: () => { open: (path: string) => void } };
@@ -68,9 +68,7 @@ test("Mod+Shift+E opens peek and focuses the tree", async ({ page }) => {
 
   await page.keyboard.press("Meta+Shift+E");
   await expect(page.locator("[data-sidebar-peek]")).toBeVisible();
-  const focused = await page.evaluate(() =>
-    document.activeElement?.getAttribute("role"),
-  );
+  const focused = await page.evaluate(() => document.activeElement?.getAttribute("role"));
   expect(focused).toBe("tree");
 });
 

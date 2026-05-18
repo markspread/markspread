@@ -11,7 +11,8 @@ describe("ProviderDefinition.supportedAuthModes", () => {
   });
 
   it("anthropic supports both api-key and subscription", () => {
-    const p = getProvider("anthropic")!;
+    const p = getProvider("anthropic");
+    if (!p) throw new Error("expected anthropic provider");
     expect(p.supportedAuthModes).toContain("api-key");
     expect(p.supportedAuthModes).toContain("subscription");
   });

@@ -6,10 +6,7 @@
 // `addEmojiShortcode()`. Off by default — host wires
 // `setEmojiEnabled(true)` when the user opts in.
 
-import {
-  type CompletionContext,
-  type CompletionResult,
-} from "@codemirror/autocomplete";
+import type { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 import { addCompletionSource } from "./autocompletion";
 
 const BUILTIN: Record<string, string> = {

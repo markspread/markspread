@@ -9,12 +9,6 @@
 // markdown grammar's existing structure.
 
 import {
-  type Extension,
-  type EditorState,
-  StateEffect,
-  StateField,
-} from "@codemirror/state";
-import {
   foldEffect,
   foldGutter,
   foldKeymap,
@@ -22,8 +16,9 @@ import {
   foldedRanges,
   unfoldEffect,
 } from "@codemirror/language";
-import { keymap } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
+import { type EditorState, type Extension, type StateEffect, StateField } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 
 const HEADING_RE = /^(#{1,6})\s/;
 
@@ -90,17 +85,14 @@ function codeBlockFoldRange(
 
 const markdownFoldService = foldService.of(
   (state, lineStart, lineEnd) =>
-    headingFoldRange(state, lineStart, lineEnd) ??
-    codeBlockFoldRange(state, lineStart, lineEnd),
+    headingFoldRange(state, lineStart, lineEnd) ?? codeBlockFoldRange(state, lineStart, lineEnd),
 );
 
 // S-ED-014: "fold all headings" command. Walks every line, asks the
 // fold service for a range, and dispatches a single transaction that
 // folds them all — single undo step keeps the user out of the
 // "twenty unfold operations" trap.
-export function foldAllHeadingsCommand(
-  view: import("@codemirror/view").EditorView,
-): boolean {
+export function foldAllHeadingsCommand(view: import("@codemirror/view").EditorView): boolean {
   const { state } = view;
   const effects: StateEffect<unknown>[] = [];
   for (let i = 1; i <= state.doc.lines; i++) {
@@ -113,9 +105,7 @@ export function foldAllHeadingsCommand(
   return true;
 }
 
-export function unfoldAllCommand(
-  view: import("@codemirror/view").EditorView,
-): boolean {
+export function unfoldAllCommand(view: import("@codemirror/view").EditorView): boolean {
   const ranges = foldedRanges(view.state);
   if (ranges.size === 0) return false;
   const effects: StateEffect<unknown>[] = [];

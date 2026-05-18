@@ -53,7 +53,8 @@ export async function testConnection(req: TestRequest, signal?: AbortSignal): Pr
       abortCookie: signal ? Math.random().toString(36).slice(2) : null,
     });
     const latencyMs = Math.round(performance.now() - startedAt);
-    if (raw.ok) return { kind: "ok", latencyMs, ...(raw.modelId !== undefined && { modelId: raw.modelId }) };
+    if (raw.ok)
+      return { kind: "ok", latencyMs, ...(raw.modelId !== undefined && { modelId: raw.modelId }) };
     if (raw.status === 401 || raw.status === 403) {
       return { kind: "auth", status: raw.status, message: raw.message || "Unauthorized" };
     }

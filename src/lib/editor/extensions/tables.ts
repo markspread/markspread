@@ -13,8 +13,8 @@
 // limited to caret motion and cosmetic alignment of pipes in the
 // header separator (S-MD-029).
 
-import { keymap, type Command } from "@codemirror/view";
-import { Prec, type Extension, EditorSelection } from "@codemirror/state";
+import { EditorSelection, type Extension, Prec } from "@codemirror/state";
+import { type Command, keymap } from "@codemirror/view";
 
 const SEP_RE = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
 
@@ -49,7 +49,7 @@ const tableNextCell: Command = (view) => {
     // the column count, place the caret in the first cell.
     const cellCount = pipes.length - 1;
     if (cellCount < 1) return false;
-    const newRow = "\n|" + " |".repeat(cellCount);
+    const newRow = `\n|${" |".repeat(cellCount)}`;
     view.dispatch({
       changes: { from: line.to, insert: newRow },
       selection: EditorSelection.cursor(line.to + 2),
@@ -108,7 +108,7 @@ const tableEnter: Command = (view) => {
   if (lastPipe === undefined || sel.head < lastPipe) return false;
   const cellCount = pipes.length - 1;
   if (cellCount < 1) return false;
-  const newRow = "\n|" + " |".repeat(cellCount);
+  const newRow = `\n|${" |".repeat(cellCount)}`;
   view.dispatch({
     changes: { from: line.to, insert: newRow },
     selection: EditorSelection.cursor(line.to + 2),
@@ -147,11 +147,14 @@ const tableSeparatorAutoformat = EditorView.updateListener.of((u) => {
       left: cell.startsWith(":"),
       right: cell.endsWith(":"),
     };
-    const minDashes = Math.max(3, (headerCells[i] ?? "").length - (Number(colon.left) + Number(colon.right)));
+    const minDashes = Math.max(
+      3,
+      (headerCells[i] ?? "").length - (Number(colon.left) + Number(colon.right)),
+    );
     const dashes = "-".repeat(minDashes);
     return ` ${colon.left ? ":" : ""}${dashes}${colon.right ? ":" : ""} `;
   });
-  const next = "|" + padded.join("|") + "|";
+  const next = `|${padded.join("|")}|`;
   if (next === line.text) return;
   // Defer dispatch to a microtask so we don't recurse into our own
   // updateListener inside the same transaction.

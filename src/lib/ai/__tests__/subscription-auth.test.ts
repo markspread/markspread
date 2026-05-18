@@ -3,10 +3,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubscriptionCredential } from "../credentials";
 import {
-  classifyRawError,
-  createSubscriptionAuthFlow,
   type AuthStage,
   type AuthTransport,
+  classifyRawError,
+  createSubscriptionAuthFlow,
 } from "../subscription-auth";
 
 function freshCred(over: Partial<SubscriptionCredential> = {}): SubscriptionCredential {
@@ -115,7 +115,7 @@ describe("createSubscriptionAuthFlow", () => {
     const flow = createSubscriptionAuthFlow({
       transport: makeTransport({
         awaitCompletion: async () =>
-          ({ credential: { kind: "subscription", providerId: "openai" } } as never),
+          ({ credential: { kind: "subscription", providerId: "openai" } }) as never,
       }),
     });
     const final = await flow.start("anthropic");
@@ -126,13 +126,11 @@ describe("createSubscriptionAuthFlow", () => {
   it("cancel() during awaiting-user moves the stage to cancelled error", async () => {
     const cancelSpy = vi.fn();
     let resolveAwait!: (v: { credential: SubscriptionCredential }) => void;
-    const awaitPromise = new Promise<{ credential: SubscriptionCredential }>(
-      (resolve, reject) => {
-        resolveAwait = resolve;
-        // signal abort handler
-        void reject;
-      },
-    );
+    const awaitPromise = new Promise<{ credential: SubscriptionCredential }>((resolve, reject) => {
+      resolveAwait = resolve;
+      // signal abort handler
+      void reject;
+    });
     const transport = makeTransport({
       awaitCompletion: async (_sessionId, signal) =>
         new Promise((resolve, reject) => {

@@ -35,14 +35,16 @@ export async function probeOllama(baseUrl = OLLAMA_DEFAULT_BASE_URL): Promise<Ol
 }
 
 export interface OllamaInstalledModel {
-  name: string;        // "llama3.3:latest"
-  size: number;        // bytes
-  modifiedAt: number;  // epoch ms
+  name: string; // "llama3.3:latest"
+  size: number; // bytes
+  modifiedAt: number; // epoch ms
   parameterCount: string | null; // "70B" — derived from manifest if available
-  quantisation: string | null;   // "Q4_K_M"
+  quantisation: string | null; // "Q4_K_M"
 }
 
-export async function listInstalledModels(baseUrl = OLLAMA_DEFAULT_BASE_URL): Promise<OllamaInstalledModel[]> {
+export async function listInstalledModels(
+  baseUrl = OLLAMA_DEFAULT_BASE_URL,
+): Promise<OllamaInstalledModel[]> {
   return invoke<OllamaInstalledModel[]>("ai_ollama_models", { baseUrl });
 }
 
@@ -51,7 +53,7 @@ export async function listInstalledModels(baseUrl = OLLAMA_DEFAULT_BASE_URL): Pr
 // alias namespace. Existing aliases are passed in to avoid collision.
 export function suggestAlias(modelName: string, existing: Set<string>): string {
   const base = modelName.replace(/[:/]/g, "-").toLowerCase();
-  let candidate = `local-${base}`;
+  const candidate = `local-${base}`;
   if (!existing.has(candidate)) return candidate;
   for (let i = 2; i < 100; i += 1) {
     const next = `${candidate}-${i}`;
@@ -96,7 +98,9 @@ export interface ConnectivityState {
   ollamaReachable: boolean;
 }
 
-export function describeConnectivity(state: ConnectivityState): "online" | "local-only" | "offline" {
+export function describeConnectivity(
+  state: ConnectivityState,
+): "online" | "local-only" | "offline" {
   if (state.online) return "online";
   if (state.ollamaReachable) return "local-only";
   return "offline";
@@ -115,7 +119,10 @@ export class NotAvailableOfflineError extends Error {
   }
 }
 
-export function shouldBlockOffline(connectivity: ConnectivityState, providerForAlias: string | null): boolean {
+export function shouldBlockOffline(
+  connectivity: ConnectivityState,
+  providerForAlias: string | null,
+): boolean {
   if (connectivity.online) return false;
   return providerForAlias !== "ollama";
 }
@@ -137,7 +144,9 @@ const VARIANT_LADDER: Record<string, string> = {
 
 export function recommendOnOom(currentModel: string): OomRecommendation {
   const sizeMatch = /(\d+)b/i.exec(currentModel);
-  const fallback = sizeMatch ? VARIANT_LADDER[(sizeMatch[1] ?? "").toLowerCase() + "b"] ?? null : null;
+  const fallback = sizeMatch
+    ? (VARIANT_LADDER[`${(sizeMatch[1] ?? "").toLowerCase()}b`] ?? null)
+    : null;
   const fallbackVariant = fallback ? currentModel.replace(/\d+b/i, fallback) : null;
   // Q4 is the default; if the user's already on Q4, drop to Q3 then Q2.
   const quantMatch = /Q[2-8]_[KS][_M]?/i.exec(currentModel);
@@ -162,7 +171,9 @@ export function effectiveContextWindow(declared: number, ramGB: number): number 
 // S-AIO-012: validate user-supplied baseURL for the corporate gateway
 // scenario. We accept http(s) URLs only, normalise the trailing slash,
 // and strip auth fragments (rare but it's a foot-gun).
-export function normaliseOllamaBaseUrl(input: string): { ok: true; url: string } | { ok: false; reason: string } {
+export function normaliseOllamaBaseUrl(
+  input: string,
+): { ok: true; url: string } | { ok: false; reason: string } {
   let parsed: URL;
   try {
     parsed = new URL(input);

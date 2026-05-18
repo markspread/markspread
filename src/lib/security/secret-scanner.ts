@@ -32,23 +32,36 @@ export interface SecretPattern {
 // S-SE-008: built-in content patterns. Mirrors the AI-context list but
 // captures the secret group so the scanner can run an entropy check.
 export const BUILTIN_CONTENT_PATTERNS: SecretPattern[] = [
-  { id: "aws-akia",       re: /\b(AKIA[0-9A-Z]{16})\b/g, severity: "high" },
-  { id: "aws-secret",     re: /\b([A-Za-z0-9/+]{40})\b(?=\s|$|[^A-Za-z0-9/+])/g, severity: "high", minEntropyBits: 4.5 },
-  { id: "github-token",   re: /\b(ghp_[A-Za-z0-9]{36})\b/g, severity: "high" },
-  { id: "github-fg",      re: /\b(github_pat_[A-Za-z0-9_]{82})\b/g, severity: "high" },
-  { id: "openai-key",     re: /\b(sk-[A-Za-z0-9]{20,})\b/g, severity: "high" },
-  { id: "anthropic-key",  re: /\b(sk-ant-[A-Za-z0-9-]{40,})\b/g, severity: "high" },
-  { id: "google-api",     re: /\b(AIza[0-9A-Za-z_-]{35})\b/g, severity: "high" },
-  { id: "slack-token",    re: /\b(xox[abprs]-[0-9A-Za-z-]{20,})\b/g, severity: "high" },
-  { id: "stripe-live",    re: /\b(sk_live_[0-9A-Za-z]{24,})\b/g, severity: "high" },
-  { id: "jwt",            re: /\b(eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})\b/g, severity: "medium" },
+  { id: "aws-akia", re: /\b(AKIA[0-9A-Z]{16})\b/g, severity: "high" },
+  {
+    id: "aws-secret",
+    re: /\b([A-Za-z0-9/+]{40})\b(?=\s|$|[^A-Za-z0-9/+])/g,
+    severity: "high",
+    minEntropyBits: 4.5,
+  },
+  { id: "github-token", re: /\b(ghp_[A-Za-z0-9]{36})\b/g, severity: "high" },
+  { id: "github-fg", re: /\b(github_pat_[A-Za-z0-9_]{82})\b/g, severity: "high" },
+  { id: "openai-key", re: /\b(sk-[A-Za-z0-9]{20,})\b/g, severity: "high" },
+  { id: "anthropic-key", re: /\b(sk-ant-[A-Za-z0-9-]{40,})\b/g, severity: "high" },
+  { id: "google-api", re: /\b(AIza[0-9A-Za-z_-]{35})\b/g, severity: "high" },
+  { id: "slack-token", re: /\b(xox[abprs]-[0-9A-Za-z-]{20,})\b/g, severity: "high" },
+  { id: "stripe-live", re: /\b(sk_live_[0-9A-Za-z]{24,})\b/g, severity: "high" },
+  {
+    id: "jwt",
+    re: /\b(eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})\b/g,
+    severity: "medium",
+  },
   // S-SE-021/022: Authorization-style bearer tokens. Opaque OAuth /
   // session tokens never match the issuer-specific patterns above, yet
   // they're exactly what leaks through a crash dump. Capture the token
   // after the `Bearer` keyword so log lines keep the keyword but drop
   // the credential.
-  { id: "bearer-token",  re: /\bBearer\s+([A-Za-z0-9._~+/=-]{8,})/gi, severity: "high" },
-  { id: "private-key",    re: /(-----BEGIN (?:RSA |EC |OPENSSH |)PRIVATE KEY-----[\s\S]*?-----END[^-]*-----)/g, severity: "high" },
+  { id: "bearer-token", re: /\bBearer\s+([A-Za-z0-9._~+/=-]{8,})/gi, severity: "high" },
+  {
+    id: "private-key",
+    re: /(-----BEGIN (?:RSA |EC |OPENSSH |)PRIVATE KEY-----[\s\S]*?-----END[^-]*-----)/g,
+    severity: "high",
+  },
 ];
 
 // S-SE-007: filename patterns. Files matching any of these names are
@@ -97,22 +110,27 @@ export interface SecretFinding {
   preview: string;
 }
 
-export function scanContent(source: string, patterns: SecretPattern[] = BUILTIN_CONTENT_PATTERNS): SecretFinding[] {
+export function scanContent(
+  source: string,
+  patterns: SecretPattern[] = BUILTIN_CONTENT_PATTERNS,
+): SecretFinding[] {
   const out: SecretFinding[] = [];
   for (const p of patterns) {
     p.re.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = p.re.exec(source))) {
+    let m = p.re.exec(source);
+    while (m !== null) {
       const captured = m[1] ?? m[0];
-      if (p.minEntropyBits != null && shannonEntropyBits(captured) < p.minEntropyBits) continue;
-      const start = m.index + Math.max(0, m[0].indexOf(captured));
-      out.push({
-        patternId: p.id,
-        severity: p.severity,
-        offset: start,
-        length: captured.length,
-        preview: maskPreview(captured),
-      });
+      if (p.minEntropyBits == null || shannonEntropyBits(captured) >= p.minEntropyBits) {
+        const start = m.index + Math.max(0, m[0].indexOf(captured));
+        out.push({
+          patternId: p.id,
+          severity: p.severity,
+          offset: start,
+          length: captured.length,
+          preview: maskPreview(captured),
+        });
+      }
+      m = p.re.exec(source);
     }
   }
   return out;
@@ -126,7 +144,10 @@ function maskPreview(s: string): string {
 // S-SE-006: log line masker. Used at the formatter level so any caller
 // of the structured logger gets sanitised output without thinking
 // about it.
-export function maskLogLine(line: string, patterns: SecretPattern[] = BUILTIN_CONTENT_PATTERNS): string {
+export function maskLogLine(
+  line: string,
+  patterns: SecretPattern[] = BUILTIN_CONTENT_PATTERNS,
+): string {
   let out = line;
   for (const p of patterns) {
     p.re.lastIndex = 0;
@@ -142,7 +163,7 @@ export function maskLogLine(line: string, patterns: SecretPattern[] = BUILTIN_CO
 // matched as glob expressions; custom patterns are added to the active
 // scan set with the user-provided severity (default "medium").
 export interface ScannerConfig {
-  allowedFiles: string[];   // globs, e.g. "tests/fixtures/**/*.env"
+  allowedFiles: string[]; // globs, e.g. "tests/fixtures/**/*.env"
   customPatterns: SecretPattern[];
 }
 

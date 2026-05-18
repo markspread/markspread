@@ -103,9 +103,7 @@ pub async fn ai_keys_get_subscription() -> Result<Option<AuthCompleteResponse>, 
 
 /// 구독 OAuth 토큰 갱신. Agent SDK refresh endpoint 가 연결되면 채워진다.
 #[tauri::command]
-pub async fn ai_auth_refresh_subscription(
-    alias: String,
-) -> Result<AuthCompleteResponse, AppError> {
+pub async fn ai_auth_refresh_subscription(alias: String) -> Result<AuthCompleteResponse, AppError> {
     let _ = alias;
     Err(AppError::Invalid(
         "Claude Agent SDK subscription auth backend not yet wired".into(),

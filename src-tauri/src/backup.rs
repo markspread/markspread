@@ -56,7 +56,9 @@ fn validate_hash(hash: &str) -> AppResult<()> {
 fn validate_snapshot_id(id: &str) -> AppResult<()> {
     if id.is_empty()
         || id.len() > 128
-        || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        || !id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
     {
         return Err(AppError::Invalid("invalid snapshot id".into()));
     }
@@ -164,7 +166,10 @@ pub async fn backup_snapshot_restore(id: String) -> AppResult<RestoreResult> {
         for file in &manifest.files {
             // Reject any traversal smuggled into a stored manifest.
             if file.rel.contains("..") || Path::new(&file.rel).is_absolute() {
-                return Err(AppError::Invalid(format!("unsafe path in snapshot: {}", file.rel)));
+                return Err(AppError::Invalid(format!(
+                    "unsafe path in snapshot: {}",
+                    file.rel
+                )));
             }
             let blob = blobs.join(&file.sha256);
             let body = std::fs::read(&blob).map_err(AppError::Io)?;
@@ -242,8 +247,7 @@ pub async fn backup_workspace_export(
 
     let file = std::fs::File::create(&output).map_err(AppError::Io)?;
     let mut zip = zip::ZipWriter::new(file);
-    let options =
-        SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
     for entry in WalkDir::new(&workspace).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
@@ -272,7 +276,9 @@ pub async fn backup_workspace_export(
     zip.finish()
         .map_err(|e| AppError::Invalid(format!("zip finish: {e}")))?;
 
-    let bytes = std::fs::metadata(&output).map(|m| m.len() as i64).unwrap_or(0);
+    let bytes = std::fs::metadata(&output)
+        .map(|m| m.len() as i64)
+        .unwrap_or(0);
     Ok(WorkspaceExportResult {
         output_path: output,
         bytes,
@@ -423,7 +429,9 @@ pub async fn backup_settings_import(payload: SettingsExport) -> AppResult<Import
         )));
     }
     if !payload.settings.is_object() {
-        return Err(AppError::Invalid("settings payload is not an object".into()));
+        return Err(AppError::Invalid(
+            "settings payload is not an object".into(),
+        ));
     }
     let dir = data_dir()?;
     let bytes = serde_json::to_vec_pretty(&payload.settings)
@@ -437,7 +445,10 @@ pub async fn backup_settings_import(payload: SettingsExport) -> AppResult<Import
     let mut warnings = Vec::new();
     for want in &payload.plugins {
         if !installed.iter().any(|p| p.id == want.id) {
-            warnings.push(format!("plugin not installed: {} ({})", want.id, want.version));
+            warnings.push(format!(
+                "plugin not installed: {} ({})",
+                want.id, want.version
+            ));
         }
     }
     Ok(ImportSettingsResult { ok: true, warnings })

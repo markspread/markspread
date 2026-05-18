@@ -12,10 +12,7 @@
 //     applyPluginManifestKeybindings(pluginId, undefined). User
 //     overrides for plugin-owned commands stay (acceptance bullet 2).
 
-import {
-  registerPluginKeybindings,
-  unregisterPluginKeybindings,
-} from ".";
+import { registerPluginKeybindings, unregisterPluginKeybindings } from ".";
 
 type ManifestKeybinding = {
   command: string;

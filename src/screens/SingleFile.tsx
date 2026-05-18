@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
-import { useRecentWorkspaces } from "../store/recent-workspaces";
 import { parentDir } from "../lib/open-md-file";
+import { useRecentWorkspaces } from "../store/recent-workspaces";
 import { useSingleFile } from "../store/single-file";
 import { useWorkspace } from "../store/workspace";
 
@@ -27,12 +27,10 @@ export function SingleFile() {
   return (
     <main
       className="flex h-full w-full flex-col"
-      role="main"
       aria-label={t("single_file.aria.main", "Single file view")}
     >
-      <div
-        className="flex items-center justify-between gap-3 border-[var(--color-border)] border-b bg-[var(--color-surface-subtle)] px-4 py-2 text-xs"
-        role="status"
+      <output
+        className="flex w-full items-center justify-between gap-3 border-[var(--color-border)] border-b bg-[var(--color-surface-subtle)] px-4 py-2 text-xs"
         aria-label={t("single_file.banner.aria", "Single file banner")}
       >
         <span className="text-[var(--color-muted)]">
@@ -58,7 +56,7 @@ export function SingleFile() {
             {t("single_file.action.close", "Close")}
           </button>
         </div>
-      </div>
+      </output>
       <section
         className="flex-1 overflow-auto p-6"
         aria-label={t("single_file.aria.editor", "Editor")}

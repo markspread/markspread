@@ -1,9 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import {
-  type SupportedLocale,
-  detectSystemLocale,
-} from "../lib/i18n";
+import { type SupportedLocale, detectSystemLocale } from "../lib/i18n";
 
 interface LocaleState {
   locale: SupportedLocale;
@@ -17,10 +14,8 @@ export const useLocale = create<LocaleState>()(
     (set) => ({
       locale: detectSystemLocale(),
       followSystem: true,
-      setLocale: (locale, options) =>
-        set({ locale, followSystem: !options?.manual }),
-      resetToSystem: () =>
-        set({ locale: detectSystemLocale(), followSystem: true }),
+      setLocale: (locale, options) => set({ locale, followSystem: !options?.manual }),
+      resetToSystem: () => set({ locale: detectSystemLocale(), followSystem: true }),
     }),
     {
       name: "markspread.locale",

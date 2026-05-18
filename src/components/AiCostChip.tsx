@@ -16,8 +16,7 @@ interface AiCostChipProps {
 export function AiCostChip({ estimate, actionLabel, onConfirm, onCancel }: AiCostChipProps) {
   const { t } = useTranslation();
   return (
-    <div
-      role="status"
+    <output
       aria-live="polite"
       className="pointer-events-auto flex items-center gap-3 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs shadow-md"
     >
@@ -29,7 +28,6 @@ export function AiCostChip({ estimate, actionLabel, onConfirm, onCancel }: AiCos
         type="button"
         className="rounded-full bg-[var(--color-accent)] px-3 py-0.5 font-medium text-white"
         onClick={onConfirm}
-        autoFocus
       >
         {t("ai.chip.run", "Run")}
       </button>
@@ -41,6 +39,6 @@ export function AiCostChip({ estimate, actionLabel, onConfirm, onCancel }: AiCos
       >
         {t("ai.chip.cancel", "Cancel")}
       </button>
-    </div>
+    </output>
   );
 }

@@ -18,8 +18,8 @@
 // indent of previous line" path.
 
 import { insertNewlineAndIndent } from "@codemirror/commands";
-import { keymap, type Command } from "@codemirror/view";
-import { Prec, type Extension } from "@codemirror/state";
+import { type Extension, Prec } from "@codemirror/state";
+import { type Command, keymap } from "@codemirror/view";
 
 const BULLET_RE = /^(\s*)([-*+])(\s+\[[ xX]\])?(\s+)(.*)$/;
 const ORDERED_RE = /^(\s*)(\d+)([.)])(\s+)(.*)$/;
@@ -36,11 +36,7 @@ const markdownEnter: Command = (view) => {
   // Bullet / task list
   const bullet = BULLET_RE.exec(text);
   if (bullet) {
-    const indent = bullet[1]!;
-    const marker = bullet[2]!;
-    const task = bullet[3];
-    const gap = bullet[4]!;
-    const content = bullet[5]!;
+    const [, indent = "", marker = "", task, gap = "", content = ""] = bullet;
     const prefixLen = indent.length + marker.length + (task ?? "").length + gap.length;
     if (cursorCol < prefixLen) return false;
     if (content.trim() === "") {
@@ -67,11 +63,7 @@ const markdownEnter: Command = (view) => {
   // Ordered list
   const ordered = ORDERED_RE.exec(text);
   if (ordered) {
-    const indent = ordered[1]!;
-    const numStr = ordered[2]!;
-    const sep = ordered[3]!;
-    const gap = ordered[4]!;
-    const content = ordered[5]!;
+    const [, indent = "", numStr = "", sep = "", gap = "", content = ""] = ordered;
     const num = Number(numStr);
     const prefixLen = indent.length + numStr.length + sep.length + gap.length;
     if (cursorCol < prefixLen) return false;
@@ -98,9 +90,7 @@ const markdownEnter: Command = (view) => {
       const ln = state.doc.line(lineNo);
       const m = ORDERED_RE.exec(ln.text);
       if (!m) break;
-      const ind2 = m[1]!;
-      const n2 = m[2]!;
-      const sep2 = m[3]!;
+      const [, ind2 = "", n2 = "", sep2 = ""] = m;
       if (ind2 !== indent || sep2 !== sep) break;
       if (Number(n2) !== nextNum) {
         changes.push({
@@ -124,8 +114,7 @@ const markdownEnter: Command = (view) => {
   // Blockquote
   const quote = QUOTE_RE.exec(text);
   if (quote) {
-    const prefix = quote[1]!;
-    const content = quote[2]!;
+    const [, prefix = "", content = ""] = quote;
     const prefixLen = prefix.length;
     if (cursorCol < prefixLen) return false;
     if (content.trim() === "") {

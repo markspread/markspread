@@ -4,12 +4,11 @@
   /* S-TY-001: Inter Variable comes from `@fontsource-variable/inter` (loaded in
      main.tsx) so the chain still resolves cleanly when the bundled font
      fails to register (e.g., user override). */
-  --font-sans: "Inter Variable", "Inter", "Pretendard Variable", "Pretendard",
-    system-ui, -apple-system, "Segoe UI", "Helvetica Neue",
-    "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-sans: "Inter Variable", "Inter", "Pretendard Variable", "Pretendard", system-ui,
+    -apple-system, "Segoe UI", "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   /* S-TY-002: JetBrains Mono Variable from `@fontsource-variable/jetbrains-mono`. */
-  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", "SF Mono",
-    "Cascadia Code", "Consolas", "Liberation Mono", monospace;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas",
+    "Liberation Mono", monospace;
 
   --color-bg: oklch(99% 0.005 240);
   --color-fg: oklch(20% 0.02 240);
@@ -24,10 +23,10 @@
      translators and AT users see a stable colour ↔ category pairing. */
   --color-access-danger-bg: oklch(96% 0.04 25);
   --color-access-danger-fg: oklch(35% 0.18 25);
-  --color-access-danger-border: oklch(85% 0.10 25);
+  --color-access-danger-border: oklch(85% 0.1 25);
   --color-access-warning-bg: oklch(97% 0.05 80);
   --color-access-warning-fg: oklch(38% 0.13 80);
-  --color-access-warning-border: oklch(85% 0.10 80);
+  --color-access-warning-border: oklch(85% 0.1 80);
   --color-access-info-bg: oklch(97% 0.02 240);
   --color-access-info-fg: oklch(38% 0.08 240);
   --color-access-info-border: oklch(88% 0.04 240);
@@ -69,11 +68,11 @@
     --color-surface-subtle: oklch(13% 0.015 240);
 
     --color-access-danger-bg: oklch(25% 0.06 25);
-    --color-access-danger-fg: oklch(85% 0.10 25);
-    --color-access-danger-border: oklch(35% 0.10 25);
+    --color-access-danger-fg: oklch(85% 0.1 25);
+    --color-access-danger-border: oklch(35% 0.1 25);
     --color-access-warning-bg: oklch(25% 0.06 80);
-    --color-access-warning-fg: oklch(85% 0.10 80);
-    --color-access-warning-border: oklch(35% 0.10 80);
+    --color-access-warning-fg: oklch(85% 0.1 80);
+    --color-access-warning-border: oklch(35% 0.1 80);
     --color-access-info-bg: oklch(22% 0.03 240);
     --color-access-info-fg: oklch(80% 0.06 240);
     --color-access-info-border: oklch(30% 0.04 240);
@@ -98,10 +97,10 @@ html[data-theme="light"] {
 
   --color-access-danger-bg: oklch(96% 0.04 25);
   --color-access-danger-fg: oklch(35% 0.18 25);
-  --color-access-danger-border: oklch(85% 0.10 25);
+  --color-access-danger-border: oklch(85% 0.1 25);
   --color-access-warning-bg: oklch(97% 0.05 80);
   --color-access-warning-fg: oklch(38% 0.13 80);
-  --color-access-warning-border: oklch(85% 0.10 80);
+  --color-access-warning-border: oklch(85% 0.1 80);
   --color-access-info-bg: oklch(97% 0.02 240);
   --color-access-info-fg: oklch(38% 0.08 240);
   --color-access-info-border: oklch(88% 0.04 240);
@@ -119,11 +118,11 @@ html[data-theme="dark"] {
   --color-surface-subtle: oklch(13% 0.015 240);
 
   --color-access-danger-bg: oklch(25% 0.06 25);
-  --color-access-danger-fg: oklch(85% 0.10 25);
-  --color-access-danger-border: oklch(35% 0.10 25);
+  --color-access-danger-fg: oklch(85% 0.1 25);
+  --color-access-danger-border: oklch(35% 0.1 25);
   --color-access-warning-bg: oklch(25% 0.06 80);
-  --color-access-warning-fg: oklch(85% 0.10 80);
-  --color-access-warning-border: oklch(35% 0.10 80);
+  --color-access-warning-fg: oklch(85% 0.1 80);
+  --color-access-warning-border: oklch(35% 0.1 80);
   --color-access-info-bg: oklch(22% 0.03 240);
   --color-access-info-fg: oklch(80% 0.06 240);
   --color-access-info-border: oklch(30% 0.04 240);

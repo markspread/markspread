@@ -15,8 +15,7 @@ export const useWorkspace = create<WorkspaceState>()(
     (set) => ({
       current: null,
       readOnly: false,
-      open: (path, opts) =>
-        set({ current: path, readOnly: opts?.readOnly ?? false }),
+      open: (path, opts) => set({ current: path, readOnly: opts?.readOnly ?? false }),
       close: () => set({ current: null, readOnly: false }),
       setReadOnly: (v) => set({ readOnly: v }),
     }),

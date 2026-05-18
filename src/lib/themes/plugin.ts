@@ -5,7 +5,7 @@
 // definitions; when disabled we unregister and, if the active theme
 // was provided by this plugin, fall back to "default-light".
 
-import { applyTheme, getActiveTheme, registerTheme, type ThemeDefinition } from "./registry";
+import { type ThemeDefinition, applyTheme, getActiveTheme, registerTheme } from "./registry";
 
 export interface ThemePluginManifest {
   pluginId: string;

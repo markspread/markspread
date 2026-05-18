@@ -71,8 +71,11 @@ export function applyComments(
     .sort((a, b) => b.anchorLine - a.anchorLine);
 
   for (const c of orderable) {
+    const { suggestion } = c;
+    // Guaranteed by the `orderable` filter above; the guard narrows the type.
+    if (!suggestion) continue;
     const start = c.anchorLine;
-    const end = c.suggestion!.anchorEndLine;
+    const end = suggestion.anchorEndLine;
     if (start < 1 || end > lineCount || start > end) {
       skipped.push({ comment: c, reason: "stale" });
       continue;
@@ -89,7 +92,7 @@ export function applyComments(
       continue;
     }
     for (let l = start; l <= end; l += 1) claimedLines.add(l);
-    const replacement = c.suggestion!.text.split(/\r?\n/);
+    const replacement = suggestion.text.split(/\r?\n/);
     lines.splice(start - 1, end - start + 1, ...replacement);
     applied.push({ ...c, status: "applied" });
   }
@@ -114,9 +117,8 @@ export function remapComments(
     if (next === null) return { ...c, status: "stale" };
     const nextEnd = c.suggestion ? lineMap(c.suggestion.anchorEndLine) : null;
     if (c.suggestion && nextEnd === null) return { ...c, status: "stale" };
-    const nextSuggestion = c.suggestion && nextEnd !== null
-      ? { ...c.suggestion, anchorEndLine: nextEnd }
-      : c.suggestion;
+    const nextSuggestion =
+      c.suggestion && nextEnd !== null ? { ...c.suggestion, anchorEndLine: nextEnd } : c.suggestion;
     return {
       ...c,
       anchorLine: next,

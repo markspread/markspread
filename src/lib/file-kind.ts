@@ -6,34 +6,72 @@
 
 export type FileKind = "text" | "image" | "pdf" | "binary";
 
-const IMAGE_EXTS = new Set([
-  "png",
-  "jpg",
-  "jpeg",
-  "gif",
-  "webp",
-  "bmp",
-  "ico",
-  "svg",
-  "avif",
-]);
+const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "svg", "avif"]);
 
 const BINARY_EXTS = new Set([
   // archives
-  "zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar",
+  "zip",
+  "tar",
+  "gz",
+  "tgz",
+  "bz2",
+  "xz",
+  "7z",
+  "rar",
   // executables / objects
-  "exe", "dll", "so", "dylib", "o", "a", "lib", "obj",
+  "exe",
+  "dll",
+  "so",
+  "dylib",
+  "o",
+  "a",
+  "lib",
+  "obj",
   // fonts
-  "ttf", "otf", "woff", "woff2", "eot",
+  "ttf",
+  "otf",
+  "woff",
+  "woff2",
+  "eot",
   // audio / video
-  "mp3", "wav", "flac", "ogg", "m4a", "aac",
-  "mp4", "mov", "avi", "mkv", "webm", "m4v",
+  "mp3",
+  "wav",
+  "flac",
+  "ogg",
+  "m4a",
+  "aac",
+  "mp4",
+  "mov",
+  "avi",
+  "mkv",
+  "webm",
+  "m4v",
   // images that aren't shown inline (we still classify as binary)
-  "psd", "ai", "tiff", "tif", "heic", "heif", "raw",
+  "psd",
+  "ai",
+  "tiff",
+  "tif",
+  "heic",
+  "heif",
+  "raw",
   // documents
-  "doc", "docx", "xls", "xlsx", "ppt", "pptx", "pages", "numbers", "key",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "pages",
+  "numbers",
+  "key",
   // databases / pickled / serialized
-  "db", "sqlite", "sqlite3", "pkl", "pyc", "class", "jar",
+  "db",
+  "sqlite",
+  "sqlite3",
+  "pkl",
+  "pyc",
+  "class",
+  "jar",
 ]);
 
 export function classifyFile(path: string): FileKind {

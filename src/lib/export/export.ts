@@ -47,10 +47,10 @@ export interface ExportTemplate {
 }
 
 export const BUILTIN_TEMPLATES: ExportTemplate[] = [
-  { id: "default",     label: "Default",     cssPath: ":builtin:default.css" },
-  { id: "manuscript",  label: "Manuscript",  cssPath: ":builtin:manuscript.css" },
-  { id: "slide",       label: "Slide",       cssPath: ":builtin:slide.css" },
-  { id: "thesis",      label: "Thesis",      cssPath: ":builtin:thesis.css" },
+  { id: "default", label: "Default", cssPath: ":builtin:default.css" },
+  { id: "manuscript", label: "Manuscript", cssPath: ":builtin:manuscript.css" },
+  { id: "slide", label: "Slide", cssPath: ":builtin:slide.css" },
+  { id: "thesis", label: "Thesis", cssPath: ":builtin:thesis.css" },
 ];
 
 export interface ExportRequest {
@@ -107,6 +107,8 @@ export interface BatchExportProgress {
   failures: { path: string; reason: string }[];
 }
 
-export async function exportBatch(req: BatchExportRequest): Promise<{ failures: BatchExportProgress["failures"] }> {
+export async function exportBatch(
+  req: BatchExportRequest,
+): Promise<{ failures: BatchExportProgress["failures"] }> {
   return invoke("export_batch", { req });
 }

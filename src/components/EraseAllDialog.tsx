@@ -7,11 +7,7 @@
 
 import { useId, useState } from "react";
 
-import {
-  ERASE_CONFIRMATION_TOKEN,
-  type EraseReport,
-  eraseAllData,
-} from "@/lib/ops/erase";
+import { ERASE_CONFIRMATION_TOKEN, type EraseReport, eraseAllData } from "@/lib/ops/erase";
 
 type Props = {
   onClose: () => void;
@@ -41,6 +37,7 @@ export function EraseAllDialog({ onClose, onComplete }: Props) {
   }
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: dialog overlay keeps div for layout/portal control
     <div
       role="dialog"
       aria-modal="true"
@@ -55,9 +52,8 @@ export function EraseAllDialog({ onClose, onComplete }: Props) {
           Erase all Markspread data
         </h2>
         <p className="mt-2 text-sm text-[var(--ms-text-muted)]">
-          This removes the app data directory, all keychain entries (AI
-          provider keys, marketplace signing key, telemetry id), and
-          every cached index. Your workspace files on disk are
+          This removes the app data directory, all keychain entries (AI provider keys, marketplace
+          signing key, telemetry id), and every cached index. Your workspace files on disk are
           untouched.
         </p>
         <p className="mt-3 text-sm">
@@ -72,7 +68,6 @@ export function EraseAllDialog({ onClose, onComplete }: Props) {
         </label>
         <input
           id={inputId}
-          autoFocus
           autoComplete="off"
           spellCheck={false}
           value={text}

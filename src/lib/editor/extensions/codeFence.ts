@@ -16,8 +16,8 @@ import {
   type CompletionResult,
   startCompletion,
 } from "@codemirror/autocomplete";
-import { EditorView } from "@codemirror/view";
 import { EditorSelection, type Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 
 import { addCompletionSource } from "./autocompletion";
 
@@ -96,9 +96,7 @@ const fenceAutoclose = EditorView.updateListener.of((u) => {
   }
 });
 
-function fenceLanguageCompletion(
-  context: CompletionContext,
-): CompletionResult | null {
+function fenceLanguageCompletion(context: CompletionContext): CompletionResult | null {
   const line = context.state.doc.lineAt(context.pos);
   const m = /^(```)([\w+-]*)$/.exec(line.text.slice(0, context.pos - line.from));
   if (!m) return null;

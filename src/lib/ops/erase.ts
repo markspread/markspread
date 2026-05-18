@@ -36,9 +36,7 @@ export type EraseIndexReport = {
   rebuildTriggered: boolean;
 };
 
-export async function eraseWorkspaceIndex(
-  workspace: string,
-): Promise<EraseIndexReport> {
+export async function eraseWorkspaceIndex(workspace: string): Promise<EraseIndexReport> {
   return invoke<EraseIndexReport>("ops_erase_index", { workspace });
 }
 

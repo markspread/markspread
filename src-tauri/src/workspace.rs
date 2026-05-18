@@ -222,7 +222,10 @@ pub async fn workspace_inspect(workspace: String) -> AppResult<WorkspaceInspecti
 async fn read_settings_schema(path: &Path) -> Option<u32> {
     let bytes = tokio::fs::read(path).await.ok()?;
     let value: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
-    value.get("schemaVersion").and_then(|v| v.as_u64()).map(|n| n as u32)
+    value
+        .get("schemaVersion")
+        .and_then(|v| v.as_u64())
+        .map(|n| n as u32)
 }
 
 /// S-WS-021: try parsing settings.json. Returns:
@@ -231,11 +234,9 @@ async fn read_settings_schema(path: &Path) -> Option<u32> {
 ///   - `Err`       → file exists but is unparseable (caller surfaces dialog)
 async fn settings_parse_status(path: &Path) -> AppResult<bool> {
     match tokio::fs::read(path).await {
-        Ok(bytes) => {
-            serde_json::from_slice::<serde_json::Value>(&bytes)
-                .map(|_| true)
-                .map_err(|e| AppError::Invalid(format!("settings.json corrupt: {e}")))
-        }
+        Ok(bytes) => serde_json::from_slice::<serde_json::Value>(&bytes)
+            .map(|_| true)
+            .map_err(|e| AppError::Invalid(format!("settings.json corrupt: {e}"))),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(e) => Err(e.into()),
     }
@@ -372,10 +373,7 @@ pub async fn workspace_layout_load(workspace: String) -> AppResult<serde_json::V
 }
 
 #[tauri::command]
-pub async fn workspace_layout_save(
-    workspace: String,
-    payload: serde_json::Value,
-) -> AppResult<()> {
+pub async fn workspace_layout_save(workspace: String, payload: serde_json::Value) -> AppResult<()> {
     let root = PathBuf::from(&workspace)
         .canonicalize()
         .map_err(|e| AppError::Invalid(format!("workspace canonicalize: {e}")))?;

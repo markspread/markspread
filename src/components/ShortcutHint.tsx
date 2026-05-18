@@ -8,9 +8,7 @@ export function ShortcutHint() {
   const { t } = useTranslation();
   const dismissed = useOnboarding((s) => s.shortcutHintDismissed);
   const dismiss = useOnboarding((s) => s.dismissShortcutHint);
-  const bannerActive = useOnboarding(
-    (s) => !s.welcomeBannerDismissed && !s.tourCompleted,
-  );
+  const bannerActive = useOnboarding((s) => !s.welcomeBannerDismissed && !s.tourCompleted);
   const tourActive = useOnboarding((s) => s.tourStep !== null);
   const [visible, setVisible] = useState(false);
 
@@ -35,9 +33,8 @@ export function ShortcutHint() {
   if (dismissed || !visible || bannerActive || tourActive) return null;
 
   return (
-    <div
+    <output
       className="fixed right-4 bottom-4 flex items-center gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-2 text-xs shadow-lg"
-      role="status"
       aria-label={t("shortcut_hint.aria", "Keyboard shortcut hint")}
     >
       <span>{t("shortcut_hint.message", "Press to open the command palette")}</span>
@@ -53,6 +50,6 @@ export function ShortcutHint() {
       >
         {t("shortcut_hint.dismiss", "Got it")}
       </button>
-    </div>
+    </output>
   );
 }

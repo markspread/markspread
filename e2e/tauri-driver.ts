@@ -5,9 +5,9 @@
 // pointed at it. CI installs `tauri-driver` separately — locally,
 // `pnpm e2e:install` does it for you.
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { join, resolve } from "node:path";
-import { chromium, type BrowserContext } from "@playwright/test";
+import { type BrowserContext, chromium } from "@playwright/test";
 
 const TAURI_DRIVER_PORT = 4444;
 const HEALTHCHECK_TIMEOUT_MS = 30_000;
@@ -17,7 +17,13 @@ const BIN_PATH_BY_PLATFORM: Record<NodeJS.Platform, string | undefined> = {
   linux: "src-tauri/target/debug/markspread",
   win32: "src-tauri/target/debug/markspread.exe",
   // unsupported:
-  aix: undefined, freebsd: undefined, openbsd: undefined, sunos: undefined, netbsd: undefined, haiku: undefined, cygwin: undefined,
+  aix: undefined,
+  freebsd: undefined,
+  openbsd: undefined,
+  sunos: undefined,
+  netbsd: undefined,
+  haiku: undefined,
+  cygwin: undefined,
 };
 
 export interface TauriHarness {
@@ -57,14 +63,19 @@ export async function launchTauriHarness(repoRoot: string): Promise<TauriHarness
 
 function waitForDriverReady(child: ChildProcess): Promise<void> {
   return new Promise((resolveReady, rejectReady) => {
-    const timer = setTimeout(() => rejectReady(new Error("tauri-driver did not become ready in time")), HEALTHCHECK_TIMEOUT_MS);
+    const timer = setTimeout(
+      () => rejectReady(new Error("tauri-driver did not become ready in time")),
+      HEALTHCHECK_TIMEOUT_MS,
+    );
     child.stdout?.on("data", (chunk: Buffer) => {
       if (chunk.toString().includes("Listening on")) {
         clearTimeout(timer);
         resolveReady();
       }
     });
-    child.on("exit", (code) => rejectReady(new Error(`tauri-driver exited early with code ${code}`)));
+    child.on("exit", (code) =>
+      rejectReady(new Error(`tauri-driver exited early with code ${code}`)),
+    );
   });
 }
 

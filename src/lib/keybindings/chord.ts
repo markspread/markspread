@@ -16,9 +16,9 @@
 // active bindings to decide if a step is a chord prefix, holds the
 // prefix string, and emits events for the status bar to subscribe to.
 
-import { dispatch } from "./dispatch";
-import { bindingFromEvent, listActiveBindings, normaliseBinding } from ".";
 import { runCommand } from "@/lib/commands/registry";
+import { bindingFromEvent, listActiveBindings, normaliseBinding } from ".";
+import { dispatch } from "./dispatch";
 
 const CHORD_TIMEOUT_MS = 1500;
 

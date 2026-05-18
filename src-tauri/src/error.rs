@@ -109,9 +109,7 @@ impl From<std::io::Error> for AppError {
             } else {
                 " (디렉터리가 읽기 전용일 수 있습니다)"
             };
-            return AppError::PermissionDenied(format!(
-                "이 폴더에 쓸 수 없습니다{hint}"
-            ));
+            return AppError::PermissionDenied(format!("이 폴더에 쓸 수 없습니다{hint}"));
         }
         // EISDIR=21 on POSIX. Windows raises ERROR_ACCESS_DENIED (5) for the
         // same situation, which we'd already see via PermissionDenied; the

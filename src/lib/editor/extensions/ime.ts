@@ -24,8 +24,8 @@
 //   S-ED-049 RTL: v2 — `EditorView.contentAttributes.of({ dir: "rtl" })`
 //     extension shape is documented for the future migration.
 
-import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 
 export function imeExtension(): Extension {
   return EditorView.domEventHandlers({

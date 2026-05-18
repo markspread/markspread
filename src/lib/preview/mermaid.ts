@@ -10,10 +10,7 @@
 // it on the main thread blocks the preview rerender for tens of
 // milliseconds on big diagrams.
 
-export type MermaidRenderer = (
-  source: string,
-  id: string,
-) => Promise<{ svg: string } | null>;
+export type MermaidRenderer = (source: string, id: string) => Promise<{ svg: string } | null>;
 
 let renderer: MermaidRenderer | null = null;
 let renderIdSeq = 0;
@@ -25,7 +22,7 @@ export function setMermaidRenderer(r: MermaidRenderer | null): void {
 export async function renderMermaidIn(root: ParentNode): Promise<void> {
   if (!renderer) return;
   const blocks = root.querySelectorAll<HTMLElement>(
-    'pre > code.language-mermaid:not([data-mermaid-rendered])',
+    "pre > code.language-mermaid:not([data-mermaid-rendered])",
   );
   for (const code of Array.from(blocks)) {
     code.setAttribute("data-mermaid-rendered", "true");

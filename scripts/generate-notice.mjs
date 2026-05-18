@@ -10,7 +10,7 @@
 // `pnpm gen:licenses && pnpm gen:notice` and commit both.
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -46,9 +46,7 @@ out += "----\n\n";
 
 const sortedLicenses = [...groups.keys()].sort();
 for (const license of sortedLicenses) {
-  const items = groups
-    .get(license)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const items = groups.get(license).sort((a, b) => a.name.localeCompare(b.name));
   out += `${license}\n${"-".repeat(license.length)}\n\n`;
   for (const item of items) {
     out += `* ${item.name} ${item.version}`;

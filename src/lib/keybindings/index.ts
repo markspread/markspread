@@ -9,9 +9,9 @@
 // callers ask `resolveBinding(event)` to map a KeyboardEvent to a
 // command id.
 
-import type { Binding, BindingEntry, Preset } from "./types";
-import { vscodePreset } from "./presets/vscode";
 import { getPresetEntries } from "./presets";
+import { vscodePreset } from "./presets/vscode";
+import type { Binding, BindingEntry, Preset } from "./types";
 
 export type { Binding, BindingEntry, Preset } from "./types";
 
@@ -113,14 +113,14 @@ export function listActiveBindings(): BindingEntry[] {
  * equal strings.
  */
 export function normaliseBinding(binding: Binding): Binding {
-  return binding
-    .split(/\s+/)
-    .map(normaliseStep)
-    .join(" ");
+  return binding.split(/\s+/).map(normaliseStep).join(" ");
 }
 
 function normaliseStep(step: string): string {
-  const parts = step.split("+").map((p) => p.trim()).filter(Boolean);
+  const parts = step
+    .split("+")
+    .map((p) => p.trim())
+    .filter(Boolean);
   const order = ["Mod", "Ctrl", "Alt", "Shift"];
   const mods = parts
     .filter((p) => order.includes(p))
@@ -156,27 +156,48 @@ function codeToBinding(code: string, fallbackKey: string): string {
   if (code.startsWith("Key")) return code.slice(3); // KeyA → A
   if (code.startsWith("Digit")) return code.slice(5); // Digit1 → 1
   switch (code) {
-    case "Slash": return "/";
-    case "Backslash": return "\\";
-    case "Backquote": return "`";
-    case "Minus": return "-";
-    case "Equal": return "=";
-    case "Comma": return ",";
-    case "Period": return ".";
-    case "Semicolon": return ";";
-    case "Quote": return "'";
-    case "BracketLeft": return "[";
-    case "BracketRight": return "]";
-    case "Space": return "Space";
-    case "Enter": return "Enter";
-    case "Tab": return "Tab";
-    case "Escape": return "Escape";
-    case "Backspace": return "Backspace";
-    case "Delete": return "Delete";
-    case "ArrowUp": return "ArrowUp";
-    case "ArrowDown": return "ArrowDown";
-    case "ArrowLeft": return "ArrowLeft";
-    case "ArrowRight": return "ArrowRight";
+    case "Slash":
+      return "/";
+    case "Backslash":
+      return "\\";
+    case "Backquote":
+      return "`";
+    case "Minus":
+      return "-";
+    case "Equal":
+      return "=";
+    case "Comma":
+      return ",";
+    case "Period":
+      return ".";
+    case "Semicolon":
+      return ";";
+    case "Quote":
+      return "'";
+    case "BracketLeft":
+      return "[";
+    case "BracketRight":
+      return "]";
+    case "Space":
+      return "Space";
+    case "Enter":
+      return "Enter";
+    case "Tab":
+      return "Tab";
+    case "Escape":
+      return "Escape";
+    case "Backspace":
+      return "Backspace";
+    case "Delete":
+      return "Delete";
+    case "ArrowUp":
+      return "ArrowUp";
+    case "ArrowDown":
+      return "ArrowDown";
+    case "ArrowLeft":
+      return "ArrowLeft";
+    case "ArrowRight":
+      return "ArrowRight";
     default:
       if (code.startsWith("F") && /^F\d+$/.test(code)) return code; // F1..F12
       return fallbackKey;

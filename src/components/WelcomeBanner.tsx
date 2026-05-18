@@ -14,9 +14,8 @@ export function WelcomeBanner({ onOpenAiSettings }: WelcomeBannerProps = {}) {
   if (dismissed) return null;
 
   return (
-    <div
+    <section
       className="flex items-center justify-between gap-4 border-[var(--color-border)] border-b bg-[var(--color-accent)]/10 px-4 py-2 text-sm"
-      role="region"
       aria-label={t("welcome_banner.aria", "Welcome banner")}
     >
       <div className="flex flex-col">
@@ -55,6 +54,6 @@ export function WelcomeBanner({ onOpenAiSettings }: WelcomeBannerProps = {}) {
           {t("welcome_banner.action.dismiss", "Dismiss")}
         </button>
       </div>
-    </div>
+    </section>
   );
 }

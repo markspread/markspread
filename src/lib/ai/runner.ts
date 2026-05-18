@@ -28,7 +28,7 @@ import type {
   ProviderAdapter,
   ToolSpec,
 } from "./providers/types";
-import { BUILTIN_PRICING, computeUsd, recordUsage, type UsageRow } from "./usage";
+import { BUILTIN_PRICING, type UsageRow, computeUsd, recordUsage } from "./usage";
 
 export interface RunChatInput {
   alias: string;
@@ -67,10 +67,7 @@ function adapterFor(provider: ProviderId): ProviderAdapter {
   return openaiAdapter;
 }
 
-function baseUrlFor(
-  provider: ProviderId,
-  storedBaseUrl: string | null,
-): string | undefined {
+function baseUrlFor(provider: ProviderId, storedBaseUrl: string | null): string | undefined {
   if (storedBaseUrl) {
     if (provider === "ollama") return `${storedBaseUrl.replace(/\/$/, "")}/v1`;
     return storedBaseUrl;

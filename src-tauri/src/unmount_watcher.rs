@@ -61,10 +61,7 @@ pub fn unmount_watch_start(
 }
 
 #[tauri::command]
-pub fn unmount_watch_stop(
-    state: State<'_, UnmountRegistry>,
-    workspace: String,
-) -> AppResult<()> {
+pub fn unmount_watch_stop(state: State<'_, UnmountRegistry>, workspace: String) -> AppResult<()> {
     let mut map = state.inner.lock().expect("unmount registry poisoned");
     if let Some(tx) = map.remove(&workspace) {
         let _ = tx.send(());
@@ -76,19 +73,15 @@ pub fn unmount_watch_stop(
 /// recover after the drive comes back. Called from the UI when
 /// `workspace:disconnected` fires for files with unsaved changes.
 #[tauri::command]
-pub async fn unmount_dump_orphan(
-    relative_path: String,
-    contents: String,
-) -> AppResult<String> {
+pub async fn unmount_dump_orphan(relative_path: String, contents: String) -> AppResult<String> {
     let home = dirs::home_dir().ok_or_else(|| AppError::Invalid("home dir missing".into()))?;
     let now_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0);
-    let dir = home.join(".markspread/snapshots/orphans").join(format!(
-        "{now_ms}-{}",
-        std::process::id()
-    ));
+    let dir = home
+        .join(".markspread/snapshots/orphans")
+        .join(format!("{now_ms}-{}", std::process::id()));
     tokio::fs::create_dir_all(&dir).await?;
     // Sanitize: collapse path separators in the relative path so we never
     // escape the orphan dir (defensive against ../).

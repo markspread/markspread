@@ -36,7 +36,7 @@ const report = { generatedAt: new Date().toISOString(), totalKeys: enTotal, loca
 
 for (const lng of LOCALES) {
   let translated = 0;
-  let missing = [];
+  const missing = [];
   let identical = 0;
   if (lng === "en") {
     translated = enTotal;
@@ -53,7 +53,12 @@ for (const lng of LOCALES) {
     }
   }
   const pct = enTotal === 0 ? 100 : Math.round((translated / enTotal) * 1000) / 10;
-  report.locales[lng] = { translated, missing: missing.length, identicalToEn: identical, percent: pct };
+  report.locales[lng] = {
+    translated,
+    missing: missing.length,
+    identicalToEn: identical,
+    percent: pct,
+  };
 }
 
 const args = process.argv.slice(2);

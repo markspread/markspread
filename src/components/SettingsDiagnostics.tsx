@@ -69,9 +69,7 @@ export function SettingsDiagnostics() {
       aria-label={t("settings.diagnostics.title", "Diagnostics")}
       className="flex flex-col gap-3 border-[var(--color-border)] border-b p-4 text-sm"
     >
-      <h2 className="font-semibold text-base">
-        {t("settings.diagnostics.title", "Diagnostics")}
-      </h2>
+      <h2 className="font-semibold text-base">{t("settings.diagnostics.title", "Diagnostics")}</h2>
       <p className="text-[var(--color-muted)] text-xs">
         {t(
           "settings.diagnostics.description",
@@ -85,9 +83,7 @@ export function SettingsDiagnostics() {
           disabled={enabled === null}
           onChange={(e) => void onToggle(e.target.checked)}
         />
-        <span>
-          {t("settings.diagnostics.opt_in", "Record access-policy denials locally")}
-        </span>
+        <span>{t("settings.diagnostics.opt_in", "Record access-policy denials locally")}</span>
       </label>
 
       {error && (
@@ -132,9 +128,7 @@ export function SettingsDiagnostics() {
             <thead className="sticky top-0 bg-[var(--color-bg)]">
               <tr className="border-[var(--color-border)] border-b text-left">
                 <th className="px-2 py-1">{t("settings.diagnostics.col.date", "Date")}</th>
-                <th className="px-2 py-1">
-                  {t("settings.diagnostics.col.category", "Category")}
-                </th>
+                <th className="px-2 py-1">{t("settings.diagnostics.col.category", "Category")}</th>
                 <th className="px-2 py-1">{t("settings.diagnostics.col.rule", "Rule")}</th>
                 <th className="px-2 py-1 text-right">
                   {t("settings.diagnostics.col.count", "Count")}
