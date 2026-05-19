@@ -28,6 +28,9 @@ describe("SettingsAppearance", () => {
 
   it("changes the editor font family", async () => {
     render(<SettingsAppearance />);
+    // Wait for os_list_fonts to populate the <option> list — without this the
+    // select has no "Menlo" option yet and fireEvent.change is a no-op.
+    await waitFor(() => expect(screen.getAllByText("Menlo").length).toBeGreaterThan(0));
     const selects = await screen.findAllByRole("combobox");
     const editorSelect = selects[1];
     if (editorSelect) fireEvent.change(editorSelect, { target: { value: "Menlo" } });

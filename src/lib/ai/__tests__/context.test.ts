@@ -1,4 +1,7 @@
 // S-AI-031..037: AI context assembly coverage.
+//
+// ms:allow-secret — the AKIA…/ghp_… strings below are synthetic fixtures
+// exercising the secret-masking patterns, not real credentials.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
