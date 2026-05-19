@@ -73,7 +73,9 @@ const fenceAutoclose = EditorView.updateListener.of((u) => {
   let triggered: { pos: number } | null = null;
   for (const tr of u.transactions) {
     if (!tr.docChanged) continue;
-    if (tr.annotation(EditorView.theme as never)) continue;
+    // Skip our own autoclose transaction — otherwise the inserted
+    // closing ``` re-triggers this listener and recurses forever.
+    if (tr.isUserEvent("input.fence.autoclose")) continue;
     tr.changes.iterChanges((_fromA, _toA, _fromB, toB, inserted) => {
       const text = inserted.toString();
       if (!text.endsWith("`")) return;
