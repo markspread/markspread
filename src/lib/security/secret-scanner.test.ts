@@ -1,4 +1,6 @@
 // S-SE-006..014: secret-scanner unit tests.
+// ms:allow-secret — this file contains fake AWS/GitHub token fixtures
+// used to exercise the scanner; not real credentials.
 
 import { describe, expect, it } from "vitest";
 import {

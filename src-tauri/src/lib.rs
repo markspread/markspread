@@ -65,6 +65,13 @@ pub fn run() {
                     window.open_devtools();
                 }
             }
+            // S-PF-002: the cold-start probe spawns us with this flag to
+            // measure boot-to-setup-complete and then expects a clean
+            // exit. Without this, the GUI event loop keeps running and
+            // the probe falls back to its 15s hard-kill timeout.
+            if cli::parse_from_env().headless_cold_start {
+                app.handle().exit(0);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
