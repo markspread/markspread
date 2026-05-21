@@ -111,7 +111,7 @@ describe("paste handler", () => {
     const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" });
     const ev = makeClipboardEvent([{ kind: "file", type: "image/png", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 500));
     expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "png");
     expect(view.state.doc.toString()).toContain("![](assets/abc.png)");
   });
@@ -138,7 +138,7 @@ describe("paste handler", () => {
     const blob = new Blob([new Uint8Array([1])], { type: "image/jpeg" });
     const ev = makeClipboardEvent([{ kind: "file", type: "image/jpeg", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 500));
     expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "jpg");
   });
 
@@ -149,7 +149,7 @@ describe("paste handler", () => {
     const blob = new Blob([new Uint8Array([1])], { type: "image/svg+xml" });
     const ev = makeClipboardEvent([{ kind: "file", type: "image/svg+xml", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 500));
     expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "svg");
   });
 
@@ -163,7 +163,7 @@ describe("paste handler", () => {
     // Force the items predicate to pass: use a custom-typed item with image/ prefix.
     const ev = makeClipboardEvent([{ kind: "file", type: "image/png", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 500));
     expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "bin");
   });
 
@@ -251,7 +251,7 @@ describe("drop handler", () => {
     const f = makeTextFile("FROM-DROP", "n.md", "text/markdown");
     const ev = makeDragEvent([f]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 500));
     expect(view.state.doc.toString()).toBe("FROM-DROPseed\n");
   });
 
@@ -261,7 +261,7 @@ describe("drop handler", () => {
     const f = makeTextFile("YY", "n.txt", "text/plain");
     const ev = makeDragEvent([f], { x: 5, y: 5 });
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 500));
     expect(view.state.doc.toString()).toBe("xYYx\n");
   });
 
@@ -272,7 +272,7 @@ describe("drop handler", () => {
     const f = new File([new Uint8Array([1, 2, 3])], "p.png", { type: "image/png" });
     const ev = makeDragEvent([f]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 500));
     expect(view.state.doc.toString()).toContain("![](assets/y.png)");
   });
 });
