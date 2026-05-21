@@ -64,7 +64,9 @@ fn probe_locked(path: &Path) -> bool {
             std::ptr::null(),
             OPEN_EXISTING,
             FILE_ATTRIBUTE_NORMAL,
-            0,
+            // windows-sys ≥0.59 typed hTemplateFile as `*mut c_void`;
+            // the previous `0` no longer coerces.
+            std::ptr::null_mut(),
         )
     };
     if handle == INVALID_HANDLE_VALUE {
