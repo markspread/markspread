@@ -14,12 +14,18 @@ vi.mock("@/lib/markdown/htmlToMarkdown", () => ({
 
 import { type WorkspaceFs, clipboardExtension, setClipboardWorkspaceFs } from "./clipboard";
 
-// Polyfill Blob.arrayBuffer / File.text for jsdom.
-if (typeof Blob.prototype.arrayBuffer !== "function") {
-  Blob.prototype.arrayBuffer = function arrayBuffer(): Promise<ArrayBuffer> {
-    return new Response(this as Blob).arrayBuffer();
-  };
-}
+// Polyfill Blob.arrayBuffer for jsdom. We always replace it because
+// jsdom's built-in implementation routes through Response, which in
+// recent Node CI runners blows up with `object.stream is not a function`.
+// FileReader is jsdom-native and side-steps the Response code path.
+Blob.prototype.arrayBuffer = function arrayBuffer(): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result as ArrayBuffer);
+    fr.onerror = () => reject(fr.error ?? new Error("read failed"));
+    fr.readAsArrayBuffer(this as Blob);
+  });
+};
 
 function makeTextFile(content: string, name: string, type = "text/plain"): File {
   const f = new File([content], name, { type });
@@ -111,7 +117,7 @@ describe("paste handler", () => {
     const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" });
     const ev = makeClipboardEvent([{ kind: "file", type: "image/png", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 30));
     expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "png");
     expect(view.state.doc.toString()).toContain("![](assets/abc.png)");
   });
@@ -138,7 +144,7 @@ describe("paste handler", () => {
     const blob = new Blob([new Uint8Array([1])], { type: "image/jpeg" });
     const ev = makeClipboardEvent([{ kind: "file", type: "image/jpeg", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 30));
     expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "jpg");
   });
 
@@ -149,7 +155,7 @@ describe("paste handler", () => {
     const blob = new Blob([new Uint8Array([1])], { type: "image/svg+xml" });
     const ev = makeClipboardEvent([{ kind: "file", type: "image/svg+xml", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 30));
     expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "svg");
   });
 
@@ -163,7 +169,7 @@ describe("paste handler", () => {
     // Force the items predicate to pass: use a custom-typed item with image/ prefix.
     const ev = makeClipboardEvent([{ kind: "file", type: "image/png", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 30));
     expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "bin");
   });
 
@@ -251,7 +257,7 @@ describe("drop handler", () => {
     const f = makeTextFile("FROM-DROP", "n.md", "text/markdown");
     const ev = makeDragEvent([f]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 30));
     expect(view.state.doc.toString()).toBe("FROM-DROPseed\n");
   });
 
@@ -261,7 +267,7 @@ describe("drop handler", () => {
     const f = makeTextFile("YY", "n.txt", "text/plain");
     const ev = makeDragEvent([f], { x: 5, y: 5 });
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 30));
     expect(view.state.doc.toString()).toBe("xYYx\n");
   });
 
@@ -272,7 +278,7 @@ describe("drop handler", () => {
     const f = new File([new Uint8Array([1, 2, 3])], "p.png", { type: "image/png" });
     const ev = makeDragEvent([f]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 30));
     expect(view.state.doc.toString()).toContain("![](assets/y.png)");
   });
 });
