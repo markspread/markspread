@@ -1,13 +1,13 @@
 fn main() {
-    #[cfg(windows)]
-    {
-        // Embed our custom manifest so the exe advertises longPathAware=true,
-        // UTF-8 active code page, and PerMonitorV2 DPI awareness. Tauri's
-        // default manifest does not include longPathAware, which is required
-        // for paths >260 chars on Windows 10+ (when the OS-side reg key is
-        // set as well).
-        embed_manifest::embed_manifest_file("windows-app.manifest")
-            .expect("embed Windows manifest");
-    }
-    tauri_build::build()
+    // S-WIN-001: feed our custom manifest (longPathAware, UTF-8 ACP,
+    // PerMonitorV2) into tauri-build's own resource pipeline. Calling
+    // both `embed_manifest::embed_manifest_file` AND `tauri_build::build`
+    // double-embeds the MANIFEST resource and the Windows linker fails
+    // with `CVTRES CVT1100: duplicate resource`.
+    tauri_build::try_build(
+        tauri_build::Attributes::new().windows_attributes(
+            tauri_build::WindowsAttributes::new().app_manifest(include_str!("windows-app.manifest")),
+        ),
+    )
+    .expect("failed to run tauri-build");
 }

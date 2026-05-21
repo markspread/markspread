@@ -15,9 +15,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2.0", features = [] }
 
-[target.'cfg(windows)'.build-dependencies]
-embed-manifest = "1.4"
-
 [dependencies]
 tauri = { version = "2.0", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2.0"
