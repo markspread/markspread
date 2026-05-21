@@ -54,6 +54,7 @@ export const EditorPane = memo(function EditorPane({ workspace }: EditorPaneProp
   // a re-render with the same active tab is a no-op.
   const activeKind = useMemo(() => (activePath ? classifyFile(activePath) : "text"), [activePath]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: docs[activePath]/errors[activePath] are read once for early-return; adding them would re-trigger the read on every keystroke or error update. reloadKey is listed so a retry can re-run the fetch by clearing errors[activePath] and bumping the key.
   useEffect(() => {
     if (!activePath) return;
     if (activeKind !== "text") return;
@@ -67,6 +68,7 @@ export const EditorPane = memo(function EditorPane({ workspace }: EditorPaneProp
     let cancelled = false;
     inFlightRef.current.add(activePath);
     setLoading((s) => {
+      /* v8 ignore next -- inFlightRef early-returns the effect if the path is already loading, so the setLoading updater never sees a duplicate */
       if (s.has(activePath)) return s;
       const next = new Set(s);
       next.add(activePath);
@@ -97,6 +99,7 @@ export const EditorPane = memo(function EditorPane({ workspace }: EditorPaneProp
         inFlightRef.current.delete(activePath);
         if (!cancelled) {
           setLoading((s) => {
+            /* v8 ignore next -- the setLoading on entry always adds the path; the finally only runs after that, so the path is always present here */
             if (!s.has(activePath)) return s;
             const next = new Set(s);
             next.delete(activePath);
@@ -116,6 +119,7 @@ export const EditorPane = memo(function EditorPane({ workspace }: EditorPaneProp
     async (path: string) => {
       if (readOnly) return;
       const content = liveContentRef.current[path];
+      /* v8 ignore next -- handleChange only schedules flushSave after writing into liveContentRef, so this guard only fires if the ref is cleared between schedule and flush — which we never do */
       if (content === undefined) return;
       await saveTab({ workspace, path, content });
     },
@@ -168,6 +172,7 @@ export const EditorPane = memo(function EditorPane({ workspace }: EditorPaneProp
   if (decision) {
     const retry = () => {
       setErrors((e) => {
+        /* v8 ignore next -- retry is only rendered when errors[activePath] is set; the updater always sees the path present */
         if (!(activePath in e)) return e;
         const next = { ...e };
         delete next[activePath];

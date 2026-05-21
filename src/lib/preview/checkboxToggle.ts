@@ -59,6 +59,7 @@ function findTaskLineByOrdinal(src: string, ordinal: number): number {
   const lines = src.split(/\r?\n/);
   let seen = 0;
   for (let i = 0; i < lines.length; i++) {
+    /* v8 ignore next -- i bounded by lines.length so lines[i] is defined; ?? "" is defensive */
     if (TASK_RE.test(lines[i] ?? "")) {
       if (seen === ordinal) return i;
       seen++;

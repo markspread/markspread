@@ -43,6 +43,7 @@ export function useSidebarPeekHover(): void {
   const show = useSidebarPeek((s) => s.show);
   const hide = useSidebarPeek((s) => s.hide);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: peekOpen/pinned are listed so the effect re-arms when external code (toolbar pin/unpin, escape-to-close) flips state; the body itself reads fresh values via useSidebarPeek.getState() so Biome flags them as redundant.
   useEffect(() => {
     // Peek hover is only meaningful when (a) a workspace is open and
     // (b) the sidebar is currently collapsed. The rail is the only
@@ -83,6 +84,7 @@ export function useSidebarPeekHover(): void {
 
     const armClose = () => {
       if (useSidebarPeek.getState().pinned) return;
+      /* v8 ignore next 4 -- defensive race guard: armClose's sole caller (onPointerOut) already gates on `open === true`, so this branch only fires if `open` flips to false between the caller's check and this one */
       if (!useSidebarPeek.getState().open) {
         clearEnter();
         return;
@@ -100,6 +102,7 @@ export function useSidebarPeekHover(): void {
 
     const onPointerOver = (e: PointerEvent) => {
       const target = e.target;
+      /* v8 ignore next -- TS-only narrowing: PointerEvent dispatched on a DOM element always has an Element target */
       if (!(target instanceof Element)) return;
       if (target.closest("[data-sidebar-rail]")) {
         armOpen();
@@ -112,6 +115,7 @@ export function useSidebarPeekHover(): void {
     const onPointerOut = (e: PointerEvent) => {
       const target = e.target;
       const related = e.relatedTarget;
+      /* v8 ignore next -- TS-only narrowing: PointerEvent dispatched on a DOM element always has an Element target */
       if (!(target instanceof Element)) return;
       const fromRail = !!target.closest("[data-sidebar-rail]");
       const fromPeek = !!target.closest("[data-sidebar-peek]");

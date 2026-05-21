@@ -36,6 +36,7 @@ function detach(): void {
 function register(): void {
   for (const { id, titleKey } of PALETTE_IDS) {
     const cmd = commands.find((c) => c.id === id);
+    /* v8 ignore next -- every PALETTE_IDS entry corresponds to a registered command, so cmd is always found */
     if (!cmd) continue;
     const label = i18next.t(titleKey, { defaultValue: cmd.title });
     detachers.push(

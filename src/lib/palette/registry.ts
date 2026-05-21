@@ -88,6 +88,7 @@ export function query(opts: QueryOptions): PaletteItem[] {
     return all.slice(0, limit);
   }
   const scored = all.map((it) => {
+    /* v8 ignore next -- registerPaletteItem always populates searchKey, so the fallback never triggers */
     const score = fuzzyScore(it.searchKey ?? it.label.toLowerCase(), parsed.query.toLowerCase());
     return { it, score };
   });

@@ -152,6 +152,7 @@ export function maskLogLine(
   for (const p of patterns) {
     p.re.lastIndex = 0;
     out = out.replace(p.re, (full, captured: string | undefined) => {
+      /* v8 ignore next -- every built-in and documented custom pattern carries one capture group; ?? full is defensive */
       const target = captured ?? full;
       return full.replace(target, `«REDACTED:${p.id}»`);
     });

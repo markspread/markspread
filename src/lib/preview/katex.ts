@@ -33,6 +33,7 @@ export async function renderMathIn(root: ParentNode, opts: RenderMathOptions = {
   if (!katex) return;
   for (const el of nodes) {
     const mode = el.getAttribute("data-mode") === "block" ? "block" : "inline";
+    /* v8 ignore next -- HTMLElement.textContent is always a string, so the fallback never triggers */
     const src = el.textContent ?? "";
     try {
       const html = katex.default.renderToString(src, {

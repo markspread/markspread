@@ -29,7 +29,8 @@ const MARKDOWN_KEYWORDS: { label: string; detail: string }[] = [
   { label: "---", detail: "horizontal rule" },
 ];
 
-const markdownKeywordSource: CompletionSource = (
+// Exported for test coverage of the explicit/non-explicit branches.
+export const markdownKeywordSource: CompletionSource = (
   ctx: CompletionContext,
 ): CompletionResult | null => {
   // Only fire when explicitly invoked (⌃Space). The default

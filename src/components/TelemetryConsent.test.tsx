@@ -34,4 +34,13 @@ describe("TelemetryConsent", () => {
     fireEvent.click(screen.getByText("Don't send"));
     expect(useTelemetry.getState().consent).toBe("disabled");
   });
+
+  it("dismisses to disabled on Escape via the focus trap", () => {
+    render(<TelemetryConsent />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement | null;
+    if (dialog) fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(useTelemetry.getState().consent).toBe("disabled");
+  });
 });

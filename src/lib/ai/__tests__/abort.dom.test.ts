@@ -69,6 +69,13 @@ describe("mountAbortHotkey", () => {
     unmount();
   });
 
+  it("does nothing on Escape when no streams are active", () => {
+    const unmount = mountAbortHotkey();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(aiAbortRegistry.count()).toBe(0);
+    unmount();
+  });
+
   it("the returned cleanup detaches the listener", () => {
     const spy = vi.spyOn(document, "removeEventListener");
     const unmount = mountAbortHotkey();

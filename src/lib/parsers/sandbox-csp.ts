@@ -59,6 +59,7 @@ function matchesDirective(csp: string, directive: string): boolean {
   const re = new RegExp(`(?:^|;\\s*)${directive}\\b([^;]*)`, "i");
   const m = csp.match(re);
   if (!m) return false;
+  /* v8 ignore next -- the regex always has a capturing group so m[1] is defined */
   const body = m[1] ?? "";
   return /(?:^|\s)(\*|https?:)/i.test(body);
 }

@@ -44,4 +44,10 @@ describe("FileAccessErrorCard", () => {
     render(<FileAccessErrorCard decision={decision} className="max-w-lg" />);
     expect(screen.getByRole("alert").className).toContain("max-w-lg");
   });
+
+  it("derives the category from the rule id when none is given and tolerates missing vars", () => {
+    const bareDecision = { ruleId: "PRM-OS-EACCES" } as unknown as AccessDecision;
+    render(<FileAccessErrorCard decision={bareDecision} />);
+    expect(screen.getByRole("alert").getAttribute("data-access-category")).toBe("PRM");
+  });
 });

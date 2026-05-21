@@ -15,7 +15,9 @@ import { EditorSelection } from "@codemirror/state";
 import type { Extension } from "@codemirror/state";
 import { type EditorView, lineNumbers } from "@codemirror/view";
 
-function selectLineRange(view: EditorView, fromLine: number, toLine: number): void {
+// Exported for test coverage — the layout-dependent gutter wiring is
+// hard to drive from jsdom, but the helper logic is pure.
+export function selectLineRange(view: EditorView, fromLine: number, toLine: number): void {
   const start = Math.min(fromLine, toLine);
   const end = Math.max(fromLine, toLine);
   const startPos = view.state.doc.line(start).from;
@@ -29,35 +31,38 @@ function selectLineRange(view: EditorView, fromLine: number, toLine: number): vo
   });
 }
 
+// Exported for test coverage.
+export function handleGutterMousedown(view: EditorView, lineFrom: number, shiftKey: boolean): true {
+  const lineNo = view.state.doc.lineAt(lineFrom).number;
+  if (shiftKey) {
+    const anchor = view.state.selection.main.anchor;
+    const anchorLine = view.state.doc.lineAt(anchor).number;
+    selectLineRange(view, anchorLine, lineNo);
+  } else {
+    selectLineRange(view, lineNo, lineNo);
+  }
+  const startLine = lineNo;
+  const onMove = (ev: MouseEvent) => {
+    const pos = view.posAtCoords({ x: ev.clientX, y: ev.clientY });
+    if (pos == null) return;
+    const targetLine = view.state.doc.lineAt(pos).number;
+    selectLineRange(view, startLine, targetLine);
+  };
+  const onUp = () => {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+  };
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+  return true;
+}
+
 export function lineNumberClickExtension(): Extension {
   return lineNumbers({
     domEventHandlers: {
       mousedown(view, line, event) {
         const e = event as MouseEvent;
-        const lineNo = view.state.doc.lineAt(line.from).number;
-        if (e.shiftKey) {
-          const anchor = view.state.selection.main.anchor;
-          const anchorLine = view.state.doc.lineAt(anchor).number;
-          selectLineRange(view, anchorLine, lineNo);
-        } else {
-          selectLineRange(view, lineNo, lineNo);
-        }
-        // Drag-to-extend: while the mouse is held, watch for the
-        // pointer crossing into other gutter rows.
-        const startLine = lineNo;
-        const onMove = (ev: MouseEvent) => {
-          const pos = view.posAtCoords({ x: ev.clientX, y: ev.clientY });
-          if (pos == null) return;
-          const targetLine = view.state.doc.lineAt(pos).number;
-          selectLineRange(view, startLine, targetLine);
-        };
-        const onUp = () => {
-          window.removeEventListener("mousemove", onMove);
-          window.removeEventListener("mouseup", onUp);
-        };
-        window.addEventListener("mousemove", onMove);
-        window.addEventListener("mouseup", onUp);
-        return true;
+        return handleGutterMousedown(view, line.from, e.shiftKey);
       },
     },
   });

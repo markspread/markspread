@@ -95,7 +95,7 @@ function zipPasteText(view: EditorView, text: string): boolean {
   if (lines.length !== ranges.length) return false;
   let i = 0;
   const tr = state.changeByRange((range) => {
-    const insert = lines[i++] ?? "";
+    const insert = lines[i++] as string;
     const from = range.from;
     return {
       changes: { from: range.from, to: range.to, insert },
@@ -147,35 +147,24 @@ function pasteHandler(view: EditorView, event: ClipboardEvent): boolean {
   return false;
 }
 
-async function dropHandler(view: EditorView, event: DragEvent): Promise<boolean> {
-  const dt = event.dataTransfer;
-  if (!dt) return false;
-
-  for (const file of Array.from(dt.files)) {
-    if (IMAGE_MIME.test(file.type)) {
-      // S-ED-054
-      event.preventDefault();
-      await pasteImage(view, file);
-      return true;
-    }
-    if (TEXT_FILE_EXT.test(file.name)) {
-      // S-ED-055
-      event.preventDefault();
-      const text = await file.text();
-      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-      const at = pos == null ? view.state.selection.main.from : pos;
-      view.dispatch(
-        view.state.update({
-          changes: { from: at, insert: text },
-          selection: { anchor: at + text.length },
-          userEvent: "input.drop",
-          scrollIntoView: true,
-        }),
-      );
-      return true;
-    }
+async function dropHandler(view: EditorView, event: DragEvent, file: File): Promise<void> {
+  if (IMAGE_MIME.test(file.type)) {
+    // S-ED-054
+    await pasteImage(view, file);
+    return;
   }
-  return false;
+  // S-ED-055: TEXT_FILE_EXT is the only other accepted shape.
+  const text = await file.text();
+  const at =
+    view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.selection.main.from;
+  view.dispatch(
+    view.state.update({
+      changes: { from: at, insert: text },
+      selection: { anchor: at + text.length },
+      userEvent: "input.drop",
+      scrollIntoView: true,
+    }),
+  );
 }
 
 export function clipboardExtension(): Extension {
@@ -189,12 +178,12 @@ export function clipboardExtension(): Extension {
       // payload as plain text below us.
       const dt = event.dataTransfer;
       if (!dt || dt.files.length === 0) return false;
-      const handled = Array.from(dt.files).some(
+      const file = Array.from(dt.files).find(
         (f) => IMAGE_MIME.test(f.type) || TEXT_FILE_EXT.test(f.name),
       );
-      if (!handled) return false;
+      if (!file) return false;
       event.preventDefault();
-      void dropHandler(view, event);
+      void dropHandler(view, event, file);
       return true;
     },
   });

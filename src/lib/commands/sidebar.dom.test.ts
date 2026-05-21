@@ -102,4 +102,17 @@ describe("peekSidebarCommand", () => {
     expect(useSidebarPeek.getState().restoreFocusEl).toBe(btn);
     btn.remove();
   });
+
+  it("stores null when the active element is not an HTMLElement", () => {
+    useWorkspace.setState({ current: WS, readOnly: false });
+    useLayout.getState().setSidebarHidden(WS, true);
+    const original = Object.getOwnPropertyDescriptor(Document.prototype, "activeElement");
+    Object.defineProperty(document, "activeElement", { configurable: true, get: () => null });
+    try {
+      peekSidebarCommand();
+      expect(useSidebarPeek.getState().restoreFocusEl).toBeNull();
+    } finally {
+      if (original) Object.defineProperty(Document.prototype, "activeElement", original);
+    }
+  });
 });

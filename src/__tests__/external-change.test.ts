@@ -57,4 +57,12 @@ describe("detectExternalChange", () => {
     const res = await detectExternalChange("/ws", "/a.md", 1000);
     expect(res.kind).toBe("unknown");
   });
+
+  it("falls back to stringifying non-Error rejections", async () => {
+    invokeMock.mockRejectedValueOnce("raw string rejection");
+    const { detectExternalChange } = await import("../lib/external-change");
+    const res = await detectExternalChange("/ws", "/a.md", 1000);
+    expect(res.kind).toBe("unknown");
+    expect((res as { reason: string }).reason).toContain("raw string rejection");
+  });
 });

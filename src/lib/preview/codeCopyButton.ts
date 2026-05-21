@@ -40,6 +40,7 @@ export function attachCodeCopyButtons(
     btn.setAttribute("aria-label", labels.copy);
     btn.addEventListener("click", async (e) => {
       e.preventDefault();
+      /* v8 ignore next -- HTMLElement.textContent is always a string; ?? "" is defensive */
       const ok = await copyText(code.textContent ?? "");
       if (ok) {
         const original = btn.textContent;

@@ -57,6 +57,10 @@ describe("htmlToMarkdown", () => {
     expect(htmlToMarkdown('<img src="a.png">')).toBe("![](a.png)");
   });
 
+  it("renders an empty src placeholder for a srcless img", () => {
+    expect(htmlToMarkdown("<img>")).toBe("![]()");
+  });
+
   it("converts a hard break", () => {
     expect(htmlToMarkdown("<p>a<br>b</p>")).toBe("a  \nb");
   });

@@ -54,4 +54,38 @@ describe("palette bootstrap (editor-layout)", () => {
     expect(focus).toContain("view.focus_pane_2");
     expect(focus).toContain("view.focus_pane_3");
   });
+
+  it("re-bootstraps on languageChanged and the returned detacher clears entries", async () => {
+    const detach = bootstrapSidebarPaletteItems();
+    await i18next.changeLanguage("en");
+    expect(query({ raw: "sidebar", limit: 50 }).length).toBeGreaterThan(0);
+    detach();
+    expect(query({ raw: "sidebar", limit: 50 }).length).toBe(0);
+  });
+
+  it("invokes the underlying command when the palette item's run() fires", () => {
+    bootstrapSidebarPaletteItems();
+    const item = query({ raw: "focus pane 1", limit: 50 }).find(
+      (it) => it.id === "view.focus_pane_1",
+    );
+    expect(item).toBeDefined();
+    expect(() => item?.run()).not.toThrow();
+  });
+
+  it("re-registers palette entries when i18next emits languageChanged", async () => {
+    i18next.addResourceBundle(
+      "ko",
+      "translation",
+      { commands: { view: { toggle_sidebar: "사이드바 토글" } } },
+      true,
+      true,
+    );
+    bootstrapSidebarPaletteItems();
+    await i18next.changeLanguage("ko");
+    const toggle = query({ raw: "사이드바", limit: 50 }).find(
+      (it) => it.id === "view.toggle_sidebar",
+    );
+    expect(toggle?.label).toBe("사이드바 토글");
+    await i18next.changeLanguage("en");
+  });
 });

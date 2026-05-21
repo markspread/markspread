@@ -61,6 +61,7 @@ export function scanHeadings(markdown: string): ParsedHeading[] {
   let inFence = false;
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
+    /* v8 ignore next -- split(/\r?\n/) yields strings for every index 0..length-1 */
     if (line === undefined) continue;
     if (/^```|^~~~/.test(line)) {
       inFence = !inFence;
@@ -69,6 +70,7 @@ export function scanHeadings(markdown: string): ParsedHeading[] {
     if (inFence) continue;
     const atx = line.match(ATX);
     if (atx) {
+      /* v8 ignore next 2 -- both capture groups of ATX are non-optional, so atx[1] / atx[2] are always strings */
       const lvl = (atx[1] ?? "").length as 1 | 2 | 3 | 4 | 5 | 6;
       out.push({ level: lvl, text: (atx[2] ?? "").trim(), line: i + 1 });
       continue;

@@ -48,6 +48,69 @@ describe("PluginPermissionDialog", () => {
     expect(onDeny).toHaveBeenCalled();
   });
 
+  it("describes every permission shape", () => {
+    const allPerms: PluginPermission[] = [
+      "fs.workspace-read",
+      "fs.workspace-write",
+      "fs.outside",
+      "shell",
+      { network: ["api.example.com"] },
+      { keychain: ["claude.token"] },
+    ];
+    render(
+      <PluginPermissionDialog
+        pluginId="acme.plugin"
+        pluginName="Acme"
+        requestedPermissions={allPerms}
+        onAllow={() => {}}
+        onDeny={() => {}}
+      />,
+    );
+    expect(screen.getByText("Read files in this workspace")).toBeTruthy();
+    expect(screen.getByText("Write files in this workspace")).toBeTruthy();
+    expect(screen.getByText("Read/write files outside this workspace")).toBeTruthy();
+    expect(screen.getByText("Run shell commands (denied in v1)")).toBeTruthy();
+    expect(screen.getByText(/Network:.*api\.example\.com/)).toBeTruthy();
+    expect(screen.getByText(/Keychain:.*claude\.token/)).toBeTruthy();
+  });
+
+  it("toggles a permission off then back on", () => {
+    render(
+      <PluginPermissionDialog
+        pluginId="acme.plugin"
+        pluginName="Acme"
+        requestedPermissions={perms}
+        onAllow={() => {}}
+        onDeny={() => {}}
+      />,
+    );
+    const boxes = screen.getAllByRole("checkbox") as HTMLInputElement[];
+    const first = boxes[0];
+    if (!first) throw new Error("checkbox missing");
+    fireEvent.click(first);
+    expect(first.checked).toBe(false);
+    fireEvent.click(first);
+    expect(first.checked).toBe(true);
+  });
+
+  it("closes the dialog even when invoke rejects", async () => {
+    invoke.mockRejectedValueOnce(new Error("backend refused"));
+    const onAllow = vi.fn();
+    render(
+      <PluginPermissionDialog
+        pluginId="acme.plugin"
+        pluginName="Acme"
+        requestedPermissions={perms}
+        onAllow={onAllow}
+        onDeny={() => {}}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByText("Allow"));
+    });
+    expect(onAllow).toHaveBeenCalled();
+  });
+
   it("allows only the still-selected permissions", async () => {
     const onAllow = vi.fn();
     render(

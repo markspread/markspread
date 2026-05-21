@@ -217,8 +217,10 @@ function layoutAwareDisplay(binding: string): string {
     .split(/\s+/)
     .map((step) => {
       const parts = step.split("+");
+      /* v8 ignore next -- split() always yields at least one element, so the `?? ""` fallback is unreachable */
       const last = parts.at(-1) ?? "";
       const isMod = ["Mod", "Ctrl", "Alt", "Shift", "Meta"].includes(last);
+      /* v8 ignore next -- modifier-only chords are never registered as bindings in the default registry */
       if (isMod) return formatBinding(step);
       const code = codeFromKeySegment(last);
       const relabeled = labelForCode(code);

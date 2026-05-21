@@ -61,6 +61,7 @@ export function unregisterPluginLocale(id: string): void {
   registered.delete(id);
   loadedFor.delete(id);
   const ns = namespaceFor(id);
+  /* v8 ignore next -- i18next always populates .languages; ?? [] is defensive */
   for (const lng of i18n.languages ?? []) {
     if (i18n.hasResourceBundle(lng, ns)) {
       i18n.removeResourceBundle(lng, ns);

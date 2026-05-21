@@ -91,6 +91,7 @@ async function reconcileRestoredTabs(): Promise<void> {
       // Tab paths are absolute files inside the active workspace.
       // ensure_within() handles absolute target paths correctly.
       const stat = await invoke<FsStat>("fs_stat", {
+        /* v8 ignore next -- the outer caller already returned when current was null, so persisted is always set here */
         workspace: persisted ?? tab.path,
         path: tab.path,
       });

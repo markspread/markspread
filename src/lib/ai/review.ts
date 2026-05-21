@@ -71,9 +71,8 @@ export function applyComments(
     .sort((a, b) => b.anchorLine - a.anchorLine);
 
   for (const c of orderable) {
-    const { suggestion } = c;
-    // Guaranteed by the `orderable` filter above; the guard narrows the type.
-    if (!suggestion) continue;
+    // Guaranteed defined by the `orderable` filter above.
+    const suggestion = c.suggestion as NonNullable<ReviewComment["suggestion"]>;
     const start = c.anchorLine;
     const end = suggestion.anchorEndLine;
     if (start < 1 || end > lineCount || start > end) {

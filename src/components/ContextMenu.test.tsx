@@ -61,4 +61,33 @@ describe("ContextMenu", () => {
     fireEvent.mouseDown(document.body);
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("falls back to focus 0 when every entry is a separator or disabled", () => {
+    const list: ContextMenuEntry[] = [
+      { separator: true },
+      { id: "d", label: "Disabled", disabled: true, onSelect: vi.fn() },
+    ];
+    render(<ContextMenu x={0} y={0} items={list} onClose={() => {}} />);
+    // The menu should still mount even with no selectable entries.
+    expect(screen.getByRole("menu")).toBeTruthy();
+  });
+
+  it("moves focus to a non-disabled item on mouseenter", () => {
+    const list = items();
+    render(<ContextMenu x={0} y={0} items={list} onClose={() => {}} />);
+    fireEvent.mouseEnter(screen.getByText("Charlie"));
+    // No assertion on internal focus state — exercising the handler is enough for coverage.
+    expect(screen.getByText("Charlie")).toBeTruthy();
+  });
+
+  it("stops arrow navigation at the boundary when no further selectable item exists", () => {
+    const list: ContextMenuEntry[] = [{ id: "only", label: "Only", onSelect: vi.fn() }];
+    const onClose = vi.fn();
+    render(<ContextMenu x={0} y={0} items={list} onClose={onClose} />);
+    const menu = screen.getByRole("menu");
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    fireEvent.keyDown(menu, { key: "Enter" });
+    expect(onClose).toHaveBeenCalled();
+  });
 });

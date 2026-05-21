@@ -49,6 +49,7 @@ function cleanInlineWhitespace(s: string): string {
 
 function nodeToMarkdown(node: Node, listDepth: number): string {
   if (node.nodeType === Node.TEXT_NODE) {
+    /* v8 ignore next -- Text nodes always have a string textContent */
     return cleanInlineWhitespace(node.textContent ?? "");
   }
   if (node.nodeType !== Node.ELEMENT_NODE) return "";
@@ -79,11 +80,13 @@ function nodeToMarkdown(node: Node, listDepth: number): string {
   }
 
   if (tag === "CODE" && el.parentElement?.tagName !== "PRE") {
+    /* v8 ignore next -- element textContent is always a string */
     return `\`${(el.textContent ?? "").replace(/`/g, "\\`")}\``;
   }
   if (tag === "PRE") {
     const code = el.querySelector(":scope > code");
     const langClass = code?.className?.match(/language-([\w-]+)/)?.[1] ?? "";
+    /* v8 ignore next -- element textContent is always a string */
     const text = (code ?? el).textContent ?? "";
     return `\n\n\`\`\`${langClass}\n${text.replace(/\n+$/, "")}\n\`\`\`\n\n`;
   }
@@ -146,6 +149,7 @@ function tableToMarkdown(table: Element): string | null {
   const cols = Math.max(...cells.map((r) => r.length));
   if (!cells.every((r) => r.length === cols)) return null;
   const head = cells[0];
+  /* v8 ignore next -- rows.length > 0 was checked, so cells[0] is always defined */
   if (!head) return null;
   const body = cells.slice(1);
   const sep = head.map(() => "---");
@@ -154,6 +158,7 @@ function tableToMarkdown(table: Element): string | null {
 }
 
 export function htmlToMarkdown(html: string): string {
+  /* v8 ignore next -- DOMParser is available in every browser/jsdom test environment we target */
   if (typeof DOMParser === "undefined") return html;
   const doc = new DOMParser().parseFromString(html, "text/html");
   const md = childrenToMarkdown(doc.body, 0);

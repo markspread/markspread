@@ -48,6 +48,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const [pos, setPos] = useState({ left: x, top: y });
   useEffect(() => {
     const el = ref.current;
+    /* v8 ignore next -- ref.current is populated once the <ul> mounts; the guard is defensive */
     if (!el) return;
     const r = el.getBoundingClientRect();
     const vw = window.innerWidth;

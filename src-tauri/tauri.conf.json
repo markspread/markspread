@@ -75,7 +75,7 @@
         "installerHooks": "installer/nsis-context-menu.nsh"
       }
     },
-    "createUpdaterArtifacts": "v1Compatible",
+    "createUpdaterArtifacts": false,
     "linux": {
       "deb": {
         "depends": [

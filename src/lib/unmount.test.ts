@@ -170,4 +170,65 @@ describe("registerUnmountListener", () => {
     await flush();
     expect(() => dispose()).not.toThrow();
   });
+
+  it("emits a generic toast detail when no dirty buffers were dumped", async () => {
+    let handler: EventHandler = () => {};
+    listenMock.mockImplementation((_e: string, cb: EventHandler) => {
+      handler = cb;
+      return Promise.resolve(unlistenMock);
+    });
+    invokeMock.mockResolvedValue(undefined);
+    askMock.mockResolvedValueOnce(false);
+    // Tab path doesn't start with the workspace prefix — exercises the false
+    // branch of the startsWith ternary, and the dump invoke rejects so the
+    // dumped count stays at 0.
+    invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "unmount_dump_orphan") throw new Error("disk full");
+      return undefined;
+    });
+    useWorkspace.setState({ current: "/ws" });
+    useTabs.setState({
+      tabs: [tab("/elsewhere/file.md", true)],
+      activePath: "/elsewhere/file.md",
+    });
+    const { registerUnmountListener } = await import("./unmount");
+    registerUnmountListener();
+    await flush();
+    await handler({ payload: { workspace: "/ws" } });
+    expect(useToasts.getState().toasts[0]?.details).toBe("/ws");
+  });
+
+  it("dispose unsubscribes the underlying Tauri listener once attached", async () => {
+    listenMock.mockResolvedValueOnce(unlistenMock);
+    const { registerUnmountListener } = await import("./unmount");
+    const dispose = registerUnmountListener();
+    await flush();
+    dispose();
+    expect(unlistenMock).toHaveBeenCalled();
+  });
+
+  it("dispose is a no-op when the listener never resolved", async () => {
+    listenMock.mockReturnValue(new Promise(() => {}));
+    const { registerUnmountListener } = await import("./unmount");
+    const dispose = registerUnmountListener();
+    expect(() => dispose()).not.toThrow();
+  });
+
+  it("treats unmount_watch_start rejections as a soft failure", async () => {
+    invokeMock
+      .mockResolvedValueOnce({ kind: "external" })
+      .mockRejectedValueOnce(new Error("start boom"));
+    const { maybeStartUnmountWatch } = await import("./unmount");
+    await expect(maybeStartUnmountWatch("/ws-start-fail")).resolves.toBeUndefined();
+  });
+
+  it("treats unmount_watch_stop rejections as a soft failure", async () => {
+    invokeMock
+      .mockResolvedValueOnce({ kind: "external" })
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("stop boom"));
+    const mod = await import("./unmount");
+    await mod.maybeStartUnmountWatch("/ws-stop-fail");
+    await expect(mod.stopUnmountWatch("/ws-stop-fail")).resolves.toBeUndefined();
+  });
 });

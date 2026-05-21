@@ -32,6 +32,26 @@ describe("ResetBindingsDialog", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("surfaces a typed error message when the reset fails", async () => {
+    resetAllToPreset.mockRejectedValueOnce(new Error("write blocked"));
+    render(<ResetBindingsDialog onClose={() => {}} onDone={() => {}} />);
+    fireEvent.change(screen.getByDisplayValue(""), { target: { value: "RESET" } });
+    await act(async () => {
+      fireEvent.click(screen.getByText("Reset all"));
+    });
+    expect(screen.getByText("write blocked")).toBeTruthy();
+  });
+
+  it("stringifies a non-Error rejection", async () => {
+    resetAllToPreset.mockRejectedValueOnce("plain-string");
+    render(<ResetBindingsDialog onClose={() => {}} onDone={() => {}} />);
+    fireEvent.change(screen.getByDisplayValue(""), { target: { value: "RESET" } });
+    await act(async () => {
+      fireEvent.click(screen.getByText("Reset all"));
+    });
+    expect(screen.getByText("plain-string")).toBeTruthy();
+  });
+
   it("performs the reset and surfaces the backup path", async () => {
     vi.useFakeTimers();
     const onClose = vi.fn();

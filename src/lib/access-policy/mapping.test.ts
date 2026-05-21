@@ -102,6 +102,19 @@ describe("fromPosixError", () => {
     expect(fromPosixError("oops").ruleId).toBe("IO-UNCLASSIFIED");
   });
 
+  it("propagates structured-payload vars into the decision", () => {
+    const decision = fromPosixError({
+      code: "EACCES",
+      access: {
+        ruleId: "SEC-SYMLINK-ESCAPE",
+        category: "SEC",
+        vars: { hint: "symlink loops" },
+      },
+    });
+    expect(decision.ruleId).toBe("SEC-SYMLINK-ESCAPE");
+    expect(decision.vars?.hint).toBe("symlink loops");
+  });
+
   it("prefers the structured access payload from FAP-007 over the POSIX shim", () => {
     // SEC-SYMLINK-ESCAPE shares the legacy `EOUTSIDE_WORKSPACE` code with
     // BND-OUTSIDE-WORKSPACE — the engine disambiguates via the `access`

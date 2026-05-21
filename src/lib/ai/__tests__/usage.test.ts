@@ -1,6 +1,12 @@
 // S-AIC: AI usage accounting + cost helpers coverage.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const invokeMock = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (...args: unknown[]) => invokeMock(...args),
+}));
+
 import {
   BUILTIN_PRICING,
   type CostThreshold,
@@ -10,9 +16,20 @@ import {
   evaluateThreshold,
   formatUsageCsv,
   priceFor,
+  queryUsage,
+  recordUsage,
+  resetUsage,
   startOfDay,
   startOfMonth,
 } from "../usage";
+
+beforeEach(() => {
+  invokeMock.mockReset();
+});
+
+afterEach(() => {
+  invokeMock.mockReset();
+});
 
 describe("priceFor", () => {
   it("finds an exact provider+model row", () => {
@@ -134,5 +151,47 @@ describe("formatUsageCsv", () => {
   it("renders a header-only csv for an empty row set", () => {
     const csv = formatUsageCsv([]);
     expect(csv).toContain("ts,alias,provider");
+  });
+});
+
+describe("invoke wrappers", () => {
+  it("recordUsage forwards the row to ai_usage_record", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
+    const row: Omit<UsageRow, "id"> = {
+      ts: 1,
+      alias: "default",
+      provider: "anthropic",
+      model: "claude-opus-4-7",
+      actionId: "review",
+      inputTokens: 10,
+      outputTokens: 5,
+      usd: 0.01,
+      pricingVersion: "2026-05-01",
+      status: "ok",
+    };
+    await recordUsage(row);
+    expect(invokeMock).toHaveBeenCalledWith("ai_usage_record", { row });
+  });
+
+  it("queryUsage forwards the window to ai_usage_query", async () => {
+    invokeMock.mockResolvedValueOnce({
+      startTs: 0,
+      endTs: 100,
+      totalUsd: 1,
+      totalInputTokens: 2,
+      totalOutputTokens: 3,
+      dailyBuckets: [],
+      byModel: [],
+      byAction: [],
+    });
+    const r = await queryUsage(0, 100);
+    expect(invokeMock).toHaveBeenCalledWith("ai_usage_query", { startTs: 0, endTs: 100 });
+    expect(r.totalUsd).toBe(1);
+  });
+
+  it("resetUsage calls ai_usage_reset", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
+    await resetUsage();
+    expect(invokeMock).toHaveBeenCalledWith("ai_usage_reset");
   });
 });

@@ -132,6 +132,73 @@ describe("restoreSessionOrFallback", () => {
     expect(useEditorLayout.getState().layouts["/ws"]).toBeDefined();
   });
 
+  it("clears the active path when every restored tab is dropped", async () => {
+    invokeMock
+      .mockResolvedValueOnce(FLAGS)
+      .mockResolvedValueOnce({ kind: "dir" })
+      .mockRejectedValueOnce(new Error("gone"));
+    useWorkspace.setState({ current: "/ws" });
+    useTabs.setState({ tabs: [tab("/ws/lost.md")], activePath: "/ws/lost.md" });
+    const { restoreSessionOrFallback } = await import("./session");
+    await restoreSessionOrFallback();
+    expect(useTabs.getState().tabs).toHaveLength(0);
+    expect(useTabs.getState().activePath).toBeNull();
+  });
+
+  it("keeps an existing editor layout instead of reseeding from legacy tabs", async () => {
+    invokeMock
+      .mockResolvedValueOnce(FLAGS)
+      .mockResolvedValueOnce({ kind: "dir" })
+      .mockResolvedValueOnce({ kind: "file", modified_ms: 1 });
+    useWorkspace.setState({ current: "/ws" });
+    useTabs.setState({ tabs: [tab("/ws/a.md")], activePath: "/ws/a.md" });
+    const existing = { panes: [], activePaneId: null } as unknown as Parameters<
+      typeof useEditorLayout.getState
+    >[never];
+    useEditorLayout.setState({ layouts: { "/ws": existing as never } });
+    const { restoreSessionOrFallback } = await import("./session");
+    await restoreSessionOrFallback();
+    expect(useEditorLayout.getState().layouts["/ws"]).toBe(existing);
+  });
+
+  it("skips legacy seeding when no tabs survived restoration", async () => {
+    invokeMock.mockResolvedValueOnce(FLAGS).mockResolvedValueOnce({ kind: "dir" });
+    useWorkspace.setState({ current: "/ws" });
+    useTabs.setState({ tabs: [], activePath: null });
+    const { restoreSessionOrFallback } = await import("./session");
+    await restoreSessionOrFallback();
+    expect(useEditorLayout.getState().layouts["/ws"]).toBeUndefined();
+  });
+
+  it("keeps a tab's existing modifiedMs when fs_stat returns no timestamp", async () => {
+    invokeMock
+      .mockResolvedValueOnce(FLAGS)
+      .mockResolvedValueOnce({ kind: "dir" })
+      .mockResolvedValueOnce({ kind: "file" });
+    useWorkspace.setState({ current: "/ws" });
+    useTabs.setState({ tabs: [tab("/ws/a.md", 999)], activePath: "/ws/a.md" });
+    const { restoreSessionOrFallback } = await import("./session");
+    await restoreSessionOrFallback();
+    const t = useTabs.getState().tabs[0];
+    expect(t?.modifiedMs).toBe(999);
+  });
+
+  it("picks the trailing surviving tab as active when no activePath was persisted", async () => {
+    invokeMock
+      .mockResolvedValueOnce(FLAGS)
+      .mockResolvedValueOnce({ kind: "dir" })
+      .mockResolvedValueOnce({ kind: "file", modified_ms: 1 })
+      .mockResolvedValueOnce({ kind: "file", modified_ms: 1 });
+    useWorkspace.setState({ current: "/ws" });
+    useTabs.setState({
+      tabs: [tab("/ws/a.md"), tab("/ws/b.md")],
+      activePath: null,
+    });
+    const { restoreSessionOrFallback } = await import("./session");
+    await restoreSessionOrFallback();
+    expect(useTabs.getState().activePath).toBe("/ws/b.md");
+  });
+
   it("falls back to default flags when cli_flags rejects", async () => {
     invokeMock.mockRejectedValueOnce(new Error("no runtime"));
     const { restoreSessionOrFallback } = await import("./session");

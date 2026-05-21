@@ -165,6 +165,33 @@ describe("render", () => {
     expect(out).toContain("<h1>T</h1>");
   });
 
+  it("forwards frontmatter to the parser registry match", async () => {
+    const reg = getParserRegistry();
+    const matchSpy = vi.spyOn(reg, "match");
+    const transport: SandboxTransport = {
+      mode: "worker",
+      postMessage: vi.fn(),
+      onMessage: () => () => {},
+      dispose: () => {},
+    };
+    await render("# H", {
+      path: "/doc.md",
+      transport,
+      frontmatter: { kind: "diagram" },
+    });
+    expect(matchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "/doc.md", frontmatter: { kind: "diagram" } }),
+    );
+    matchSpy.mockRestore();
+  });
+
+  it("highlights a code block with no language", async () => {
+    const highlight = vi.fn(async (code: string) => `<pre><code>HL:${code}</code></pre>`);
+    const out = await render("```\nno-lang\n```", { highlightCode: highlight });
+    expect(highlight).toHaveBeenCalledWith("no-lang\n", "");
+    expect(out).toContain("HL:no-lang");
+  });
+
   it("exposes the builtin markdown id constant", () => {
     expect(BUILTIN_MARKDOWN_ID).toBe("builtin-markdown");
   });
@@ -194,5 +221,23 @@ describe("createDebouncedRenderer", () => {
       blockRemoteImages: true,
     });
     expect(html).toContain('data-blocked="remote"');
+  });
+});
+
+describe("render fallback when remark imports fail", () => {
+  it("uses the escape-and-paragraph renderer when unified is missing", async () => {
+    vi.resetModules();
+    vi.doMock("unified", () => {
+      throw new Error("missing");
+    });
+    const { render: r } = await import("./render");
+    const html = await r('a <b> "c" & d\n\nsecond');
+    // The <b> opener gets escaped by the fallback renderer to literal text;
+    // the sanitiser parses & re-serialises, but does not turn it back into an element.
+    expect(html).not.toContain("<b>");
+    expect(html).toContain("second");
+    expect(html.split("<p>").length).toBeGreaterThan(2);
+    vi.doUnmock("unified");
+    vi.resetModules();
   });
 });

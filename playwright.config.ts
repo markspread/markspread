@@ -71,10 +71,16 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "pnpm vite preview --port 4173 --strictPort",
+    // --host 127.0.0.1: Vite 6 defaults to `localhost`, which on modern
+    // Node binds to IPv6 (::1) and leaves the IPv4 loopback unanswered
+    // — playwright's `url` below uses 127.0.0.1, so the probe times out
+    // on CI runners. Pin both ends to the same IPv4 loopback.
+    command: "pnpm vite preview --host 127.0.0.1 --port 4173 --strictPort",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: !isCI,
-    timeout: 60_000,
+    timeout: 120_000,
+    stdout: "pipe",
+    stderr: "pipe",
     env: {
       MARKSPREAD_E2E: "1",
       MARKSPREAD_AI_MOCK: "1",

@@ -64,6 +64,7 @@ export function RecordBindingDialog({ commandId, onClose }: Props) {
   }, [captured, onClose]);
 
   async function onSave() {
+    /* v8 ignore next -- the Save button is disabled while !captured, so onSave never fires without a captured binding; this guard only protects callers we don't yet have */
     if (!captured) return;
     setBusy(true);
     setError(null);
@@ -214,6 +215,7 @@ function findConflict(
     if (e.commandId === ownerId) continue;
     if (normaliseBinding(e.binding) === target) {
       const cmd = commands.find((c) => c.id === e.commandId);
+      /* v8 ignore next -- every active binding's commandId is sourced from the registry, so the fallback to e.commandId is defensive only */
       return { commandId: e.commandId, title: cmd?.title ?? e.commandId };
     }
   }

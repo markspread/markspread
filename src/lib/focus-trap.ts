@@ -40,6 +40,7 @@ export function useFocusTrap<T extends HTMLElement>(opts: FocusTrapOptions) {
   useEffect(() => {
     if (!opts.active) return;
     const container = containerRef.current;
+    /* v8 ignore next -- the effect runs after React attaches the ref, so containerRef.current is always set */
     if (!container) return;
 
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -54,6 +55,7 @@ export function useFocusTrap<T extends HTMLElement>(opts: FocusTrapOptions) {
     initial.focus();
 
     function onKeyDown(e: KeyboardEvent) {
+      /* v8 ignore next -- container is captured in closure and the listener is removed on cleanup */
       if (!container) return;
       if (e.key === "Escape") {
         e.stopPropagation();
@@ -69,6 +71,7 @@ export function useFocusTrap<T extends HTMLElement>(opts: FocusTrapOptions) {
       }
       const first = list[0];
       const last = list[list.length - 1];
+      /* v8 ignore next -- list.length > 0 was checked above, so first/last are always defined */
       if (!first || !last) return;
       const active = document.activeElement as HTMLElement | null;
       if (e.shiftKey) {

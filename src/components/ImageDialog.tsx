@@ -69,6 +69,7 @@ export function ImageDialog() {
     close({ alt: alt.trim(), url: url.trim() });
   };
   const pick = async () => {
+    /* v8 ignore next -- the Pick file… button is only rendered when req.pickFile is provided, so this guard only protects against future callers */
     if (!req.pickFile) return;
     setPicking(true);
     try {

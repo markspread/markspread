@@ -48,6 +48,7 @@ const tableNextCell: Command = (view) => {
     // S-MD-032: Tab on last cell → create a new empty row mirroring
     // the column count, place the caret in the first cell.
     const cellCount = pipes.length - 1;
+    /* v8 ignore next -- isTableLine guarantees ≥2 pipes, so cellCount is always ≥1 here */
     if (cellCount < 1) return false;
     const newRow = `\n|${" |".repeat(cellCount)}`;
     view.dispatch({
@@ -79,6 +80,7 @@ const tablePrevCell: Command = (view) => {
   // the pipe that opens it.
   let prevPipe: number | undefined;
   for (let i = pipes.length - 1; i >= 0; i--) {
+    /* v8 ignore next -- i is in-bounds so pipes[i] is always defined; ?? 0 is defensive */
     if ((pipes[i] ?? 0) < sel.head - 1) {
       // Skip pipes adjacent to caret: we want a real column step.
       // The opening pipe of the *previous* cell sits one further
@@ -107,6 +109,7 @@ const tableEnter: Command = (view) => {
   // Only fire when caret is at-or-past the last pipe (S-MD-032).
   if (lastPipe === undefined || sel.head < lastPipe) return false;
   const cellCount = pipes.length - 1;
+  /* v8 ignore next -- isTableLine guarantees ≥2 pipes, so cellCount is always ≥1 here */
   if (cellCount < 1) return false;
   const newRow = `\n|${" |".repeat(cellCount)}`;
   view.dispatch({
@@ -147,6 +150,7 @@ const tableSeparatorAutoformat = EditorView.updateListener.of((u) => {
       left: cell.startsWith(":"),
       right: cell.endsWith(":"),
     };
+    /* v8 ignore next 4 -- headerCells.length === sepCells.length is enforced above, so headerCells[i] is defined */
     const minDashes = Math.max(
       3,
       (headerCells[i] ?? "").length - (Number(colon.left) + Number(colon.right)),

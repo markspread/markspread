@@ -64,6 +64,13 @@ describe("testConnection", () => {
     if (r.kind === "other") expect(r.status).toBe(0);
   });
 
+  it("stringifies non-Error throws", async () => {
+    invokeMock.mockRejectedValueOnce("plain string");
+    const r = await testConnection(req);
+    expect(r.kind).toBe("other");
+    if (r.kind === "other") expect(r.message).toBe("plain string");
+  });
+
   it("passes an abort cookie when a signal is supplied", async () => {
     invokeMock.mockResolvedValueOnce({ status: 200, ok: true, message: "" });
     await testConnection(req, new AbortController().signal);

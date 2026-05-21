@@ -33,6 +33,21 @@ describe("locateInJson", () => {
     const src = `{"id": "x"}`;
     expect(locateInJson(src, "engines.markspread")).toEqual({ line: 1, column: 1 });
   });
+
+  it("walks past nested objects and arrays inside an indexed entry", () => {
+    const src = `{\n  "items": [\n    {"a": [1, 2]},\n    {"b": "target"}\n  ]\n}`;
+    const loc = locateInJson(src, "items[1]");
+    // Should land past the first array entry — not on the opening line.
+    expect(loc.line).toBeGreaterThanOrEqual(3);
+  });
+
+  it("breaks out of the array walk when no opening bracket is found", () => {
+    const src = `{"items": "not-an-array"}`;
+    // The walker can't locate `[` after the "items" key, so it stops there
+    // and returns the line/column of the partial advance.
+    const loc = locateInJson(src, "items[0]");
+    expect(loc.line).toBe(1);
+  });
 });
 
 describe("createRecordingBridge", () => {
@@ -55,5 +70,26 @@ describe("createRecordingBridge", () => {
     bridge.invoke("noop", {}).catch(() => {});
     bridge.reset();
     expect(bridge.calls).toHaveLength(0);
+  });
+
+  it("installs __ms_bridge.request so plugin code can call the host through globalThis", async () => {
+    const bridge = createRecordingBridge();
+    bridge.respondWith("echo", { hello: "world" });
+    const handle = (globalThis as Record<string, unknown>).__ms_bridge as {
+      request: (m: string, i: unknown) => Promise<unknown>;
+    };
+    const result = await handle.request("echo", { ping: 1 });
+    expect(result).toEqual({ hello: "world" });
+    expect(bridge.calls).toContainEqual({ command: "echo", payload: { ping: 1 } });
+  });
+
+  it("returns undefined from __ms_bridge.request when no canned response is set", async () => {
+    const bridge = createRecordingBridge();
+    const handle = (globalThis as Record<string, unknown>).__ms_bridge as {
+      request: (m: string, i: unknown) => Promise<unknown>;
+    };
+    const result = await handle.request("nothing", {});
+    expect(result).toBeUndefined();
+    expect(bridge.calls).toContainEqual({ command: "nothing", payload: {} });
   });
 });

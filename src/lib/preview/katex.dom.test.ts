@@ -70,6 +70,20 @@ describe("renderMathIn", () => {
     expect(renderToString).not.toHaveBeenCalled();
   });
 
+  it("silently no-ops when the katex bundle fails to load", async () => {
+    vi.resetModules();
+    vi.doMock("katex", () => {
+      throw new Error("missing bundle");
+    });
+    const { renderMathIn: rmi } = await import("./katex");
+    const root = document.createElement("div");
+    root.innerHTML = '<span class="ms-math">x</span>';
+    await rmi(root);
+    expect(root.querySelector(".ms-math")?.getAttribute("data-rendered")).toBeNull();
+    vi.doUnmock("katex");
+    vi.resetModules();
+  });
+
   it("replaces the node with an error span on failure", async () => {
     renderToString.mockImplementationOnce(() => {
       throw new Error("bad latex");

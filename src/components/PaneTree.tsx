@@ -35,7 +35,9 @@ function SplitView({
   node: SplitNode;
   renderPane: (pane: PaneNode) => React.ReactNode;
 }) {
-  const total = node.sizes.reduce((a, b) => a + b, 0) || node.children.length;
+  const total =
+    /* v8 ignore next -- node.sizes is initialised non-zero by every split-creating reducer; the children.length fallback is defensive */
+    node.sizes.reduce((a, b) => a + b, 0) || node.children.length;
   const isHorizontal = node.direction === "horizontal";
   return (
     <div
@@ -48,6 +50,7 @@ function SplitView({
       }
     >
       {node.children.map((child, idx) => {
+        /* v8 ignore next -- sizes is sized to match children at creation, so the `?? 1` fallback is unreachable */
         const ratio = (node.sizes[idx] ?? 1) / total;
         const flex = `${ratio} ${ratio} 0%`;
         return (
@@ -124,6 +127,7 @@ function PaneSplitter({
       startSizes.current = split.sizes.slice();
       const parent = handleRef.current?.parentElement;
       const rect = parent?.getBoundingClientRect();
+      /* v8 ignore next -- handleRef.current has a parent at this point, so the rect?. and ?? 0 fallbacks are unreachable */
       totalPx.current = (isHorizontal ? rect?.width : rect?.height) ?? 0;
     },
     [isHorizontal, split.sizes],
@@ -136,6 +140,7 @@ function PaneSplitter({
       const delta = (isHorizontal ? e.clientX : e.clientY) - startPx.current;
       const deltaRatio = delta / totalPx.current;
       const sizes = startSizes.current.slice();
+      /* v8 ignore next 2 -- beforeIdx is bounded by the split children, so the `?? 0` fallbacks are unreachable */
       const a = sizes[beforeIdx] ?? 0;
       const b = sizes[beforeIdx + 1] ?? 0;
       const minRatio = (isHorizontal ? PANE_MIN_WIDTH_PX : PANE_MIN_HEIGHT_PX) / totalPx.current;

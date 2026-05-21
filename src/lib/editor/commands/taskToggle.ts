@@ -31,6 +31,7 @@ export const toggleTaskAtCursor: Command = (view) => {
     if (!m) continue;
     const checked = m[2] !== " ";
     const next = line.text.replace(TASK_RE, `$1${checked ? " " : "x"}$3`);
+    /* v8 ignore next -- TASK_RE match always flips m[2] to a different char, so next ≠ line.text in practice */
     if (next === line.text) continue;
     changes.push({ from: line.from, to: line.to, insert: next });
   }

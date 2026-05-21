@@ -70,4 +70,52 @@ describe("emptyFootnoteAutonumber", () => {
     expect(view.state.doc.toString()).toBe("[^1]");
     view.destroy();
   });
+
+  it("ignores doc-unchanged updates (e.g. selection-only changes)", () => {
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: "[^]",
+        extensions: footnotesExtension(),
+      }),
+    });
+    view.dispatch({ selection: { anchor: 1 } });
+    expect(view.state.doc.toString()).toBe("[^]");
+    view.destroy();
+  });
+
+  it("ignores insertions that don't end with ']'", async () => {
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: "",
+        extensions: footnotesExtension(),
+      }),
+    });
+    view.dispatch({
+      changes: { from: 0, insert: "[^" },
+      selection: { anchor: 2 },
+    });
+    await new Promise<void>((r) => queueMicrotask(r));
+    expect(view.state.doc.toString()).toBe("[^");
+    view.destroy();
+  });
+
+  it("only rewrites the first `[^]` when multiple changes land in one transaction", async () => {
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: "a b",
+        extensions: footnotesExtension(),
+      }),
+    });
+    view.dispatch({
+      changes: [
+        { from: 1, insert: "[^]" },
+        { from: 3, insert: "[^]" },
+      ],
+    });
+    await new Promise<void>((r) => queueMicrotask(r));
+    // First insertion gets autonumbered, second remains literal — covers the
+    // `if (hit) return` short-circuit inside iterChanges.
+    expect(view.state.doc.toString()).toMatch(/\[\^1\]/);
+    view.destroy();
+  });
 });

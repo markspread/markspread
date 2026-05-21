@@ -68,8 +68,8 @@ function fileCompletion(context: CompletionContext): Promise<CompletionResult | 
   const before = line.text.slice(0, context.pos - line.from);
   const heading = HEADING_TRIGGER_RE.exec(before);
   if (heading) {
-    const file = heading[1] ?? "";
-    const headingFrag = heading[2] ?? "";
+    const file = heading[1] as string;
+    const headingFrag = heading[2] as string;
     return provider.headings(file).then(
       (heads): CompletionResult => ({
         from: line.from + (context.pos - line.from - headingFrag.length),
@@ -81,7 +81,7 @@ function fileCompletion(context: CompletionContext): Promise<CompletionResult | 
   }
   const fileTrigger = TRIGGER_RE.exec(before);
   if (!fileTrigger) return null;
-  const query = fileTrigger[1] ?? "";
+  const query = fileTrigger[1] as string;
   return provider.searchFiles(query, 12).then(
     (paths): CompletionResult => ({
       from: line.from + (context.pos - line.from - query.length),
@@ -105,7 +105,7 @@ function wikilinkAtPos(line: { text: string; from: number }, pos: number) {
       return {
         from: line.from + m.index,
         to: line.from + m.index + m[0].length,
-        file: (m[1] ?? "").trim(),
+        file: (m[1] as string).trim(),
         heading: m[2]?.trim(),
       };
     }
@@ -172,7 +172,7 @@ const brokenLinkPlugin = ViewPlugin.fromClass(
         while (m !== null) {
           const start = from + m.index;
           const end = start + m[0].length;
-          const fileName = (m[1] ?? "").trim();
+          const fileName = (m[1] as string).trim();
           const headingName = m[2]?.trim();
           const key = brokenKey(fileName, headingName);
           if (brokenCache.has(key)) {

@@ -111,6 +111,33 @@ describe("doc-cache store", () => {
     expect(flush).not.toHaveBeenCalled();
   });
 
+  it("_resetSaveTimers cancels any pending timers and empties the map", () => {
+    const flush = vi.fn();
+    scheduleSave(WS, "/ws/a.md", 600, flush);
+    _resetSaveTimers();
+    vi.advanceTimersByTime(600);
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("clearError is a no-op when no error is registered for the path", () => {
+    const s = useDocCache.getState();
+    const before = s.errors;
+    s.clearError(WS, "/ws/never-erred.md");
+    expect(useDocCache.getState().errors).toBe(before);
+  });
+
+  it("isDirty returns false when no baseline has been recorded", () => {
+    expect(isDirty(WS, "/ws/no-baseline.md")).toBe(false);
+  });
+
+  it("isDirty returns false when live is missing for a baseline-only entry", () => {
+    const s = useDocCache.getState();
+    s.setBaseline(WS, "/ws/a.md", { content: "x", encoding: "utf-8" });
+    // Strip the seeded live entry to exercise the live === undefined branch.
+    useDocCache.setState({ live: {} });
+    expect(isDirty(WS, "/ws/a.md")).toBe(false);
+  });
+
   it("scopes by workspace — same path in two workspaces is independent", () => {
     const s = useDocCache.getState();
     s.setBaseline("/ws/A", "/x.md", { content: "A", encoding: "utf-8" });

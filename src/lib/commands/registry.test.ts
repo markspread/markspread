@@ -140,12 +140,16 @@ describe("runCommand", () => {
   it("dispatches editor-layout commands with the right pane index", () => {
     runCommand("view.split_right");
     runCommand("view.split_down");
+    runCommand("view.focus_pane_1");
     runCommand("view.focus_pane_2");
+    runCommand("view.focus_pane_3");
     runCommand("tabs.close_active");
     runCommand("view.move_editor_to_next_group");
     expect(splitRightCommand).toHaveBeenCalled();
     expect(splitDownCommand).toHaveBeenCalled();
+    expect(focusPaneCommand).toHaveBeenCalledWith(1);
     expect(focusPaneCommand).toHaveBeenCalledWith(2);
+    expect(focusPaneCommand).toHaveBeenCalledWith(3);
     expect(closeActiveTabCommand).toHaveBeenCalled();
     expect(moveEditorToNextGroupCommand).toHaveBeenCalled();
   });

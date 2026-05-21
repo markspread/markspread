@@ -10,9 +10,11 @@ import { useWorkspace } from "../store/workspace";
 function fmtDate(ts: number): string {
   try {
     return new Date(ts).toLocaleString();
+    /* v8 ignore start -- toLocaleString throws only on invalid locale options, which we never pass; the catch is defensive */
   } catch {
     return String(ts);
   }
+  /* v8 ignore stop */
 }
 
 function fmtBytes(n: number): string {

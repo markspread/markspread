@@ -111,6 +111,19 @@ describe("review store", () => {
     expect(useReview.getState().applyOne("x", "doc")).toBeNull();
   });
 
+  it("applyOne leaves other comments untouched", () => {
+    useReview.setState({
+      comments: [
+        comment({ id: "x", anchorLine: 2, suggestion: { text: "X", anchorEndLine: 2 } }),
+        comment({ id: "y", anchorLine: 3, suggestion: { text: "Y", anchorEndLine: 3 } }),
+      ],
+    });
+    useReview.getState().applyOne("x", "a\nb\nc");
+    const after = useReview.getState().comments;
+    expect(after.find((c) => c.id === "x")?.status).toBe("applied");
+    expect(after.find((c) => c.id === "y")?.status).toBe("pending");
+  });
+
   it("applyOne returns null for an already-applied comment", () => {
     useReview.setState({
       comments: [

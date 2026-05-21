@@ -56,6 +56,17 @@ describe("tabs store - open", () => {
     expect(useTabs.getState().tabs[0]?.preview).toBe(true);
   });
 
+  it("promoting one preview tab leaves sibling tabs untouched", () => {
+    useTabs.getState().open("/keep.md");
+    useTabs.getState().open("/a.md", { preview: true });
+    useTabs.getState().open("/a.md");
+    const tabs = useTabs.getState().tabs;
+    const keep = tabs.find((t) => t.path === "/keep.md");
+    const promoted = tabs.find((t) => t.path === "/a.md");
+    expect(keep?.preview).toBe(false);
+    expect(promoted?.preview).toBe(false);
+  });
+
   it("re-opening an orphaned tab clears the orphan flag", () => {
     useTabs.setState({ tabs: [tab("/a.md", { orphaned: true })], activePath: null });
     useTabs.getState().open("/a.md");
@@ -111,6 +122,13 @@ describe("tabs store - setActive / setPosition / setDirty", () => {
     useTabs.getState().setDirty("/a.md", true);
     expect(useTabs.getState().tabs[0]?.dirty).toBe(true);
   });
+
+  it("setDirty leaves sibling tabs untouched", () => {
+    useTabs.setState({ tabs: [tab("/a.md"), tab("/b.md")], activePath: "/a.md" });
+    useTabs.getState().setDirty("/b.md", true);
+    const a = useTabs.getState().tabs.find((t) => t.path === "/a.md");
+    expect(a?.dirty).toBeUndefined();
+  });
 });
 
 describe("tabs store - pin / unpin", () => {
@@ -127,6 +145,35 @@ describe("tabs store - pin / unpin", () => {
     useTabs.getState().pin("/a.md");
     useTabs.getState().unpin("/a.md");
     expect(useTabs.getState().tabs[0]?.pinned).toBe(false);
+  });
+
+  it("unpin leaves sibling tabs untouched", () => {
+    useTabs.setState({
+      tabs: [tab("/a.md", { pinned: true }), tab("/b.md", { pinned: true })],
+      activePath: "/a.md",
+    });
+    useTabs.getState().unpin("/b.md");
+    const a = useTabs.getState().tabs.find((t) => t.path === "/a.md");
+    expect(a?.pinned).toBe(true);
+  });
+
+  it("clearing an orphan via preview re-open defaults the preview flag to false when previously unset", () => {
+    useTabs.setState({
+      tabs: [tab("/a.md", { orphaned: true })],
+      activePath: "/a.md",
+    });
+    useTabs.getState().open("/a.md", { preview: true });
+    const t = useTabs.getState().tabs[0];
+    expect(t?.orphaned).toBe(false);
+    expect(t?.preview).toBe(false);
+  });
+
+  it("pin leaves sibling tabs untouched", () => {
+    useTabs.getState().open("/a.md");
+    useTabs.getState().open("/b.md", { preview: true });
+    useTabs.getState().pin("/b.md");
+    const a = useTabs.getState().tabs.find((t) => t.path === "/a.md");
+    expect(a?.pinned).toBeUndefined();
   });
 });
 
@@ -159,6 +206,24 @@ describe("tabs store - reorder", () => {
     useTabs.setState({ tabs: [tab("/a.md"), tab("/b.md")], activePath: "/a.md" });
     useTabs.getState().reorder("/a.md", "/a.md", false);
     expect(useTabs.getState().tabs.map((t) => t.path)).toEqual(["/a.md", "/b.md"]);
+  });
+
+  it("inserts before the target when dragging forward with before=true", () => {
+    useTabs.setState({
+      tabs: [tab("/a.md"), tab("/b.md"), tab("/c.md")],
+      activePath: "/a.md",
+    });
+    useTabs.getState().reorder("/a.md", "/c.md", true);
+    expect(useTabs.getState().tabs.map((t) => t.path)).toEqual(["/b.md", "/a.md", "/c.md"]);
+  });
+
+  it("inserts after the target when dragging backward with before=false", () => {
+    useTabs.setState({
+      tabs: [tab("/a.md"), tab("/b.md"), tab("/c.md")],
+      activePath: "/c.md",
+    });
+    useTabs.getState().reorder("/c.md", "/a.md", false);
+    expect(useTabs.getState().tabs.map((t) => t.path)).toEqual(["/a.md", "/c.md", "/b.md"]);
   });
 
   it("flips the pinned flag when dragged across the pinned boundary", () => {

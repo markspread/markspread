@@ -9,7 +9,8 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { validateManifest } from "./manifest";
 
-const arbJsonValue: any = fc.letrec((tie: any) => ({
+// biome-ignore lint/suspicious/noExplicitAny: fast-check's letrec callback signature uses `any` for the tie thunk — there's no narrower type for a recursive arbitrary that produces arbitrary JSON.
+const arbJsonValue: fc.Arbitrary<unknown> = fc.letrec((tie: (key: string) => any) => ({
   value: fc.oneof(
     { maxDepth: 4 },
     fc.constant(null),
@@ -27,7 +28,7 @@ describe("validateManifest — fuzz", () => {
     fc.assert(
       fc.property(arbJsonValue, (input: unknown) => {
         // The function is allowed to return errors, but must never throw.
-        const result = validateManifest(input as never) as any;
+        const result = validateManifest(input as never) as { errors: unknown[] };
         expect(result).toBeDefined();
         expect(result).toHaveProperty("errors");
         expect(Array.isArray(result.errors)).toBe(true);
@@ -44,7 +45,7 @@ describe("validateManifest — fuzz", () => {
           arbJsonValue,
         ),
         (obj: unknown) => {
-          const result = validateManifest(obj as never) as any;
+          const result = validateManifest(obj as never) as { errors: unknown[] };
           // Either errors mention `id` directly, or the manifest is rejected for some other invariant — but it must not be valid.
           expect(result.errors.length).toBeGreaterThan(0);
         },
@@ -70,7 +71,7 @@ describe("validateManifest — fuzz", () => {
             engines: { markspread: "^1.0.0" },
             activationEvents: ["onStartup"],
             permissions: [],
-          } as never) as any;
+          } as never) as { errors: { path: string }[] };
           expect(result.errors.some((e: { path: string }) => e.path === "id")).toBe(true);
         },
       ),

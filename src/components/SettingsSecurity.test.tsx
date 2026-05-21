@@ -37,4 +37,24 @@ describe("SettingsSecurity", () => {
     });
     expect(invoke).toHaveBeenCalledWith("security_erase_all_data");
   });
+
+  it("surfaces a typed error message when erase fails", async () => {
+    invoke.mockRejectedValueOnce(new Error("permission denied"));
+    render(<SettingsSecurity />);
+    fireEvent.click(screen.getByText("Erase all data…"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Yes, erase everything"));
+    });
+    expect(screen.getByRole("alert").textContent).toBe("permission denied");
+  });
+
+  it("stringifies a non-Error rejection from the erase command", async () => {
+    invoke.mockRejectedValueOnce("plain-string");
+    render(<SettingsSecurity />);
+    fireEvent.click(screen.getByText("Erase all data…"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Yes, erase everything"));
+    });
+    expect(screen.getByRole("alert").textContent).toBe("plain-string");
+  });
 });

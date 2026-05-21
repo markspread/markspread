@@ -20,13 +20,18 @@ export function aiContextMenuEntries(
   if (top.length === 0) return [];
   const entries: ContextMenuEntry[] = [{ separator: true }];
   for (const action of top) {
-    entries.push({
+    const base = {
       id: `ai:${action.id}`,
       label: action.labelKey,
-      ...(action.hint !== undefined && { shortcut: action.hint }),
       disabled: action.requires === "selection" && !ctx.hasSelection,
       onSelect: () => onInvoke(action.id),
-    });
+    };
+    // exactOptionalPropertyTypes: assign `shortcut` only when defined.
+    if (action.hint !== undefined) {
+      entries.push({ ...base, shortcut: action.hint });
+    } else {
+      entries.push(base);
+    }
   }
   entries.push({
     id: "ai:more",

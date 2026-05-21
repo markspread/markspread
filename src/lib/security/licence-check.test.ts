@@ -59,4 +59,14 @@ describe("isLicenceAllowed", () => {
     expect(isLicenceAllowed("MIT AND Apache-2.0")).toBe(true);
     expect(isLicenceAllowed("MIT AND GPL-3.0-only")).toBe(false);
   });
+
+  it("recognises the WITH exception form (Apache-2.0 WITH LLVM-exception)", () => {
+    expect(isLicenceAllowed("Apache-2.0 WITH LLVM-exception")).toBe(true);
+    expect(isLicenceAllowed("Apache-2.0 WITH Unknown-exception")).toBe(false);
+  });
+
+  it("rejects an empty expression without throwing", () => {
+    expect(isLicenceAllowed("")).toBe(false);
+    expect(isLicenceAllowed("   ")).toBe(false);
+  });
 });

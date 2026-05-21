@@ -29,6 +29,7 @@ export type ImageDialogRequest = {
 };
 export type ImageDialogResult = { alt: string; url: string };
 
+/* v8 ignore next -- default opener is replaced by the host at boot before insertImage ever runs */
 let imageDialogOpener: (req: ImageDialogRequest) => void = () => {};
 export function setImageDialogOpener(fn: (req: ImageDialogRequest) => void): void {
   imageDialogOpener = fn;

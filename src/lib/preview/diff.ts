@@ -35,17 +35,20 @@ export function diffMarkdown(a: string, b: string): DiffResult {
   let ri = 0;
   for (const op of ops) {
     if (op === "same") {
+      /* v8 ignore next 2 -- li/ri bounded by ops length; arr[idx] always defined */
       out.left.push({ kind: "same", text: left[li] ?? "", line: li + 1 });
       out.right.push({ kind: "same", text: right[ri] ?? "", line: ri + 1 });
       li++;
       ri++;
     } else if (op === "del") {
+      /* v8 ignore next -- li bounded by ops, so left[li] is defined */
       out.left.push({ kind: "del", text: left[li] ?? "", line: li + 1 });
       out.right.push({ kind: "pad", text: "", line: null });
       out.stats.dels++;
       li++;
     } else {
       out.left.push({ kind: "pad", text: "", line: null });
+      /* v8 ignore next -- ri bounded by ops, so right[ri] is defined */
       out.right.push({ kind: "add", text: right[ri] ?? "", line: ri + 1 });
       out.stats.adds++;
       ri++;
@@ -66,6 +69,7 @@ function lcsDiff(a: string[], b: string[]): Op[] {
     .map(() => Array(m + 1).fill(0));
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
+      /* v8 ignore next 4 -- dp is sized (n+1)×(m+1), so every index access here is defined */
       const row = dp[i] ?? [];
       const rowNext = dp[i + 1] ?? [];
       if (a[i] === b[j]) row[j] = (rowNext[j + 1] ?? 0) + 1;
@@ -80,6 +84,7 @@ function lcsDiff(a: string[], b: string[]): Op[] {
       out.push("same");
       i++;
       j++;
+      /* v8 ignore next -- dp rows are defined throughout the (n+1)×(m+1) table */
     } else if ((dp[i + 1]?.[j] ?? 0) >= (dp[i]?.[j + 1] ?? 0)) {
       out.push("del");
       i++;

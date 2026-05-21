@@ -40,6 +40,13 @@ describe("KeybindingSheet", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("highlights matching characters in filtered results", () => {
+    const { container } = render(<KeybindingSheet onClose={() => {}} onEditBinding={() => {}} />);
+    const search = screen.getByLabelText("Search shortcuts");
+    fireEvent.change(search, { target: { value: "e" } });
+    expect(container.querySelector("mark")).toBeTruthy();
+  });
+
   it("invokes onEditBinding for a row", () => {
     const onEditBinding = vi.fn();
     render(<KeybindingSheet onClose={() => {}} onEditBinding={onEditBinding} />);

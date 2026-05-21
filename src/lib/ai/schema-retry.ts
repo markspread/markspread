@@ -70,7 +70,7 @@ export function extractJsonBlob(raw: string): string | null {
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) return trimmed;
 
   const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(raw);
-  if (fence) return (fence[1] ?? "").trim();
+  if (fence) return (fence[1] as string).trim();
 
   // Fall back to greedy brace match. Find the first { and last } at the
   // same nesting level.

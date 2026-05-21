@@ -1,7 +1,13 @@
 // S-ESP-013: budgets + regression detection for the split-pane scenarios.
 
-import { describe, expect, it } from "vitest";
-import { PERF_BUDGETS, type PerfSample, findRegressions, percentile } from "../lib/perf/budgets";
+import { describe, expect, it, vi } from "vitest";
+import {
+  PERF_BUDGETS,
+  type PerfSample,
+  findRegressions,
+  percentile,
+  recordSample,
+} from "../lib/perf/budgets";
 
 const RUN = { ts: "2026-05-13T00:00:00Z", runId: "test-run" };
 
@@ -36,6 +42,11 @@ describe("split-pane perf budgets", () => {
     expect(regs[0]?.ceiling).toBe(16);
   });
 
+  it("ignores samples whose budget id is unknown", () => {
+    const regs = findRegressions([sample("nope.unknown.id", 9999)]);
+    expect(regs).toEqual([]);
+  });
+
   it("passes when all multi-pane samples are within budget", () => {
     const regs = findRegressions([
       sample("panes.1.input-keystroke-p95", 8),
@@ -61,5 +72,34 @@ describe("percentile helper", () => {
 
   it("returns NaN for an empty list", () => {
     expect(Number.isNaN(percentile([], 95))).toBe(true);
+  });
+});
+
+describe("recordSample", () => {
+  it("emits a performance.mark tagged with the budget id and value", () => {
+    const markSpy = vi.spyOn(performance, "mark").mockImplementation(() => ({
+      name: "",
+      duration: 0,
+      startTime: 0,
+      entryType: "mark",
+      detail: null,
+      toJSON: () => ({}),
+    }));
+    try {
+      recordSample("panes.2.input-keystroke-p95", 14);
+      expect(markSpy).toHaveBeenCalledWith("ms-perf:panes.2.input-keystroke-p95:14");
+    } finally {
+      markSpy.mockRestore();
+    }
+  });
+
+  it("is a no-op when performance.mark is unavailable", () => {
+    const original = performance.mark;
+    (performance as { mark?: unknown }).mark = undefined;
+    try {
+      expect(() => recordSample("anything", 1)).not.toThrow();
+    } finally {
+      (performance as { mark?: unknown }).mark = original;
+    }
   });
 });

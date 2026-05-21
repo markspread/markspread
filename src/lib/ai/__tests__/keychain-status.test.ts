@@ -36,6 +36,20 @@ describe("probeKeychain", () => {
     expect((await probeKeychain()).kind).toBe("missing");
   });
 
+  it("defaults the hint to an empty string when the rust side omits it", async () => {
+    invokeMock.mockResolvedValueOnce({ status: "locked" });
+    const r = await probeKeychain();
+    expect(r.kind).toBe("locked");
+    if (r.kind === "locked") expect(r.hint).toBe("");
+  });
+
+  it("defaults the hint for a hintless 'missing'", async () => {
+    invokeMock.mockResolvedValueOnce({ status: "missing" });
+    const r = await probeKeychain();
+    expect(r.kind).toBe("missing");
+    if (r.kind === "missing") expect(r.hint).toBe("");
+  });
+
   it("treats an unknown status as missing", async () => {
     invokeMock.mockResolvedValueOnce({ status: "weird" });
     const r = await probeKeychain();

@@ -100,4 +100,22 @@ describe("useFontFamilyEffect", () => {
       "Noto Sans TC",
     );
   });
+
+  it("falls back to Simplified Chinese when navigator is undefined", () => {
+    // Simulate SSR / non-browser eval so the early-return branch in
+    // chineseRegion() runs (line 26).
+    vi.stubGlobal("navigator", undefined);
+    useLocale.setState({ locale: "zh" });
+    render(h(Host));
+    expect(document.documentElement.style.getPropertyValue("--font-sans")).toContain(
+      "Noto Sans SC",
+    );
+  });
+
+  it("defaults the weight to 400 when the store value is unknown", () => {
+    useSettings.setState({ fontWeight: "ghost" as unknown as typeof initial.fontWeight });
+    render(h(Host));
+    // Hits the `?? 400` fallback at line 84.
+    expect(document.documentElement.style.fontWeight).toBe("400");
+  });
 });

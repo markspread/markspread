@@ -141,6 +141,54 @@ describe("createParserHotReloader", () => {
     expect(onRemove).toHaveBeenCalledWith("csv");
   });
 
+  it("reports onError when loader returns null", async () => {
+    const registry = new ParserRegistry();
+    const watcher = makeWatcher();
+    const onError = vi.fn();
+    const r = createParserHotReloader({
+      registry,
+      watcher: watcher.watcher,
+      loader: { load: vi.fn(async () => null) },
+      isDev: true,
+      debounceMs: 10,
+      onError,
+    });
+    r.start();
+    watcher.emit({ kind: "change", parserId: "csv" });
+    await vi.advanceTimersByTimeAsync(10);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[1]?.message).toBe("loader returned null");
+  });
+
+  it("surfaces non-Error throws by wrapping them", async () => {
+    const registry = new ParserRegistry();
+    const watcher = makeWatcher();
+    const onError = vi.fn();
+    const r = createParserHotReloader({
+      registry,
+      watcher: watcher.watcher,
+      loader: {
+        load: vi.fn(async () => {
+          // biome-ignore lint/suspicious/noExplicitAny: deliberate non-Error throw
+          throw "bare string" as any;
+        }),
+      },
+      isDev: true,
+      debounceMs: 10,
+      onError,
+    });
+    r.start();
+    watcher.emit({ kind: "change", parserId: "csv" });
+    await vi.advanceTimersByTimeAsync(10);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[1]).toBeInstanceOf(Error);
+    expect(onError.mock.calls[0]?.[1]?.message).toBe("bare string");
+  });
+
   it("surfaces loader errors via onError", async () => {
     const registry = new ParserRegistry();
     const watcher = makeWatcher();
@@ -164,6 +212,64 @@ describe("createParserHotReloader", () => {
     await Promise.resolve();
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onError.mock.calls[0]?.[1]?.message).toBe("ENOENT");
+  });
+
+  it("disposer cancels a pending debounced reload", async () => {
+    const registry = new ParserRegistry();
+    const watcher = makeWatcher();
+    const loader: ParserSourceLoader = {
+      load: vi.fn(async () => ({
+        manifest: makeManifest("csv"),
+        factory: () => ({ ast: 1 }),
+      })),
+    };
+    const r = createParserHotReloader({
+      registry,
+      watcher: watcher.watcher,
+      loader,
+      isDev: true,
+      debounceMs: 100,
+    });
+    const stop = r.start();
+    watcher.emit({ kind: "change", parserId: "csv" });
+    // stop before the debounce timer fires — should clear the pending timer (line 84).
+    stop();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(loader.load).not.toHaveBeenCalled();
+  });
+
+  it("ignores watcher events that arrive after stop()", async () => {
+    const registry = new ParserRegistry();
+    // A watcher that doesn't nuke the handler on unsubscribe — simulates an
+    // event queued before unsubscribe took effect, exercising the `stopped`
+    // guard inside the handler.
+    let stickyHandler: ((ev: WatchEvent) => void) | null = null;
+    const stickyWatcher: ParserWatcher = {
+      watch: (h) => {
+        stickyHandler = h;
+        return () => {
+          /* deliberately keep handler bound */
+        };
+      },
+    };
+    const loader: ParserSourceLoader = {
+      load: vi.fn(async () => ({
+        manifest: makeManifest("csv"),
+        factory: () => ({ ast: 1 }),
+      })),
+    };
+    const r = createParserHotReloader({
+      registry,
+      watcher: stickyWatcher,
+      loader,
+      isDev: true,
+      debounceMs: 10,
+    });
+    const stop = r.start();
+    stop();
+    (stickyHandler as ((ev: WatchEvent) => void) | null)?.({ kind: "change", parserId: "csv" });
+    await vi.advanceTimersByTimeAsync(50);
+    expect(loader.load).not.toHaveBeenCalled();
   });
 
   it("disposer stops further reloads", async () => {

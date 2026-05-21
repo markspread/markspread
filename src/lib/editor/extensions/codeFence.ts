@@ -72,6 +72,7 @@ const fenceAutoclose = EditorView.updateListener.of((u) => {
   if (!u.docChanged) return;
   let triggered: { pos: number } | null = null;
   for (const tr of u.transactions) {
+    /* v8 ignore next -- outer u.docChanged guarantees at least one tr changed the doc; per-tr guard is defensive */
     if (!tr.docChanged) continue;
     // Skip our own autoclose transaction — otherwise the inserted
     // closing ``` re-triggers this listener and recurses forever.
@@ -98,7 +99,8 @@ const fenceAutoclose = EditorView.updateListener.of((u) => {
   }
 });
 
-function fenceLanguageCompletion(context: CompletionContext): CompletionResult | null {
+// Exported for test coverage of the completion source.
+export function fenceLanguageCompletion(context: CompletionContext): CompletionResult | null {
   const line = context.state.doc.lineAt(context.pos);
   const m = /^(```)([\w+-]*)$/.exec(line.text.slice(0, context.pos - line.from));
   if (!m) return null;

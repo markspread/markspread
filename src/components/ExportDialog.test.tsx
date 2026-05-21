@@ -55,4 +55,39 @@ describe("ExportDialog", () => {
     fireEvent.click(screen.getByText("Close"));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("falls back to the anonymous success message when no outputPath is returned", async () => {
+    exportDocument.mockResolvedValueOnce({ ok: true });
+    render(<ExportDialog open={true} onClose={() => {}} {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(screen.getByText(/Export complete\./)).toBeTruthy());
+  });
+
+  it("shows the error message from a failed export result", async () => {
+    exportDocument.mockResolvedValueOnce({ ok: false, error: { message: "write-failed" } });
+    render(<ExportDialog open={true} onClose={() => {}} {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(screen.getByText("write-failed")).toBeTruthy());
+  });
+
+  it("falls back to the generic failure message when the result error has no message", async () => {
+    exportDocument.mockResolvedValueOnce({ ok: false });
+    render(<ExportDialog open={true} onClose={() => {}} {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(screen.getByText(/Export failed\./)).toBeTruthy());
+  });
+
+  it("surfaces a thrown error message in the status line", async () => {
+    exportDocument.mockRejectedValueOnce(new Error("boom"));
+    render(<ExportDialog open={true} onClose={() => {}} {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(screen.getByText("boom")).toBeTruthy());
+  });
+
+  it("stringifies a thrown non-Error value in the status line", async () => {
+    exportDocument.mockRejectedValueOnce("kaboom-string");
+    render(<ExportDialog open={true} onClose={() => {}} {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(screen.getByText("kaboom-string")).toBeTruthy());
+  });
 });

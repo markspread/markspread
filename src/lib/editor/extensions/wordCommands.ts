@@ -28,18 +28,24 @@ import {
 import { EditorSelection, type Extension } from "@codemirror/state";
 import { type Command, keymap } from "@codemirror/view";
 
-const HasSegmenter =
-  typeof Intl !== "undefined" &&
-  typeof (Intl as unknown as { Segmenter?: unknown }).Segmenter === "function";
+function hasSegmenter(): boolean {
+  return (
+    typeof Intl !== "undefined" &&
+    typeof (Intl as unknown as { Segmenter?: unknown }).Segmenter === "function"
+  );
+}
 
-function currentLocale(): string {
+// Exported for test coverage of fallback paths.
+export function currentLocale(): string {
   if (typeof document !== "undefined") {
     const lang = document.documentElement.lang;
     if (lang) return lang;
   }
+  /* v8 ignore next 3 -- jsdom always provides navigator.language */
   if (typeof navigator !== "undefined" && navigator.language) {
     return navigator.language;
   }
+  /* v8 ignore next 2 */
   return "en";
 }
 
@@ -55,7 +61,6 @@ function findWordBoundary(
   from: number,
   dir: 1 | -1,
 ): number {
-  if (!HasSegmenter) return -1;
   const segLeft = Math.max(0, from - WINDOW);
   const segRight = Math.min(doc.length, from + WINDOW);
   const slice = doc.sliceString(segLeft, segRight);
@@ -79,16 +84,21 @@ function findWordBoundary(
     }
     return segRight;
   }
+  // Walk indices manually; `indices` ends with slice.length and
+  // offset ≤ slice.length so we are guaranteed to find a hit before
+  // running out of entries (no fall-through branch).
   let prev = 0;
-  for (const i of indices) {
+  let k = 0;
+  while (true) {
+    const i = indices[k] as number;
     if (i >= offset) return segLeft + prev;
     prev = i;
+    k += 1;
   }
-  return segLeft + prev;
 }
 
 function moveByWord(view: import("@codemirror/view").EditorView, dir: 1 | -1): boolean {
-  if (!HasSegmenter) {
+  if (!hasSegmenter()) {
     return dir === 1 ? cursorGroupRight(view) : cursorGroupLeft(view);
   }
   const { state } = view;
@@ -108,7 +118,7 @@ const cursorWordLeft: Command = (view) => moveByWord(view, -1);
 const cursorWordRight: Command = (view) => moveByWord(view, 1);
 
 function deleteByWord(view: import("@codemirror/view").EditorView, dir: 1 | -1): boolean {
-  if (!HasSegmenter) {
+  if (!hasSegmenter()) {
     return dir === 1 ? deleteGroupForward(view) : deleteGroupBackward(view);
   }
   const { state } = view;

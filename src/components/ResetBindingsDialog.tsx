@@ -25,6 +25,7 @@ export function ResetBindingsDialog({ onClose, onDone }: Props) {
   const [backupPath, setBackupPath] = useState<string | null>(null);
 
   async function onConfirm() {
+    /* v8 ignore next -- the Reset button is disabled until the token matches, so this guard is unreachable from the UI */
     if (token !== CONFIRM_TOKEN) return;
     setBusy(true);
     setError(null);

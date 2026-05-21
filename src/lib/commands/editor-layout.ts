@@ -68,6 +68,7 @@ export function closeActiveTabCommand(): void {
           // falls back to a fresh empty pane when the whole tree empties).
           useEditorLayout.getState().closePane(ws, pane.id);
         } else {
+          /* v8 ignore next -- nextTabs.length > 0 was checked above, so nextTabs[0] is always defined here; the optional-chain and nullish fallback are TS-defensive */
           const nextActiveId = nextTabs[0]?.id ?? null;
           useEditorLayout.getState().setLayout(ws, {
             ...layout,
@@ -106,10 +107,12 @@ export function moveEditorToNextGroupCommand(): void {
   });
   if (order.length < 2) return;
   const fromIdx = order.indexOf(layout.activePaneId);
+  /* v8 ignore next -- activePaneId is always one of the panes returned by forEachPane(layout.root); the negative-index branch is a defensive guard against store/layout drift */
   if (fromIdx < 0) return;
   const toIdx = (fromIdx + 1) % order.length;
   const fromPaneId = order[fromIdx];
   const toPaneId = order[toIdx];
+  /* v8 ignore next -- fromIdx is in [0, order.length-1] after the negative-index guard; the undefined-index branch is TS-defensive */
   if (fromPaneId === undefined || toPaneId === undefined) return;
   const pane = findPane(layout.root, fromPaneId);
   if (!pane || !pane.activeTabId) return;
@@ -123,6 +126,7 @@ function pathOpenElsewhere(
   path: string,
 ): boolean {
   const layout = useEditorLayout.getState().layouts[workspace];
+  /* v8 ignore next -- callers verify the layout exists before invoking this helper; the early-return is a defensive race guard against store mutation between the call and the check */
   if (!layout) return false;
   let found = false;
   forEachPane(layout.root, (p) => {

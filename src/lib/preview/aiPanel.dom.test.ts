@@ -111,6 +111,25 @@ describe("createAiPanel", () => {
     expect(panel.messages).toEqual([]);
   });
 
+  it("clear() aborts an in-flight send", async () => {
+    let resolveSend: () => void = () => {};
+    const adapter: AiPanelAdapter = {
+      send: async ({ abortSignal }) => {
+        await new Promise<void>((resolve) => {
+          resolveSend = resolve;
+          abortSignal.addEventListener("abort", () => resolve());
+        });
+        return { content: "x", model: "m" };
+      },
+    };
+    const panel: AiPanel = createAiPanel(adapter);
+    const pending = panel.send("q");
+    panel.clear();
+    resolveSend();
+    await pending;
+    expect(panel.messages).toEqual([]);
+  });
+
   it("restore() replaces messages with a copy", () => {
     const panel = createAiPanel(makeAdapter());
     const restored = [{ id: "x", role: "user" as const, content: "old", startedAt: 1 }];

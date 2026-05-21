@@ -59,7 +59,7 @@ base64 = "0.22"
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_SystemServices"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem"] }
 
 # S-TST-002: Rust test dependencies. We keep them here (single-package
 # layout) and run with `cargo test` by default; CI prefers `cargo

@@ -27,7 +27,9 @@ export async function renderMermaidIn(root: ParentNode): Promise<void> {
   for (const code of Array.from(blocks)) {
     code.setAttribute("data-mermaid-rendered", "true");
     const pre = code.parentElement;
+    /* v8 ignore next -- the `pre > code` selector guarantees a parent */
     if (!pre) continue;
+    /* v8 ignore next -- HTMLElement.textContent is always a string */
     const source = code.textContent ?? "";
     const id = `ms-mermaid-${++renderIdSeq}`;
     try {

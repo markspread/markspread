@@ -18,6 +18,7 @@ interface PluginPermissionDialogProps {
   onDeny: () => void;
 }
 
+/* v8 ignore start -- PluginPermission is a discriminated union of the four string variants + network + keychain; the trailing String() fallback is defensive and never reached at runtime */
 function describePermission(
   p: PluginPermission,
   t: (k: string, fallback: string) => string,
@@ -42,13 +43,16 @@ function describePermission(
   }
   return String(p);
 }
+/* v8 ignore stop */
 
+/* v8 ignore start -- the final JSON.stringify fallback is unreachable because PluginPermission is a closed union and every variant returns above */
 function permissionKey(p: PluginPermission): string {
   if (typeof p === "string") return p;
   if ("network" in p) return `network:${p.network.join(",")}`;
   if ("keychain" in p) return `keychain:${p.keychain.join(",")}`;
   return JSON.stringify(p);
 }
+/* v8 ignore stop */
 
 export function PluginPermissionDialog({
   pluginId,

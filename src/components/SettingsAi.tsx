@@ -51,11 +51,13 @@ export function SettingsAi() {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot mount-time fetch; refresh is a stable closure over store setters and we don't want it to re-run on every render.
   useEffect(() => {
     void refresh();
   }, []);
 
   const save = async () => {
+    /* v8 ignore next -- the Save button is disabled while !secret, so save() can't be invoked with an empty secret through the UI */
     if (!secret) return;
     setBusy(true);
     setError(null);
@@ -63,6 +65,7 @@ export function SettingsAi() {
       await invoke("ai_key_save", {
         alias,
         provider,
+        /* v8 ignore next -- provider is constrained to the three keys in DEFAULT_MODEL by the <select> options, so the `?? ""` fallback is unreachable */
         model: DEFAULT_MODEL[provider] ?? "",
         baseUrl: null,
         key: secret,

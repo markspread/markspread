@@ -49,7 +49,8 @@ export type ParseCredentialResult =
 export function parseCredential(input: unknown): ParseCredentialResult {
   const r = ProviderCredentialSchema.safeParse(input);
   if (r.success) return { ok: true, credential: r.data as ProviderCredential };
-  return { ok: false, reason: r.error.issues[0]?.message ?? "invalid credential" };
+  const issue = r.error.issues[0] as { message: string };
+  return { ok: false, reason: issue.message };
 }
 
 /** S-AI-AUTH-002: 만료 N 분 전부터 갱신 대상. */

@@ -53,6 +53,7 @@ export function CommandPalette() {
     return runQuery({ raw, limit: 30 });
   }, [text, state.open, state.mode]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: state.mode is listed so re-opening in a different mode re-runs the reset; Biome flags it because the body only references state.open.
   useEffect(() => {
     if (!state.open) return;
     setText("");

@@ -27,8 +27,7 @@ export function chunkDocument(doc: string): TranslateChunk[] {
   const paragraphs: { start: number; end: number; text: string[] }[] = [];
   let current: { start: number; text: string[] } | null = null;
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (line === undefined) continue;
+    const line = lines[i] as string;
     if (line.trim().length === 0) {
       if (current) {
         paragraphs.push({ start: current.start, end: i, text: current.text });
@@ -46,9 +45,8 @@ export function chunkDocument(doc: string): TranslateChunk[] {
   const chunks: TranslateChunk[] = [];
   for (let i = 0; i < paragraphs.length; i += CHUNK_PARAGRAPH_GROUP) {
     const slice = paragraphs.slice(i, i + CHUNK_PARAGRAPH_GROUP);
-    const first = slice[0];
-    const last = slice[slice.length - 1];
-    if (first === undefined || last === undefined) continue;
+    const first = slice[0] as (typeof paragraphs)[number];
+    const last = slice[slice.length - 1] as (typeof paragraphs)[number];
     const startLine = first.start;
     const endLine = last.end;
     const source = slice.map((p) => p.text.join("\n")).join("\n\n");
@@ -92,12 +90,13 @@ export function unmaskUntranslatable({ segments }: MaskedText, translated: strin
   let out = translated;
   for (let i = 0; i < segments.length; i += 1) {
     const placeholder = `MS${i}`;
+    const segment = segments[i] as string;
     if (out.includes(placeholder)) {
-      out = out.replace(placeholder, () => segments[i] ?? "");
+      out = out.replace(placeholder, () => segment);
     } else {
       // Model lost the marker — append the original segment so no code is
       // silently deleted. The diff UI will surface the discrepancy.
-      out += `\n${segments[i] ?? ""}`;
+      out += `\n${segment}`;
     }
   }
   return out;

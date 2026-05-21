@@ -47,12 +47,11 @@ fn probe_locked(path: &Path) -> bool {
 fn probe_locked(path: &Path) -> bool {
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::Foundation::{
-        CloseHandle, GetLastError, ERROR_SHARING_VIOLATION, INVALID_HANDLE_VALUE,
+        CloseHandle, GetLastError, ERROR_SHARING_VIOLATION, GENERIC_READ, INVALID_HANDLE_VALUE,
     };
     use windows_sys::Win32::Storage::FileSystem::{
         CreateFileW, FILE_ATTRIBUTE_NORMAL, OPEN_EXISTING,
     };
-    use windows_sys::Win32::System::SystemServices::GENERIC_READ;
 
     let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
     // Open with FILE_SHARE_NONE: if anything else holds an exclusive handle

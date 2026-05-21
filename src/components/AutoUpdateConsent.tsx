@@ -17,18 +17,17 @@ export function AutoUpdateConsent() {
       .catch(() => setPortable(false));
   }, []);
 
+  useEffect(() => {
+    if (portable === true && consent === "unset") setConsent("deny");
+  }, [portable, consent, setConsent]);
+
   const open = !promptShown && consent === "unset" && portable !== null && portable !== true;
   const trapRef = useFocusTrap<HTMLDivElement>({
     active: open,
     onEscape: () => setConsent("deny"),
   });
 
-  if (promptShown || consent !== "unset" || portable === null) return null;
-
-  if (portable) {
-    setConsent("deny");
-    return null;
-  }
+  if (promptShown || consent !== "unset" || portable === null || portable === true) return null;
 
   return (
     <div

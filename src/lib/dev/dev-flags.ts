@@ -49,6 +49,7 @@ const DEFAULT_FLAGS: DevFlags = {
 };
 
 export function readDevFlags(): DevFlags {
+  /* v8 ignore next -- non-browser env fallback; tests always run with window defined (jsdom or node-with-global-window) */
   if (typeof window === "undefined") return DEFAULT_FLAGS;
   return { ...DEFAULT_FLAGS, ...(window.__msDevFlags ?? {}) };
 }

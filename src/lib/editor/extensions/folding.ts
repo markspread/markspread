@@ -24,8 +24,8 @@ const HEADING_RE = /^(#{1,6})\s/;
 
 function headingDepth(state: EditorState, lineNum: number): number | null {
   const line = state.doc.line(lineNum);
-  const m = HEADING_RE.exec(line.text);
-  return m ? (m[1] ?? "").length : null;
+  const hashes = HEADING_RE.exec(line.text)?.[1];
+  return hashes ? hashes.length : null;
 }
 
 function headingFoldRange(

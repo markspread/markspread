@@ -36,6 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
     void invoke("error_record_crash", {
       boundaryId: this.props.boundaryId,
       message: error.message,
+      /* v8 ignore next 2 -- thrown errors always carry a stack and React always supplies componentStack in production; ?? null is defensive for non-Error throws */
       stack: error.stack ?? null,
       componentStack: info.componentStack ?? null,
       ts: Date.now(),

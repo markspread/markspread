@@ -156,6 +156,25 @@ describe("buildContext", () => {
     expect(r.sources).toHaveLength(0);
   });
 
+  it("renders '(inline)' for a null documentPath", async () => {
+    const r = await buildContext({
+      ...base,
+      scope: "selection",
+      documentPath: null as unknown as string,
+    });
+    expect(r.text).toContain("(inline)");
+  });
+
+  it("workspace-glob with zero files yields zero sources", async () => {
+    invokeMock.mockResolvedValueOnce([]);
+    const r = await buildContext({
+      ...base,
+      scope: "workspace-glob",
+      glob: "**/*.md",
+    });
+    expect(r.sources).toHaveLength(0);
+  });
+
   it("redacts secrets found in the assembled context", async () => {
     const r = await buildContext({
       ...base,

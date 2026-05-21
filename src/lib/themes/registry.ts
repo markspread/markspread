@@ -76,6 +76,7 @@ export function applyTheme(opts: ApplyOptions = {}): void {
   if (opts.contrast) activeContrast = opts.contrast;
 
   const def = themes.get(activeId) ?? themes.get("default-light");
+  /* v8 ignore next -- 'default-light' is registered at module-init so this fallback always resolves */
   if (!def) return;
   const resolvedMode: ThemeMode = activeMode === "system" ? matchSystemMode() : activeMode;
   const baseTokens = (resolvedMode === "dark" && def.dark ? def.dark : def.light).tokens;

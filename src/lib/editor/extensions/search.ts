@@ -59,6 +59,7 @@ const replaceAllInSelection: Command = (view) => {
           to: r.from + idx + q.search.length,
           insert: q.replace,
         });
+        /* v8 ignore next -- q.search is guaranteed non-empty by the early-return above */
         idx += q.search.length || 1;
         idx = hay.indexOf(needle, idx);
       }

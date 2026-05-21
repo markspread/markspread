@@ -105,7 +105,12 @@ function App() {
           open={exportOpen}
           onClose={hideExport}
           documentPath={activeTabPath}
-          documentTitle={activeTabPath ? (activeTabPath.split(/[/\\]/).pop() ?? "") : "Untitled"}
+          documentTitle={
+            activeTabPath
+              ? /* v8 ignore next -- split() on a non-empty string always yields at least one element, so the `?? ""` fallback is unreachable */
+                (activeTabPath.split(/[/\\]/).pop() ?? "")
+              : "Untitled"
+          }
           bodyHtml=""
         />
         <div className="pointer-events-none fixed bottom-2 right-2 z-50">

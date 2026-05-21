@@ -200,4 +200,10 @@ describe("describePermission", () => {
     expect(describePermission({ network: ["a.com", "b.com"] })).toContain("a.com, b.com");
     expect(describePermission({ keychain: ["openai"] })).toContain("openai");
   });
+
+  it("falls back to a generic label for unknown permission shapes", () => {
+    expect(describePermission({ unknown: true } as unknown as PluginPermission)).toBe(
+      "Unknown permission",
+    );
+  });
 });

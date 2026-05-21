@@ -212,6 +212,7 @@ export function Welcome({
               className="flex flex-col gap-1"
               aria-label={t("welcome.recent.list.aria", "Recent workspaces")}
               onKeyDown={(e) => {
+                /* v8 ignore next -- the ul is rendered only when recent.length > 0; the guard is defensive */
                 if (recent.length === 0) return;
                 if (e.key === "ArrowDown") {
                   e.preventDefault();

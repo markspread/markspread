@@ -13,6 +13,7 @@ export function detectSystemTheme(): ResolvedTheme {
 }
 
 export function applyTheme(resolved: ResolvedTheme): void {
+  /* v8 ignore next -- jsdom always provides document; defensive for SSR/node use */
   if (typeof document === "undefined") return;
   document.documentElement.dataset.theme = resolved;
   document.documentElement.style.colorScheme = resolved;

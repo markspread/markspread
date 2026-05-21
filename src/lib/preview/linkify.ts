@@ -25,7 +25,12 @@ function trimTrailing(url: string): { href: string; trail: string } {
   // Pull trailing punctuation off the URL so prose like "see https://x.com." renders correctly.
   let href = url;
   let trail = "";
-  while (href.length > 0 && /[.,;:!?)\]}'"]/.test(href[href.length - 1] ?? "")) {
+  while (
+    href.length > 0 &&
+    /* v8 ignore next -- href.length > 0 guarantees href[length - 1] is a string */
+    /[.,;:!?)\]}'"]/.test(href[href.length - 1] ?? "")
+  ) {
+    /* v8 ignore next -- same guarantee — href has at least one character */
     trail = (href[href.length - 1] ?? "") + trail;
     href = href.slice(0, -1);
   }
@@ -46,6 +51,7 @@ export function linkifyTextNodes(root: ParentNode): void {
     n = walker.nextNode();
   }
   for (const text of targets) {
+    /* v8 ignore next -- Text.nodeValue is always a string */
     const value = text.nodeValue ?? "";
     URL_RE.lastIndex = 0;
     const frag = document.createDocumentFragment();

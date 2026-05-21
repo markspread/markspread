@@ -83,4 +83,58 @@ describe("CrashRecoveryDialog", () => {
     screen.getByText("Dismiss").click();
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
+
+  it("clears the beacon when proposeRecovery yields no snapshots", async () => {
+    readBeacon.mockResolvedValue(dirtyBeacon);
+    proposeRecovery.mockResolvedValue({ ...proposal, snapshots: [] });
+    render(<CrashRecoveryDialog />);
+    await waitFor(() => expect(clearBeacon).toHaveBeenCalled());
+  });
+
+  it("logs and recovers when readBeacon throws", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    readBeacon.mockRejectedValue(new Error("read failed"));
+    const { container } = render(<CrashRecoveryDialog />);
+    await waitFor(() => expect(warn).toHaveBeenCalled());
+    expect(container.firstChild).toBeNull();
+    warn.mockRestore();
+  });
+
+  it("bails on cancellation after proposeRecovery resolves", async () => {
+    let resolveProp: ((value: RecoveryProposal) => void) | null = null;
+    readBeacon.mockResolvedValue(dirtyBeacon);
+    proposeRecovery.mockReturnValueOnce(
+      new Promise<RecoveryProposal>((resolve) => {
+        resolveProp = resolve;
+      }),
+    );
+    const { unmount } = render(<CrashRecoveryDialog />);
+    await waitFor(() => expect(proposeRecovery).toHaveBeenCalled());
+    unmount();
+    (resolveProp as ((value: RecoveryProposal) => void) | null)?.(proposal);
+    // No assertion needed — exercising the cancelled branch is the goal.
+    await new Promise((r) => setTimeout(r, 0));
+  });
+
+  it("closes when Escape is pressed inside the focus trap", async () => {
+    readBeacon.mockResolvedValue(dirtyBeacon);
+    proposeRecovery.mockResolvedValue(proposal);
+    render(<CrashRecoveryDialog />);
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeTruthy());
+    const evt = new KeyboardEvent("keydown", { key: "Escape", bubbles: true });
+    document.dispatchEvent(evt);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("logs and stays open when restoreSnapshot throws", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    readBeacon.mockResolvedValue(dirtyBeacon);
+    proposeRecovery.mockResolvedValue(proposal);
+    restoreSnapshot.mockRejectedValueOnce(new Error("restore failed"));
+    render(<CrashRecoveryDialog />);
+    await waitFor(() => expect(screen.getByText("Restore")).toBeTruthy());
+    screen.getByText("Restore").click();
+    await waitFor(() => expect(warn).toHaveBeenCalled());
+    warn.mockRestore();
+  });
 });

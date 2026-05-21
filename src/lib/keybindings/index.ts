@@ -15,6 +15,7 @@ import type { Binding, BindingEntry, Preset } from "./types";
 
 export type { Binding, BindingEntry, Preset } from "./types";
 
+/* v8 ignore next 3 -- jsdom always provides navigator.platform */
 const isMac =
   typeof navigator !== "undefined" &&
   /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || "");

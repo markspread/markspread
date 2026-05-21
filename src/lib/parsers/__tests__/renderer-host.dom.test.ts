@@ -1,9 +1,14 @@
 // S-PSDK-003: renderInSandbox 호스트 회귀.
 // jsdom 필요 — sanitiseMarkdownHtml 가 DOMParser 를 사용한다.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ParseRequest } from "../messages";
-import { type SandboxTransport, renderInSandbox } from "../renderer-host";
+import {
+  type SandboxTransport,
+  buildIframeSrcdoc,
+  createWorkerTransport,
+  renderInSandbox,
+} from "../renderer-host";
 
 function fakeTransport(
   reply: unknown,
@@ -147,5 +152,68 @@ describe("renderInSandbox", () => {
     const r = await renderInSandbox(t, REQ);
     expect(r.kind).toBe("ast");
     if (r.kind === "ast") expect(r.ast).toBe(42);
+  });
+});
+
+describe("buildIframeSrcdoc", () => {
+  it("inlines the CSP meta and the parser script", () => {
+    const html = buildIframeSrcdoc("console.log(1)", "default-src 'none'");
+    expect(html).toMatch(/<meta http-equiv="Content-Security-Policy" content="default-src 'none'"/);
+    expect(html).toMatch(/<script type="module">console\.log\(1\)<\/script>/);
+  });
+});
+
+describe("createWorkerTransport", () => {
+  it("wires postMessage and message events through to the host handler", () => {
+    let messageListener: ((ev: { data: unknown }) => void) | null = null;
+    const postMessage = vi.fn();
+    const terminate = vi.fn();
+    class FakeWorker {
+      constructor(
+        public url: string,
+        public opts?: WorkerOptions,
+      ) {}
+      addEventListener(type: string, fn: (ev: { data: unknown }) => void): void {
+        if (type === "message") messageListener = fn;
+      }
+      postMessage = postMessage;
+      terminate = terminate;
+    }
+    const original = (globalThis as { Worker?: unknown }).Worker;
+    (globalThis as { Worker: unknown }).Worker = FakeWorker;
+    try {
+      const t = createWorkerTransport("blob:fake");
+      expect(t.mode).toBe("worker");
+
+      const seen: unknown[] = [];
+      const off = t.onMessage((raw) => seen.push(raw));
+      const ml = messageListener as ((ev: { data: unknown }) => void) | null;
+      ml?.({ data: { hello: 1 } });
+      expect(seen).toEqual([{ hello: 1 }]);
+
+      const req = {
+        type: "parse",
+        requestId: "r1",
+        parserId: "p",
+        path: "/a.md",
+        content: "x",
+        encoding: "utf-8",
+      } as ParseRequest;
+      t.postMessage(req);
+      expect(postMessage).toHaveBeenCalledWith(req);
+
+      off();
+      ml?.({ data: { hello: 2 } });
+      expect(seen).toEqual([{ hello: 1 }]);
+
+      t.dispose();
+      expect(terminate).toHaveBeenCalled();
+    } finally {
+      if (original === undefined) {
+        (globalThis as { Worker?: unknown }).Worker = undefined;
+      } else {
+        (globalThis as { Worker: unknown }).Worker = original;
+      }
+    }
   });
 });

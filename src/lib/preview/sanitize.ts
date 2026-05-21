@@ -153,6 +153,7 @@ function safeAttrValue(name: string, value: string): boolean {
 export function sanitizeHtml(html: string, opts: SanitizeOptions = {}): string {
   const doc = new DOMParser().parseFromString(`<div id="ms-root">${html}</div>`, "text/html");
   const root = doc.getElementById("ms-root");
+  /* v8 ignore next -- DOMParser always returns a document containing the wrapper div */
   if (!root) return "";
   walk(root, opts);
   return root.innerHTML;
@@ -170,6 +171,7 @@ function walk(node: Element, opts: SanitizeOptions): void {
     }
     // Strip on* handlers + non-whitelisted attributes.
     const attrSet = ALLOWED_ATTRS[tag] ?? new Set<string>();
+    /* v8 ignore next -- ALLOWED_ATTRS["*"] is statically declared, so the fallback never triggers */
     const star = ALLOWED_ATTRS["*"] ?? new Set<string>();
     for (const attr of Array.from(child.attributes)) {
       const n = attr.name.toLowerCase();

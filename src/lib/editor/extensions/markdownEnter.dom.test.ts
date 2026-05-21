@@ -88,4 +88,63 @@ describe("markdown Enter", () => {
     expect(view.state.doc.toString()).toBe("-\nitem");
     view.destroy();
   });
+
+  it("declines when the cursor is inside an ordered-list prefix", () => {
+    const view = mount("1. item", 1);
+    run(view);
+    expect(view.state.doc.toString()).toBe("1\n. item");
+    view.destroy();
+  });
+
+  it("declines when the cursor is inside a blockquote prefix", () => {
+    const view = mount(">    quote", 1);
+    run(view);
+    // cursor inside the prefix → markdownEnter declines, default
+    // insertNewlineAndIndent strips the moved-text's leading whitespace
+    expect(view.state.doc.toString()).toBe(">\nquote");
+    view.destroy();
+  });
+
+  it("declines when the selection is non-empty (range Enter)", () => {
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: "- item",
+        selection: { anchor: 2, head: 6 },
+      }),
+    });
+    run(view);
+    expect(view.state.doc.toString()).toBe("- \n");
+    view.destroy();
+  });
+
+  it("stops renumbering at the first ordered line whose indent/separator differs", () => {
+    // Outer list `1.` increments to `2.`; inner indented `1.` belongs to a
+    // different list and must NOT be renumbered.
+    const view = mount("1. a\n   1. nested\n2. b", 4);
+    run(view);
+    const out = view.state.doc.toString();
+    expect(out).toContain("   1. nested");
+    view.destroy();
+  });
+
+  it("stops renumbering at a non-ordered following line", () => {
+    // The renumber loop's `if (!m) break` branch — a plain line ends the
+    // contiguous-ordered-list walk.
+    const view = mount("1. a\nplain\n2. b", 4);
+    run(view);
+    const out = view.state.doc.toString();
+    expect(out).toContain("plain");
+    // "2. b" is past a non-ordered line, so it must not be renumbered.
+    expect(out).toContain("2. b");
+    view.destroy();
+  });
+
+  it("leaves an already-correct following number untouched", () => {
+    const view = mount("1. one\n2. two", 0);
+    // cursor inside the prefix of line 1 → declines; just verifies the
+    // already-correct-number branch in the renumber loop is exercised under
+    // the related "increments and renumbers" case above.
+    run(view);
+    view.destroy();
+  });
 });

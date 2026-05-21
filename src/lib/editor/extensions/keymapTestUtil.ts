@@ -9,6 +9,7 @@ import { type Command, keymap } from "@codemirror/view";
 export function findKeymapCommand(ext: Extension, key: string): Command {
   const state = EditorState.create({ extensions: ext });
   for (const group of state.facet(keymap)) {
+    /* v8 ignore next -- `keymap.of(...)` always registers an array group; the single-binding fallback is defensive for older CM6 APIs */
     const bindings = Array.isArray(group) ? group : [group];
     for (const km of bindings) {
       if (km && km.key === key && km.run) return km.run;

@@ -144,6 +144,42 @@ describe("createAuthRefreshScheduler", () => {
     sched.stop();
   });
 
+  it("start() is idempotent", () => {
+    const sched = createAuthRefreshScheduler({
+      transport: { refresh: vi.fn() },
+      getCurrentCredential: () => null,
+      onCredentialUpdate: vi.fn(),
+      onRefreshFailed: vi.fn(),
+      pollMs: 1000,
+    });
+    sched.start();
+    sched.start(); // second call should be a no-op
+    sched.stop();
+  });
+
+  it("wraps non-Error throws in an Error before forwarding", async () => {
+    const now = 10_000_000;
+    const current: SubscriptionCredential = { ...BASE, expiresAt: now + 60_000 };
+    const onRefreshFailed = vi.fn();
+    const sched = createAuthRefreshScheduler({
+      transport: {
+        refresh: async () => {
+          throw "string error";
+        },
+      },
+      getCurrentCredential: () => current,
+      onCredentialUpdate: vi.fn(),
+      onRefreshFailed,
+      pollMs: 1000,
+      now: () => now,
+    });
+    sched.start();
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(onRefreshFailed.mock.calls[0]?.[1]).toBeInstanceOf(Error);
+    expect((onRefreshFailed.mock.calls[0]?.[1] as Error).message).toBe("string error");
+    sched.stop();
+  });
+
   it("stop() halts further polling", async () => {
     const now = 10_000_000;
     const current: SubscriptionCredential = { ...BASE, expiresAt: now + 60_000 };
@@ -179,4 +215,8 @@ describe("classifyRefreshError", () => {
       expect(classifyRefreshError(new Error(input))).toBe(expected);
     });
   }
+
+  it("classifies a non-Error throw by its string form", () => {
+    expect(classifyRefreshError("network down")).toBe("network");
+  });
 });

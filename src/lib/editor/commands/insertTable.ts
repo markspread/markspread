@@ -23,6 +23,7 @@ export interface InsertTableResult {
   align: ColumnAlign[];
 }
 
+/* v8 ignore next -- default opener is replaced by the host at boot before insertTable ever runs */
 let opener: (req: InsertTableRequest) => void = () => {};
 
 export function setInsertTableOpener(fn: (req: InsertTableRequest) => void) {

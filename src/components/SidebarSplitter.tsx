@@ -75,6 +75,7 @@ export function SidebarSplitter({ workspace, containerRef }: Props) {
   // changes in a future release).
   useEffect(() => {
     const clamped = clampSidebarWidth(width);
+    /* v8 ignore next -- useLayout's getSidebarWidth already clamps before returning, so the repair branch is unreachable in practice; kept as a belt-and-braces guard for future schema drift */
     if (clamped !== width) setWidth(workspace, clamped);
   }, [setWidth, width, workspace]);
 

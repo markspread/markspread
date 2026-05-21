@@ -112,6 +112,16 @@ describe("useKeyStore.remove", () => {
     expect(useKeyStore.getState().defaultAlias).toBe("b");
   });
 
+  it("preserves the default when removing a non-default entry", async () => {
+    useKeyStore.setState({
+      entries: [entry({ alias: "a" }), entry({ alias: "b" })],
+      defaultAlias: "a",
+    });
+    invokeMock.mockResolvedValueOnce(undefined);
+    await useKeyStore.getState().remove("b");
+    expect(useKeyStore.getState().defaultAlias).toBe("a");
+  });
+
   it("clears the default when the last entry is removed", async () => {
     useKeyStore.setState({ entries: [entry({ alias: "a" })], defaultAlias: "a" });
     invokeMock.mockResolvedValueOnce(undefined);

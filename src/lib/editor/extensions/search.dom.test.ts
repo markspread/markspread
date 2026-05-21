@@ -80,4 +80,45 @@ describe("replaceAllInSelection", () => {
     expect(view.state.doc.toString()).toBe("hello world");
     view.destroy();
   });
+
+  it("honours case-sensitive regex matching", () => {
+    // exercises the `caseSensitive ? "g" : "gi"` branch on the regex
+    // construction line: with caseSensitive=true the uppercase variant
+    // must not match.
+    const view = mount("Ab ab Ab", { anchor: 0, head: 8 });
+    view.dispatch({
+      effects: setSearchQuery.of(
+        new SearchQuery({ search: "ab", replace: "X", regexp: true, caseSensitive: true }),
+      ),
+    });
+    run(view);
+    expect(view.state.doc.toString()).toBe("Ab X Ab");
+    view.destroy();
+  });
+
+  it("advances past zero-width regex matches without looping forever", () => {
+    // `^` is zero-width — exercises `if (m.index === cursor.lastIndex)
+    // cursor.lastIndex++` so the loop terminates instead of spinning.
+    const view = mount("abc", { anchor: 0, head: 3 });
+    view.dispatch({
+      effects: setSearchQuery.of(new SearchQuery({ search: "^", replace: ">", regexp: true })),
+    });
+    run(view);
+    expect(view.state.doc.toString()).toBe(">abc");
+    view.destroy();
+  });
+
+  it("honours case-sensitive literal matching", () => {
+    // exercises both `caseSensitive ? q.search : q.search.toLowerCase()`
+    // and `caseSensitive ? slice : slice.toLowerCase()` branches.
+    const view = mount("Ab ab Ab", { anchor: 0, head: 8 });
+    view.dispatch({
+      effects: setSearchQuery.of(
+        new SearchQuery({ search: "ab", replace: "X", caseSensitive: true }),
+      ),
+    });
+    run(view);
+    expect(view.state.doc.toString()).toBe("Ab X Ab");
+    view.destroy();
+  });
 });

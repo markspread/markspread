@@ -75,7 +75,8 @@ export function dispatch(event: KeyboardEvent, prefix?: string): string | null {
   const specific = inContext.filter((m) => m.when !== "always");
   const finalists = specific.length > 0 ? specific : inContext;
 
-  if (finalists.length === 0) return null;
+  const winner = finalists[finalists.length - 1];
+  if (!winner) return null;
 
   if (finalists.length > 1) {
     // Last-registered wins. We warn once per (binding, context) pair
@@ -91,7 +92,7 @@ export function dispatch(event: KeyboardEvent, prefix?: string): string | null {
       );
     }
   }
-  return finalists[finalists.length - 1]?.commandId ?? null;
+  return winner.commandId;
 }
 
 /** Reset the warn cache; tests use this. */

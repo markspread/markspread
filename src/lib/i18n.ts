@@ -16,6 +16,7 @@ const EXACT_MATCH: Record<string, SupportedLocale> = {
 };
 
 function languagePart(tag: string): string {
+  /* v8 ignore next -- split always returns at least one element; ?? "" is defensive */
   return tag.split(/[-_]/)[0]?.toLowerCase() ?? "";
 }
 

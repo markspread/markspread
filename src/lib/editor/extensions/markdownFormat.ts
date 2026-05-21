@@ -86,6 +86,7 @@ function toggleHeading(level: number): Command {
       const line = state.doc.line(lineNo);
       const m = /^(#{1,6})\s+/.exec(line.text);
       if (m) {
+        /* v8 ignore next -- regex (#{1,6}) always populates m[1]; ?? "" is defensive */
         const existing = (m[1] ?? "").length;
         if (existing === level) {
           // Toggle off → strip.
@@ -98,6 +99,7 @@ function toggleHeading(level: number): Command {
         changes.push({ from: line.from, to: line.from, insert: targetPrefix });
       }
     }
+    /* v8 ignore next -- selection always has ≥1 range so lineSet is non-empty and at least one change is queued */
     if (changes.length === 0) return false;
     view.dispatch({
       changes,

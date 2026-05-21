@@ -189,24 +189,8 @@ export async function* runChatStream(
  */
 export async function runChat(input: RunChatInput): Promise<RunChatResult> {
   const iter = runChatStream({ ...input, stream: input.stream ?? false });
-  let result: RunChatResult | undefined;
   while (true) {
     const step = await iter.next();
-    if (step.done) {
-      result = step.value;
-      break;
-    }
+    if (step.done) return step.value;
   }
-  return (
-    result ?? {
-      text: "",
-      toolCalls: [],
-      finishReason: "error",
-      inputTokens: 0,
-      outputTokens: 0,
-      usd: 0,
-      status: "error",
-      errorMessage: "runner returned no result",
-    }
-  );
 }

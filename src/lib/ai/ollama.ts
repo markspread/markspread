@@ -143,10 +143,8 @@ const VARIANT_LADDER: Record<string, string> = {
 };
 
 export function recommendOnOom(currentModel: string): OomRecommendation {
-  const sizeMatch = /(\d+)b/i.exec(currentModel);
-  const fallback = sizeMatch
-    ? (VARIANT_LADDER[`${(sizeMatch[1] ?? "").toLowerCase()}b`] ?? null)
-    : null;
+  const sizeToken = /(\d+)b/i.exec(currentModel)?.[1];
+  const fallback = sizeToken ? (VARIANT_LADDER[`${sizeToken.toLowerCase()}b`] ?? null) : null;
   const fallbackVariant = fallback ? currentModel.replace(/\d+b/i, fallback) : null;
   // Q4 is the default; if the user's already on Q4, drop to Q3 then Q2.
   const quantMatch = /Q[2-8]_[KS][_M]?/i.exec(currentModel);

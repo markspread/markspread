@@ -116,4 +116,23 @@ describe("saveTab", () => {
     const ok = await saveTab({ workspace: "/ws", path: "/ws/unknown.md", content: "x" });
     expect(ok).toBe(true);
   });
+
+  it("stringifies a bare-string recreate rejection (no .message field)", async () => {
+    seedTab("/ws/a.md", true);
+    askMock.mockResolvedValueOnce(true);
+    invokeMock.mockRejectedValueOnce("permission denied");
+    const { saveTab } = await import("./save-tab");
+    const ok = await saveTab({ workspace: "/ws", path: "/ws/a.md", content: "x" });
+    expect(ok).toBe(false);
+    expect(useToasts.getState().toasts[0]?.details).toBe("permission denied");
+  });
+
+  it("stringifies a bare-string write rejection (no .message field)", async () => {
+    seedTab("/ws/a.md", false);
+    invokeMock.mockRejectedValueOnce("disk full");
+    const { saveTab } = await import("./save-tab");
+    const ok = await saveTab({ workspace: "/ws", path: "/ws/a.md", content: "x" });
+    expect(ok).toBe(false);
+    expect(useToasts.getState().toasts[0]?.details).toBe("disk full");
+  });
 });

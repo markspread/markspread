@@ -156,7 +156,9 @@ async function importIntoWorkspace(
   for (let i = 0; i < paths.length; i += 1) {
     const src = paths[i];
     if (importCancel.requested) break;
+    /* v8 ignore next -- noUncheckedIndexedAccess defensive: i < paths.length guarantees src is defined */
     if (src === undefined) continue;
+    /* v8 ignore next -- src is a non-empty Tauri-supplied path so split() always yields at least one segment */
     const baseName = src.split(/[/\\]/).filter(Boolean).pop() ?? `imported-${imported}`;
     let target = `${destDir.replace(/[/\\]+$/, "")}/${baseName}`;
     let exists = await fileExists(workspace, target);
@@ -246,7 +248,6 @@ async function pickRenameTarget(
     const candidate = `${destDir.replace(/[/\\]+$/, "")}/${stem} (${i})${ext}`;
     if (!(await fileExists(workspace, candidate))) return candidate;
   }
-  // Astronomical: fall through to numeric epoch suffix.
   return `${destDir.replace(/[/\\]+$/, "")}/${stem}-${Date.now()}${ext}`;
 }
 
@@ -278,6 +279,7 @@ export function registerDragDrop(): () => void {
   webview
     .onDragDropEvent(async (evt) => {
       if (evt.payload.type !== "drop") return;
+      /* v8 ignore next -- Tauri's drop payload always carries a paths array; the ?? fallback is defensive */
       const paths = evt.payload.paths ?? [];
       if (paths.length === 0) return;
       // S-FT-011: when a workspace is already open and the drop landed inside
@@ -288,6 +290,7 @@ export function registerDragDrop(): () => void {
       if (ws && evt.payload.position && paths.length > 0) {
         const tree = document.querySelector<HTMLElement>('[data-filetree-root="true"]');
         if (tree) {
+          /* v8 ignore next -- window.devicePixelRatio is always a positive number in browsers; the `|| 1` fallback is defensive */
           const dpr = window.devicePixelRatio || 1;
           const x = evt.payload.position.x / dpr;
           const y = evt.payload.position.y / dpr;
@@ -301,6 +304,7 @@ export function registerDragDrop(): () => void {
       // Only the first path drives the routing decision; the rest are queued
       // as additional tabs once the workspace is open (FT will handle).
       const head = paths[0];
+      /* v8 ignore next -- paths.length > 0 was checked above, so head is always defined */
       if (head === undefined) return;
       try {
         const stat = await invoke<FsStat>("fs_stat", { path: head });

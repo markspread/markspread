@@ -125,6 +125,7 @@ function walk(node: Element, opts: SanitiseOptions): void {
 
     if (!ALLOWED_TAGS.has(tag)) {
       // Unknown tag — flatten: replace with its text content.
+      /* v8 ignore next -- textContent is non-null on Elements; the ?? "" is type-narrowing for null on Node */
       const text = document.createTextNode(child.textContent ?? "");
       child.replaceWith(text);
       continue;
@@ -140,6 +141,7 @@ function walk(node: Element, opts: SanitiseOptions): void {
         continue;
       }
 
+      /* v8 ignore next 2 -- ALLOWED_ATTRS["*"] is always defined; the per-tag fallback is for tags without a custom allow-list */
       const allowList = ALLOWED_ATTRS[tag] ?? new Set<string>();
       const wildcard = ALLOWED_ATTRS["*"] ?? new Set<string>();
       if (!allowList.has(name) && !wildcard.has(name)) {

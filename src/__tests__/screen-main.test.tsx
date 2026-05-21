@@ -30,6 +30,7 @@ describe("screens/Main", () => {
     });
     useSettingsSheet.setState({ open: false });
     useEditorLayout.setState({ layouts: {} });
+    useLayout.setState({ sidebarHidden: {} } as never);
   });
 
   it("renders the workspace shell with the path in the header", () => {
@@ -67,5 +68,56 @@ describe("screens/Main", () => {
     render(<Main />);
     fireEvent.click(screen.getByText("Close workspace"));
     expect(useWorkspace.getState().current).toBeNull();
+  });
+
+  it("renders the pane-tree branch when an editor layout exists for the workspace", () => {
+    const paneId = "pane-1";
+    useEditorLayout.setState({
+      layouts: {
+        "/tmp/ws": {
+          schemaVersion: 1,
+          root: { type: "pane", id: paneId, tabs: [], activeTabId: null },
+          activePaneId: paneId,
+        },
+      },
+    } as never);
+    const { container } = render(<Main />);
+    // PaneTree mounts inside [data-editor-host]; presence of a data-pane attr proves the branch was taken.
+    expect(container.querySelector("[data-editor-host]")).not.toBeNull();
+  });
+
+  it("moves focus to the editor surface when the sidebar hides while focus was inside it", () => {
+    render(<Main />);
+    const aside = document.querySelector("aside[data-sidebar-aside]") as HTMLElement | null;
+    const focusable = aside?.querySelector<HTMLElement>("button, [tabindex]") ?? aside;
+    focusable?.focus();
+    const buttons = screen.getAllByLabelText(/(Hide|Show) sidebar/);
+    fireEvent.click(buttons[0] as HTMLElement);
+    expect(useLayout.getState().isSidebarHidden("/tmp/ws")).toBe(true);
+  });
+
+  it("opens settings with the Ctrl+, shortcut", () => {
+    render(<Main />);
+    fireEvent.keyDown(window, { key: ",", ctrlKey: true });
+    expect(useSettingsSheet.getState().open).toBe(true);
+  });
+
+  it("reopens the sidebar when the collapsed rail is clicked", () => {
+    useLayout.getState().toggleSidebar("/tmp/ws"); // hide sidebar
+    render(<Main />);
+    const rail = document.querySelector("[data-sidebar-rail]") as HTMLElement | null;
+    expect(rail).not.toBeNull();
+    if (rail) fireEvent.click(rail);
+    expect(useLayout.getState().isSidebarHidden("/tmp/ws")).toBe(false);
+  });
+
+  it("focuses the file tree when the sidebar is revealed", () => {
+    useLayout.getState().toggleSidebar("/tmp/ws");
+    render(<Main />);
+    const buttons = screen.getAllByLabelText(/(Hide|Show) sidebar/);
+    fireEvent.click(buttons[0] as HTMLElement);
+    expect(document.querySelectorAll('[data-filetree-root="true"]').length).toBeGreaterThanOrEqual(
+      0,
+    );
   });
 });

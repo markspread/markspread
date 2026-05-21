@@ -100,4 +100,33 @@ describe("registerKeybindings", () => {
     expect(typeof mod.resolveBinding).toBe("function");
     expect(typeof mod.normaliseBinding).toBe("function");
   });
+
+  it("accepts the literal Ctrl/Cmd/Option aliases in the binding spec", async () => {
+    vi.resetModules();
+    vi.doMock("./commands/registry", () => ({
+      commands: [
+        { id: "cmd.ctrl", defaultBinding: "Ctrl+J", run: () => {} },
+        { id: "cmd.cmd", defaultBinding: "Cmd+K", run: () => {} },
+        { id: "cmd.opt", defaultBinding: "Option+L", run: () => {} },
+      ],
+      runCommand: (...args: unknown[]) => runCommandMock(...args),
+    }));
+    vi.doMock("./keybindings/ime", () => ({
+      attachImeGuard: () => detachImeMock,
+      isComposing: () => false,
+    }));
+    const { registerKeybindings } = await import("./keybindings");
+    const dispose = registerKeybindings();
+    press({ key: "j", metaKey: true });
+    expect(runCommandMock).toHaveBeenCalledWith("cmd.ctrl");
+    runCommandMock.mockReset();
+    press({ key: "k", metaKey: true });
+    expect(runCommandMock).toHaveBeenCalledWith("cmd.cmd");
+    runCommandMock.mockReset();
+    press({ key: "l", altKey: true });
+    expect(runCommandMock).toHaveBeenCalledWith("cmd.opt");
+    dispose();
+    vi.doUnmock("./commands/registry");
+    vi.doUnmock("./keybindings/ime");
+  });
 });

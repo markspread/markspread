@@ -28,6 +28,7 @@ export function SettingsPlugins() {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot mount-time fetch; refresh is a stable closure over store setters and we don't want it to re-run on every render.
   useEffect(() => {
     void refresh();
   }, []);

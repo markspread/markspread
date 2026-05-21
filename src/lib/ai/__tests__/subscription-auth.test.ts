@@ -123,6 +123,25 @@ describe("createSubscriptionAuthFlow", () => {
     if (final.kind === "error") expect(final.error.code).toBe("invalid_token");
   });
 
+  it("rejects when transport returns a non-subscription credential shape", async () => {
+    const flow = createSubscriptionAuthFlow({
+      transport: makeTransport({
+        awaitCompletion: async () =>
+          ({
+            credential: {
+              kind: "api-key",
+              providerId: "anthropic",
+              alias: "default",
+              encryptedKey: "enc::k",
+            },
+          }) as never,
+      }),
+    });
+    const final = await flow.start("anthropic");
+    expect(final.kind).toBe("error");
+    if (final.kind === "error") expect(final.error.code).toBe("invalid_token");
+  });
+
   it("cancel() during awaiting-user moves the stage to cancelled error", async () => {
     const cancelSpy = vi.fn();
     let resolveAwait!: (v: { credential: SubscriptionCredential }) => void;
@@ -156,6 +175,27 @@ describe("createSubscriptionAuthFlow", () => {
     void resolveAwait; // unused — included for shape only
   });
 
+  it("swallows transport.cancel() failures during cancel()", async () => {
+    const cancelSpy = vi.fn(async () => {
+      throw new Error("rust side already dropped");
+    });
+    const transport = makeTransport({
+      awaitCompletion: async (_sessionId, signal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("cancelled by user")));
+        }),
+      cancel: cancelSpy,
+    });
+    const flow = createSubscriptionAuthFlow({ transport });
+    const p = flow.start("anthropic");
+    await Promise.resolve();
+    await Promise.resolve();
+    await flow.cancel();
+    const final = await p;
+    expect(final.kind).toBe("error");
+    expect(cancelSpy).toHaveBeenCalled();
+  });
+
   it("exposes the current stage via getStage()", async () => {
     const flow = createSubscriptionAuthFlow({ transport: makeTransport() });
     expect(flow.getStage().kind).toBe("idle");
@@ -174,5 +214,14 @@ describe("classifyRawError", () => {
   });
   it("includes a stable i18n key", () => {
     expect(classifyRawError(new Error("network")).i18nKey).toMatch(/^ai\.subscription\.error\./);
+  });
+  it("classifies a plain string message", () => {
+    expect(classifyRawError("network unreachable").code).toBe("network");
+  });
+  it("classifies an 'invalid' message as invalid_token", () => {
+    expect(classifyRawError(new Error("invalid token from sdk")).code).toBe("invalid_token");
+  });
+  it("classifies a 'cancel' message as cancelled", () => {
+    expect(classifyRawError(new Error("user cancelled")).code).toBe("cancelled");
   });
 });

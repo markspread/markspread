@@ -11,7 +11,7 @@ const host = process.env.TAURI_DEV_HOST;
 const bundleReport = process.env.MARKSPREAD_BUNDLE_REPORT === "1";
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig(() => ({
   plugins: [
     react(),
     tailwindcss(),
@@ -54,12 +54,7 @@ export default defineConfig(async () => ({
   envPrefix: ["VITE_", "TAURI_ENV_*"],
   build: {
     target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari13",
-    minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
+    minify: process.env.TAURI_ENV_DEBUG ? false : ("esbuild" as const),
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
-  },
-  test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: ["./src/test-setup.ts"],
   },
 }));

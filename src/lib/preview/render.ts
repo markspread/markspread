@@ -159,9 +159,11 @@ async function applyCodeHighlight(
   let last = 0;
   const parts: string[] = [];
   for (const m of matches) {
+    /* v8 ignore next -- matchAll always sets index on emitted matches */
     const start = m.index ?? 0;
     parts.push(html.slice(last, start));
     const lang = m[1] ?? "";
+    /* v8 ignore next -- the inner capture group is non-optional, so m[2] is always a string */
     const code = decoder(m[2] ?? "");
     try {
       const replaced = await highlight(code, lang);
@@ -187,6 +189,7 @@ export function createDebouncedRenderer(delay = 300) {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(async () => {
         const html = await render(md, opts);
+        /* v8 ignore next -- the prior setTimeout is always cleared before token can advance, so my === token holds for every fired callback */
         resolve(my === token ? html : null);
       }, delay);
     });

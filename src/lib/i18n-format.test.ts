@@ -129,6 +129,10 @@ describe("formatRelativeFromNow", () => {
   it("handles a future delta", () => {
     expect(formatRelativeFromNow(now + 5 * 60_000, now)).toMatch(/minute/i);
   });
+
+  it("accepts a Date as the explicit now argument", () => {
+    expect(typeof formatRelativeFromNow(new Date(now - 10_000), new Date(now))).toBe("string");
+  });
 });
 
 describe("locale subscription", () => {

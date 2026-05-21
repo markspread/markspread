@@ -57,4 +57,11 @@ describe("CSP regression helpers", () => {
     const bad = "default-src 'self'; script-src *";
     expect(cspAllowsScriptHosts(bad)).toBe(true);
   });
+
+  it("returns false when the directive is not present in the CSP at all", () => {
+    // Neither connect-src nor script-src appear in this CSP — exercises the
+    // `if (!m) return false` branch.
+    expect(cspAllowsExternalConnections("default-src 'self'")).toBe(false);
+    expect(cspAllowsScriptHosts("default-src 'self'")).toBe(false);
+  });
 });

@@ -58,5 +58,6 @@ export type ValidationResult<T> = { ok: true; value: T } | { ok: false; reason: 
 export function validateIncomingMessage(raw: unknown): ValidationResult<ParserMessage> {
   const result = ParserMessageSchema.safeParse(raw);
   if (result.success) return { ok: true, value: result.data };
+  /* v8 ignore next -- zod always emits at least one issue with a message on failure */
   return { ok: false, reason: result.error.issues[0]?.message ?? "invalid message" };
 }

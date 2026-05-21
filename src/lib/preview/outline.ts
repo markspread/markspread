@@ -26,6 +26,7 @@ export function extractHeadings(md: string): Heading[] {
   let fenceMarker = "";
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
+    /* v8 ignore next -- i is bounded by lines.length, so lines[i] is always defined */
     if (raw === undefined) continue;
     const trimmed = raw.trim();
     if (inFence) {
@@ -39,6 +40,7 @@ export function extractHeadings(md: string): Heading[] {
     }
     const atx = ATX_RE.exec(raw);
     if (atx) {
+      /* v8 ignore next 2 -- ATX_RE has two mandatory capture groups, so atx[1]/atx[2] are always set */
       const depth = (atx[1] ?? "").length;
       const text = atx[2] ?? "";
       out.push({

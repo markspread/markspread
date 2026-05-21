@@ -227,6 +227,172 @@ describe("openWorkspaceFromDialog", () => {
     expect(msgs).toContain("workspace.read_only.notice");
   });
 
+  it("toasts an error when settings recovery itself fails", async () => {
+    openDialogMock.mockResolvedValueOnce("/ws");
+    invokeMock
+      .mockResolvedValueOnce({
+        root: "/ws",
+        already_existed: true,
+        settings_schema_version: 1,
+        current_schema_version: 2,
+        index_db_corrupt: false,
+        read_only: false,
+      })
+      .mockResolvedValueOnce(baseLayout)
+      .mockRejectedValueOnce(new Error("parse error"))
+      .mockRejectedValueOnce(new Error("recover boom"));
+    askMock.mockResolvedValueOnce(true);
+    const { openWorkspaceFromDialog } = await import("./open-workspace");
+    await openWorkspaceFromDialog();
+    const msgs = useToasts.getState().toasts.map((t) => t.message);
+    expect(msgs).toContain("workspace.settings.recover_failed");
+    expect(useWorkspace.getState().current).toBeNull();
+  });
+
+  it("toasts when the index quarantine call itself fails", async () => {
+    openDialogMock.mockResolvedValueOnce("/ws");
+    invokeMock
+      .mockResolvedValueOnce({
+        root: "/ws",
+        already_existed: true,
+        settings_schema_version: 1,
+        current_schema_version: 2,
+        index_db_corrupt: true,
+        read_only: false,
+      })
+      .mockResolvedValueOnce({ ...baseLayout, index_db_corrupt: true })
+      .mockResolvedValueOnce(true) // settings_check
+      .mockRejectedValueOnce(new Error("quarantine boom")) // workspace_index_quarantine
+      .mockResolvedValueOnce({ kind: "internal", case_preserving_only: false });
+    const { openWorkspaceFromDialog } = await import("./open-workspace");
+    await openWorkspaceFromDialog();
+    const msgs = useToasts.getState().toasts.map((t) => t.message);
+    expect(msgs).toContain("workspace.warn.index_corrupt");
+  });
+
+  it("toasts when the background index rebuild fails", async () => {
+    openDialogMock.mockResolvedValueOnce("/ws");
+    invokeMock
+      .mockResolvedValueOnce({
+        root: "/ws",
+        already_existed: true,
+        settings_schema_version: 1,
+        current_schema_version: 2,
+        index_db_corrupt: true,
+        read_only: false,
+      })
+      .mockResolvedValueOnce({ ...baseLayout, index_db_corrupt: true })
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce("/ws/.markspread/index.db.broken")
+      .mockRejectedValueOnce(new Error("rebuild boom")) // fs_index_rebuild
+      .mockResolvedValueOnce({ kind: "internal", case_preserving_only: false });
+    const { openWorkspaceFromDialog } = await import("./open-workspace");
+    await openWorkspaceFromDialog();
+    // The rebuild .catch is async; await one microtask flush.
+    await new Promise((r) => setTimeout(r, 0));
+    const msgs = useToasts.getState().toasts.map((t) => t.message);
+    expect(msgs).toContain("workspace.error.index_rebuild_failed");
+  });
+
+  it("notifies on a network drive workspace", async () => {
+    openDialogMock.mockResolvedValueOnce("/ws");
+    invokeMock
+      .mockResolvedValueOnce({
+        root: "/ws",
+        already_existed: true,
+        settings_schema_version: 1,
+        current_schema_version: 2,
+        index_db_corrupt: false,
+        read_only: false,
+      })
+      .mockResolvedValueOnce(baseLayout)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce({ kind: "network", case_preserving_only: false });
+    const { openWorkspaceFromDialog } = await import("./open-workspace");
+    await openWorkspaceFromDialog();
+    const msgs = useToasts.getState().toasts.map((t) => t.message);
+    expect(msgs).toContain("workspace.warn.network_drive");
+  });
+
+  it("presents an error when scaffold fails after inspect succeeded", async () => {
+    openDialogMock.mockResolvedValueOnce("/ws");
+    invokeMock
+      .mockResolvedValueOnce({
+        root: "/ws",
+        already_existed: true,
+        settings_schema_version: 1,
+        current_schema_version: 2,
+        index_db_corrupt: false,
+        read_only: false,
+      })
+      .mockRejectedValueOnce({ code: "EACCES", message: "scaffold denied" });
+    const { openWorkspaceFromDialog } = await import("./open-workspace");
+    expect(await openWorkspaceFromDialog()).toBeNull();
+    expect(messageMock).toHaveBeenCalled();
+  });
+
+  it("falls back to the default quarantine label when the backend returns an empty string", async () => {
+    openDialogMock.mockResolvedValueOnce("/ws");
+    invokeMock
+      .mockResolvedValueOnce({
+        root: "/ws",
+        already_existed: true,
+        settings_schema_version: 1,
+        current_schema_version: 2,
+        index_db_corrupt: true,
+        read_only: false,
+      })
+      .mockResolvedValueOnce({ ...baseLayout, index_db_corrupt: true })
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce("") // workspace_index_quarantine returns ""
+      .mockResolvedValueOnce(undefined) // fs_index_rebuild
+      .mockResolvedValueOnce({ kind: "internal", case_preserving_only: false });
+    const { openWorkspaceFromDialog } = await import("./open-workspace");
+    await openWorkspaceFromDialog();
+    const toast = useToasts
+      .getState()
+      .toasts.find((t) => t.message === "workspace.warn.index_corrupt");
+    expect(toast?.details).toBe("index.db");
+  });
+
+  it("absorbs a drive_classify failure without crashing the open flow", async () => {
+    openDialogMock.mockResolvedValueOnce("/ws");
+    invokeMock
+      .mockResolvedValueOnce({
+        root: "/ws",
+        already_existed: true,
+        settings_schema_version: 1,
+        current_schema_version: 2,
+        index_db_corrupt: false,
+        read_only: false,
+      })
+      .mockResolvedValueOnce(baseLayout)
+      .mockResolvedValueOnce(true)
+      .mockRejectedValueOnce(new Error("classify boom"));
+    const { openWorkspaceFromDialog } = await import("./open-workspace");
+    expect(await openWorkspaceFromDialog()).toBe("/ws");
+    expect(useWorkspace.getState().current).toBe("/ws");
+  });
+
+  it("absorbs a settings-recovery confirm dialog failure", async () => {
+    openDialogMock.mockResolvedValueOnce("/ws");
+    invokeMock
+      .mockResolvedValueOnce({
+        root: "/ws",
+        already_existed: true,
+        settings_schema_version: 1,
+        current_schema_version: 2,
+        index_db_corrupt: false,
+        read_only: false,
+      })
+      .mockResolvedValueOnce(baseLayout)
+      .mockRejectedValueOnce(new Error("parse error"));
+    askMock.mockRejectedValueOnce(new Error("dialog dismissed"));
+    const { openWorkspaceFromDialog } = await import("./open-workspace");
+    await openWorkspaceFromDialog();
+    expect(useWorkspace.getState().current).toBeNull();
+  });
+
   it("warns about a long workspace path", async () => {
     const longRoot = `/${"x".repeat(300)}`;
     openDialogMock.mockResolvedValueOnce(longRoot);

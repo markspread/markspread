@@ -69,6 +69,12 @@ describe("sanitizeHtml", () => {
     expect(out).toContain('src="./local.png"');
   });
 
+  it("leaves a src-less img untouched when blockRemoteImages is set", () => {
+    const out = sanitizeHtml("<img>", { blockRemoteImages: true });
+    expect(out).toContain("<img");
+    expect(out).not.toContain("data-blocked");
+  });
+
   it("keeps remote images when blockRemoteImages is unset", () => {
     const out = sanitizeHtml('<img src="https://cdn.example.com/a.png">');
     expect(out).toContain('src="https://cdn.example.com/a.png"');

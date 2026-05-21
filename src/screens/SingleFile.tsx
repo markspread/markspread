@@ -17,6 +17,7 @@ export function SingleFile() {
   const parent = parentDir(path);
 
   async function convertToWorkspace() {
+    /* v8 ignore next -- the component returns null above when !path, so this closure narrow only exists to satisfy TS */
     if (!path) return;
     await invoke("workspace_scaffold", { workspace: parent });
     useWorkspace.getState().open(parent);

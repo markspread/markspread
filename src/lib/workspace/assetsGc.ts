@@ -55,6 +55,7 @@ export async function findUnusedAssets(adapter: WorkspaceAssetsGcAdapter): Promi
     LINK_RE.lastIndex = 0;
     let linkM = LINK_RE.exec(text);
     while (linkM !== null) {
+      /* v8 ignore next -- LINK_RE's second capture group is non-optional, so linkM[2] is always defined */
       const norm = normalise(linkM[2] ?? "", dir);
       if (norm) referenced.add(norm);
       linkM = LINK_RE.exec(text);
@@ -62,6 +63,7 @@ export async function findUnusedAssets(adapter: WorkspaceAssetsGcAdapter): Promi
     REFDEF_RE.lastIndex = 0;
     let refM = REFDEF_RE.exec(text);
     while (refM !== null) {
+      /* v8 ignore next -- REFDEF_RE's capture group is non-optional, so refM[1] is always defined */
       const norm = normalise(refM[1] ?? "", dir);
       if (norm) referenced.add(norm);
       refM = REFDEF_RE.exec(text);

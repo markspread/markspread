@@ -137,23 +137,24 @@ export function createSubscriptionAuthFlow(opts: AuthFlowOptions): AuthFlowHandl
           }
         : { kind: "awaiting-user", verificationUrl: begin.verificationUrl };
     set(awaitingStage);
+    let resultStage: AuthStage;
     try {
       const completion = await opts.transport.awaitCompletion(begin.sessionId, abort.signal);
       set({ kind: "exchanging" });
       const parsed = parseCredential(completion.credential);
       if (!parsed.ok || parsed.credential.kind !== "subscription") {
         set({ kind: "error", error: makeError("invalid_token") });
-        return stage;
+      } else {
+        set({ kind: "success", credential: parsed.credential });
       }
-      set({ kind: "success", credential: parsed.credential });
-      return stage;
+      resultStage = stage;
     } catch (e) {
       set({ kind: "error", error: classifyRawError(e) });
-      return stage;
-    } finally {
-      activeSession = null;
-      abort = null;
+      resultStage = stage;
     }
+    activeSession = null;
+    abort = null;
+    return resultStage;
   }
 
   async function cancel(): Promise<void> {

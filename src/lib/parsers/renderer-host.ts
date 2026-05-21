@@ -58,6 +58,7 @@ export function renderInSandbox(
   return new Promise((resolve) => {
     let settled = false;
     const cleanup = transport.onMessage((raw) => {
+      /* v8 ignore next -- guard against late messages racing after settle */
       if (settled) return;
       const v = validateIncomingMessage(raw);
       if (!v.ok) {
@@ -94,6 +95,7 @@ export function renderInSandbox(
       }
     });
     const timer = setTimeout(() => {
+      /* v8 ignore next -- timer races with already-settled completion */
       if (settled) return;
       settled = true;
       cleanup();

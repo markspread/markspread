@@ -25,6 +25,7 @@ export interface FrontmatterParseResult {
 export function parseFrontmatter(doc: string): FrontmatterParseResult | null {
   const m = FENCE_RE.exec(doc);
   if (!m) return null;
+  /* v8 ignore next -- FENCE_RE's first capture group is non-optional, so m[1] is always defined */
   const yaml = m[1] ?? "";
   const matched = m[0];
   const fm = parseSimpleYaml(yaml);
@@ -66,12 +67,14 @@ function parseSimpleYaml(text: string): Record<string, unknown> {
       i++;
       continue;
     }
+    /* v8 ignore next 2 -- both capture groups of the kv regex are non-optional, so kv[1] / kv[2] are always defined */
     const key = (kv[1] ?? "").trim();
     const valueRaw = kv[2] ?? "";
     if (valueRaw.trim() === "") {
       // Could be a list or nested map starting on next line.
       const collected: unknown[] = [];
       let j = i + 1;
+      /* v8 ignore next 4 -- j < lines.length is checked, so lines[j] is always a string */
       while (j < lines.length && /^\s*-\s+/.test(lines[j] ?? "")) {
         collected.push(unquote((lines[j] ?? "").replace(/^\s*-\s+/, "")));
         j++;

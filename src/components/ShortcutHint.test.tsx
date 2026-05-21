@@ -42,4 +42,22 @@ describe("ShortcutHint", () => {
     const { container } = render(<ShortcutHint />);
     expect(container.firstChild).toBeNull();
   });
+
+  it("dismisses when the user opens the command palette via Cmd+/", () => {
+    vi.useFakeTimers();
+    render(<ShortcutHint />);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "/", metaKey: true }));
+    });
+    expect(useOnboarding.getState().shortcutHintDismissed).toBe(true);
+  });
+
+  it("ignores unrelated keydown events", () => {
+    vi.useFakeTimers();
+    render(<ShortcutHint />);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+    });
+    expect(useOnboarding.getState().shortcutHintDismissed).toBe(false);
+  });
 });

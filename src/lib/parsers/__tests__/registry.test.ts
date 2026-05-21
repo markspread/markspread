@@ -43,4 +43,11 @@ describe("host parser registry bootstrap", () => {
     const b = getParserRegistry();
     expect(a).toBe(b);
   });
+
+  it("the builtin markdown factory passes the source through as a markdown AST", () => {
+    const reg = getParserRegistry();
+    const m = reg.match({ path: "/notes.md" });
+    const parsed = m?.parser.factory({ path: "/notes.md", content: "# hi", encoding: "utf-8" });
+    expect(parsed).toEqual({ ast: { kind: "markdown", source: "# hi" } });
+  });
 });

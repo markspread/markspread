@@ -24,6 +24,11 @@ describe("NonTextViewer", () => {
     expect(screen.getByText("PDF preview is not yet supported.")).toBeTruthy();
   });
 
+  it("uses the raw path as the basename when there's no separator", () => {
+    render(<NonTextViewer path="standalone.png" kind="image" />);
+    expect(screen.getByRole("img").getAttribute("alt")).toBe("standalone.png");
+  });
+
   it("shows a binary placard and wires reveal/open actions", () => {
     render(<NonTextViewer path="/ws/blob.bin" kind="binary" />);
     expect(screen.getByText("This file is not a text document.")).toBeTruthy();

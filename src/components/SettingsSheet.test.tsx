@@ -69,4 +69,14 @@ describe("SettingsSheet", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(useSettingsSheet.getState().open).toBe(false);
   });
+
+  it("closes on backdrop click and stays open on inner content click", () => {
+    useSettingsSheet.setState({ open: true });
+    render(<SettingsSheet />);
+    fireEvent.click(screen.getByText("Settings"));
+    expect(useSettingsSheet.getState().open).toBe(true);
+    const backdrop = document.querySelector('[role="presentation"]') as HTMLElement;
+    fireEvent.click(backdrop);
+    expect(useSettingsSheet.getState().open).toBe(false);
+  });
 });

@@ -277,6 +277,7 @@ export function percentile(samples: readonly number[], p: number): number {
   const sorted = [...samples].sort((a, b) => a - b);
   const rank = Math.ceil((p / 100) * sorted.length);
   const idx = Math.min(sorted.length - 1, Math.max(0, rank - 1));
+  /* v8 ignore next -- idx is clamped to a valid array index above, so the indexed value is always defined */
   return sorted[idx] ?? Number.NaN;
 }
 

@@ -133,6 +133,7 @@ export function SpreadPane({ workspace, pane, documentPath, content }: SpreadPan
   // didn't originate from itself (handled inside scrollSync).
   useEffect(() => {
     const root = rootRef.current;
+    /* v8 ignore next -- rootRef is attached before effects run; this guards a future refactor where the section can be conditionally rendered */
     if (!root) return;
     const onScrollEvent = () => {
       const fraction =
@@ -147,6 +148,7 @@ export function SpreadPane({ workspace, pane, documentPath, content }: SpreadPan
 
   useEffect(() => {
     const root = rootRef.current;
+    /* v8 ignore next -- rootRef is attached before effects run; this guards a future refactor where the section can be conditionally rendered */
     if (!root) return;
     return onScroll((e) => {
       if (e.side === "preview") return;

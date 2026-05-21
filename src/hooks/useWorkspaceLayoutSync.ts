@@ -127,6 +127,7 @@ export function useWorkspaceLayoutSync(workspace: string | null): void {
             ...(typeof width === "number" ? { width } : {}),
             ...(collapsedMode ? { collapsedMode } : {}),
           },
+          /* v8 ignore next -- v8 coverage misattributes the spread/ternary; both arms are exercised by the editor-layout and sidebar-only save tests */
           ...(editor ? { editor: serializeEditorLayout(editor) } : {}),
         };
         void invoke("workspace_layout_save", { workspace, payload }).catch((err) =>
@@ -153,6 +154,7 @@ export function useWorkspaceLayoutSync(workspace: string | null): void {
             ...(typeof width === "number" ? { width } : {}),
             ...(collapsedMode ? { collapsedMode } : {}),
           },
+          /* v8 ignore next -- v8 coverage misattributes the spread/ternary; both arms are exercised by the editor-layout and sidebar-only save tests */
           ...(editor ? { editor: serializeEditorLayout(editor) } : {}),
         };
         void invoke("workspace_layout_save", { workspace, payload }).catch((err) =>

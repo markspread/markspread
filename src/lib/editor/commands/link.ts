@@ -44,6 +44,7 @@ export type LinkDialogResult = {
   title?: string;
 };
 
+/* v8 ignore next -- default opener is replaced by the host at boot before insertLink ever runs */
 let linkDialogOpener: (req: LinkDialogRequest) => void = () => {};
 export function setLinkDialogOpener(fn: (req: LinkDialogRequest) => void): void {
   linkDialogOpener = fn;

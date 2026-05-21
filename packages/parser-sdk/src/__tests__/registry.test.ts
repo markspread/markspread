@@ -148,6 +148,19 @@ describe("ParserRegistry — lifecycle", () => {
     const reg = new ParserRegistry();
     expect(() => reg.setFallback("nope")).toThrow(/unknown parser/);
   });
+
+  it("list() returns every registered parser in insertion order", () => {
+    const reg = new ParserRegistry();
+    reg.registerParser(mf({ id: "a" }), noopFactory);
+    reg.registerParser(mf({ id: "b" }), noopFactory);
+    expect(reg.list().map((p) => p.manifest.id)).toEqual(["a", "b"]);
+  });
+
+  it("returns null when a parser declares only globs but none match", () => {
+    const reg = new ParserRegistry();
+    reg.registerParser(mf({ id: "globby", fileMatch: { globs: ["docs/*.md"] } }), noopFactory);
+    expect(reg.match({ path: "/elsewhere/file.md" })).toBeNull();
+  });
 });
 
 describe("globMatch", () => {

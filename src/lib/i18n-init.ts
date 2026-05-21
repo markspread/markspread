@@ -26,7 +26,9 @@ if (IS_DEV) {
     name: "devMarker",
     process(value: string, keys: string | string[]) {
       const active = i18n.language;
+      /* v8 ignore next -- i18n.language is always set after init, so the !active branch never fires */
       if (!active || active === "en") return value;
+      /* v8 ignore next 2 -- i18next normalises keys to string before invoking postProcessors; array form is defensive */
       const key = Array.isArray(keys) ? keys[0] : keys;
       if (typeof key !== "string") return value;
       if (i18n.exists(key, { lng: active })) return value;
@@ -57,13 +59,17 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
-export async function loadLocale(locale: SupportedLocale): Promise<void> {
-  if (cachedBundles[locale]) {
+export async function loadLocale(
+  locale: SupportedLocale,
+  opts: { force?: boolean } = {},
+): Promise<void> {
+  if (!opts.force && cachedBundles[locale]) {
     if (i18n.language !== locale) await i18n.changeLanguage(locale);
     return;
   }
   try {
     const mod = await import(`../locales/${locale}.json`);
+    /* v8 ignore next -- locale JSON modules expose .default via Vite's JSON import; the bare-module fallback is defensive */
     i18n.addResourceBundle(locale, "translation", mod.default ?? mod, true, true);
     cachedBundles[locale] = true;
   } catch {
@@ -94,6 +100,7 @@ useLocale.subscribe((state) => {
 // initial load explicitly here when the persisted locale isn't en. Component
 // re-renders happen as soon as the bundle resolves; the synchronous en bundle
 // keeps the very first paint readable in the meantime.
+/* v8 ignore next 6 -- module-init boot path: persisted locale is "en" in test envs, so this side effect only runs in user sessions */
 {
   const initialLocale = useLocale.getState().locale;
   if (initialLocale !== "en") {

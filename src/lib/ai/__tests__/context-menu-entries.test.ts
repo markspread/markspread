@@ -1,7 +1,19 @@
 // S-AI-002: AI context-menu entries coverage.
 
 import { describe, expect, it, vi } from "vitest";
-import type { ActionContext } from "../actions";
+import type { ActionContext, AiAction } from "../actions";
+
+type RankFn = (actions: AiAction[], ctx: ActionContext) => AiAction[];
+let rankActionsImpl: RankFn | null = null;
+vi.mock("../actions", async () => {
+  const mod = await vi.importActual<typeof import("../actions")>("../actions");
+  return {
+    ...mod,
+    rankActions: (actions: AiAction[], ctx: ActionContext) =>
+      rankActionsImpl ? rankActionsImpl(actions, ctx) : mod.rankActions(actions, ctx),
+  };
+});
+
 import { aiContextMenuEntries } from "../context-menu-entries";
 
 const docCtx: ActionContext = { hasSelection: false, documentLength: 100, inCodeBlock: false };
@@ -71,5 +83,89 @@ describe("aiContextMenuEntries", () => {
       (e): e is Extract<typeof e, { id: string; disabled?: boolean }> => "id" in e,
     );
     expect(items.some((e) => e.id !== "ai:more")).toBe(true);
+  });
+
+  it("returns an empty list when no actions rank in (early-return branch)", () => {
+    // Force `rankActions` to return [] so the `top.length === 0` guard
+    // fires — the real catalog never produces this state, but the branch
+    // exists for plug-in/test isolation where ACTIONS may be filtered out.
+    rankActionsImpl = () => [];
+    try {
+      const entries = aiContextMenuEntries(docCtx, vi.fn(), vi.fn());
+      expect(entries).toEqual([]);
+    } finally {
+      rankActionsImpl = null;
+    }
+  });
+
+  it("marks selection-only actions disabled when no selection exists", () => {
+    // Cover the `requires === "selection" && !ctx.hasSelection` truthy
+    // branch — naturally unreachable because selection-only actions get
+    // ranked to the bottom and the top-3 slice never reaches them.
+    const selectionOnly: AiAction[] = [
+      {
+        id: "needs-sel",
+        category: "edit",
+        labelKey: "ai.actions.x",
+        requires: "selection",
+      },
+    ];
+    rankActionsImpl = () => selectionOnly;
+    try {
+      const entries = aiContextMenuEntries(docCtx, vi.fn(), vi.fn());
+      const action = entries.find(
+        (e): e is Extract<typeof e, { id: string; disabled?: boolean }> =>
+          "id" in e && e.id === "ai:needs-sel",
+      );
+      expect(action?.disabled).toBe(true);
+    } finally {
+      rankActionsImpl = null;
+    }
+  });
+
+  it("emits a shortcut field when an action declares a hint", () => {
+    // Cover the with-hint branch — the real ACTIONS catalog assigns
+    // `hint` to actions that never make the top-3 for any plausible ctx
+    // (e.g., `review` is anywhere-score and outranked by document-score
+    // outline/title/summarize), so coverage needs an explicit injection.
+    const hinted: AiAction[] = [
+      {
+        id: "with-hint",
+        category: "edit",
+        labelKey: "ai.actions.x",
+        requires: "anywhere",
+        hint: "⌘K",
+      },
+    ];
+    rankActionsImpl = () => hinted;
+    try {
+      const entries = aiContextMenuEntries(docCtx, vi.fn(), vi.fn());
+      const action = entries.find(
+        (e): e is Extract<typeof e, { id: string; shortcut?: string }> =>
+          "id" in e && e.id === "ai:with-hint",
+      );
+      expect(action?.shortcut).toBe("⌘K");
+    } finally {
+      rankActionsImpl = null;
+    }
+  });
+
+  it("omits the shortcut field when an action has no hint", () => {
+    // Cover the `action.hint !== undefined && { shortcut }` falsy branch
+    // by injecting a hint-less action set into rankActions.
+    const hintless: AiAction[] = [
+      { id: "no-hint", category: "edit", labelKey: "ai.actions.x", requires: "anywhere" },
+    ];
+    rankActionsImpl = () => hintless;
+    try {
+      const entries = aiContextMenuEntries(docCtx, vi.fn(), vi.fn());
+      const action = entries.find(
+        (e): e is Extract<typeof e, { id: string }> => "id" in e && e.id === "ai:no-hint",
+      );
+      expect(action).toBeDefined();
+      expect(action && "shortcut" in action).toBe(false);
+    } finally {
+      rankActionsImpl = null;
+    }
   });
 });

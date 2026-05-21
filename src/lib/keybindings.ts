@@ -31,6 +31,7 @@ interface ParsedBinding {
 
 function parseBinding(spec: string): ParsedBinding {
   const parts = spec.split("+").map((p) => p.trim());
+  /* v8 ignore next -- spec.split("+") always yields at least one element, so parts.pop() never returns undefined */
   const key = parts.pop() ?? "";
   const set = new Set(parts.map((p) => p.toLowerCase()));
   return {

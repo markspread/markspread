@@ -1,13 +1,19 @@
 // Unit tests for the small zustand stores: ai-palette, dialogs,
-// single-file, sidebar-peek, onboarding.
+// single-file, sidebar-peek, onboarding, plus the trivial wrappers
+// (settings-sheet / updater / recent-workspaces / workspace / theme).
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionContext } from "../lib/ai/actions";
 import { useAiPalette } from "../store/ai-palette";
 import { useDialogs } from "../store/dialogs";
 import { TOUR_STEPS, useOnboarding } from "../store/onboarding";
+import { useRecentWorkspaces } from "../store/recent-workspaces";
+import { useSettingsSheet } from "../store/settings-sheet";
 import { useSidebarPeek } from "../store/sidebar-peek";
 import { useSingleFile } from "../store/single-file";
+import { useUpdater } from "../store/updater";
+import { useWorkspace } from "../store/workspace";
+import { useWorkspaceSessions } from "../store/workspace-sessions";
 
 const EMPTY_CONTEXT: ActionContext = {
   hasSelection: false,
@@ -247,5 +253,126 @@ describe("onboarding store", () => {
   it("dismissShortcutHint sets the flag", () => {
     useOnboarding.getState().dismissShortcutHint();
     expect(useOnboarding.getState().shortcutHintDismissed).toBe(true);
+  });
+});
+
+describe("settings-sheet store", () => {
+  beforeEach(() => useSettingsSheet.setState({ open: false }));
+
+  it("show opens the sheet", () => {
+    useSettingsSheet.getState().show();
+    expect(useSettingsSheet.getState().open).toBe(true);
+  });
+
+  it("hide closes the sheet", () => {
+    useSettingsSheet.setState({ open: true });
+    useSettingsSheet.getState().hide();
+    expect(useSettingsSheet.getState().open).toBe(false);
+  });
+
+  it("toggle flips the open flag", () => {
+    useSettingsSheet.getState().toggle();
+    expect(useSettingsSheet.getState().open).toBe(true);
+    useSettingsSheet.getState().toggle();
+    expect(useSettingsSheet.getState().open).toBe(false);
+  });
+});
+
+describe("updater store", () => {
+  beforeEach(() => useUpdater.setState({ consent: "unset", firstRunPromptShown: false }));
+
+  it("setConsent records the choice and marks the prompt shown", () => {
+    useUpdater.getState().setConsent("allow");
+    expect(useUpdater.getState().consent).toBe("allow");
+    expect(useUpdater.getState().firstRunPromptShown).toBe(true);
+  });
+
+  it("markPromptShown flips just the prompt flag", () => {
+    useUpdater.getState().markPromptShown();
+    expect(useUpdater.getState().firstRunPromptShown).toBe(true);
+    expect(useUpdater.getState().consent).toBe("unset");
+  });
+});
+
+describe("workspace store", () => {
+  beforeEach(() => useWorkspace.setState({ current: null, readOnly: false }));
+
+  it("open sets the path and read-only flag", () => {
+    useWorkspace.getState().open("/ws", { readOnly: true });
+    expect(useWorkspace.getState().current).toBe("/ws");
+    expect(useWorkspace.getState().readOnly).toBe(true);
+  });
+
+  it("open defaults read-only to false when no opts are supplied", () => {
+    useWorkspace.getState().open("/ws");
+    expect(useWorkspace.getState().readOnly).toBe(false);
+  });
+
+  it("close resets the workspace", () => {
+    useWorkspace.setState({ current: "/ws", readOnly: true });
+    useWorkspace.getState().close();
+    expect(useWorkspace.getState().current).toBeNull();
+    expect(useWorkspace.getState().readOnly).toBe(false);
+  });
+
+  it("setReadOnly toggles the flag without disturbing the path", () => {
+    useWorkspace.setState({ current: "/ws", readOnly: false });
+    useWorkspace.getState().setReadOnly(true);
+    expect(useWorkspace.getState().readOnly).toBe(true);
+    expect(useWorkspace.getState().current).toBe("/ws");
+  });
+});
+
+describe("recent-workspaces store", () => {
+  beforeEach(() => useRecentWorkspaces.setState({ recent: [] }));
+
+  it("add prepends new entries and dedupes existing paths", () => {
+    useRecentWorkspaces.getState().add("/a");
+    useRecentWorkspaces.getState().add("/b");
+    useRecentWorkspaces.getState().add("/a");
+    const paths = useRecentWorkspaces.getState().recent.map((r) => r.path);
+    expect(paths).toEqual(["/a", "/b"]);
+  });
+
+  it("add caps the list at 20 entries", () => {
+    for (let i = 0; i < 25; i++) useRecentWorkspaces.getState().add(`/w${i}`);
+    expect(useRecentWorkspaces.getState().recent.length).toBe(20);
+  });
+
+  it("remove drops the matching entry", () => {
+    useRecentWorkspaces.getState().add("/a");
+    useRecentWorkspaces.getState().add("/b");
+    useRecentWorkspaces.getState().remove("/a");
+    expect(useRecentWorkspaces.getState().recent.map((r) => r.path)).toEqual(["/b"]);
+  });
+
+  it("clear empties the list", () => {
+    useRecentWorkspaces.getState().add("/a");
+    useRecentWorkspaces.getState().clear();
+    expect(useRecentWorkspaces.getState().recent).toEqual([]);
+  });
+});
+
+describe("workspace-sessions store", () => {
+  beforeEach(() => useWorkspaceSessions.setState({ sessions: {} }));
+
+  it("saveSession stores per-workspace state", () => {
+    useWorkspaceSessions.getState().saveSession("/ws", { tabs: [], activePath: null });
+    expect(useWorkspaceSessions.getState().sessions["/ws"]).toEqual({ tabs: [], activePath: null });
+  });
+
+  it("loadSession returns the saved session", () => {
+    useWorkspaceSessions.getState().saveSession("/ws", { tabs: [], activePath: "/a.md" });
+    expect(useWorkspaceSessions.getState().loadSession("/ws")?.activePath).toBe("/a.md");
+  });
+
+  it("loadSession returns null for an unknown workspace", () => {
+    expect(useWorkspaceSessions.getState().loadSession("/missing")).toBeNull();
+  });
+
+  it("clearSession removes the matching entry", () => {
+    useWorkspaceSessions.getState().saveSession("/ws", { tabs: [], activePath: null });
+    useWorkspaceSessions.getState().clearSession("/ws");
+    expect(useWorkspaceSessions.getState().sessions["/ws"]).toBeUndefined();
   });
 });

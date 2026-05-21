@@ -54,4 +54,23 @@ describe("EraseAllDialog", () => {
     fireEvent.submit(screen.getByText("Erase everything").closest("form") as HTMLFormElement);
     await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("boom"));
   });
+
+  it("stringifies non-Error rejections defensively", async () => {
+    eraseAllData.mockRejectedValue("string-failure");
+    render(<EraseAllDialog onClose={() => {}} onComplete={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText("MARKSPREAD ERASE"), {
+      target: { value: "MARKSPREAD ERASE" },
+    });
+    fireEvent.submit(screen.getByText("Erase everything").closest("form") as HTMLFormElement);
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("string-failure"));
+  });
+
+  it("does nothing when submit fires while the confirmation token is missing", () => {
+    eraseAllData.mockReset();
+    const onComplete = vi.fn();
+    render(<EraseAllDialog onClose={() => {}} onComplete={onComplete} />);
+    fireEvent.submit(screen.getByText("Erase everything").closest("form") as HTMLFormElement);
+    expect(eraseAllData).not.toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
 });

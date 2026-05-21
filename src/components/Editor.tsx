@@ -82,7 +82,9 @@ export function Editor({
     [t],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment near the dep array — initialDoc/placeholderText/extensions are intentionally elided (initial-only values; live edits are handled by separate effects below). tabId is listed so a tab swap re-mounts even if language stays the same.
   useEffect(() => {
+    /* v8 ignore next -- hostRef is attached before effects run; this guards a future refactor where the host can be conditionally rendered */
     if (!hostRef.current) return;
     const updateExt = EditorView.updateListener.of((u) => {
       if (u.docChanged && onChangeRef.current) {

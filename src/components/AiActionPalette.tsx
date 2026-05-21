@@ -43,6 +43,7 @@ export function AiActionPalette({ open, context, onClose, onInvoke }: AiActionPa
     if (open) inputRef.current?.focus();
   }, [open]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: query/open are listed to re-run this reset-on-change effect; Biome misclassifies them as outer scope because the body only calls a setter.
   useEffect(() => {
     setActive(0);
   }, [query, open]);

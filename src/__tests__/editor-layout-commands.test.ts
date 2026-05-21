@@ -225,6 +225,131 @@ describe("editor-layout commands", () => {
     expect(useEditorLayout.getState().layouts[WS]?.root).toBe(before);
   });
 
+  it("splitRight no-ops when the workspace has no layout yet", () => {
+    useWorkspace.setState({ current: WS, readOnly: false });
+    splitRightCommand();
+    expect(useEditorLayout.getState().layouts[WS]).toBeUndefined();
+  });
+
+  it("splitDown no-ops when the workspace has no layout yet", () => {
+    useWorkspace.setState({ current: WS, readOnly: false });
+    splitDownCommand();
+    expect(useEditorLayout.getState().layouts[WS]).toBeUndefined();
+  });
+
+  it("splitDown no-ops without a workspace", () => {
+    splitDownCommand();
+    expect(useEditorLayout.getState().layouts).toEqual({});
+  });
+
+  it("focusPane no-ops without a workspace", () => {
+    focusPaneCommand(1);
+    expect(useEditorLayout.getState().layouts).toEqual({});
+  });
+
+  it("focusPane no-ops when the workspace has no layout yet", () => {
+    useWorkspace.setState({ current: WS, readOnly: false });
+    focusPaneCommand(1);
+    expect(useEditorLayout.getState().layouts[WS]).toBeUndefined();
+  });
+
+  it("moveEditorToNextGroup no-ops without a workspace", () => {
+    moveEditorToNextGroupCommand();
+    expect(useEditorLayout.getState().layouts).toEqual({});
+  });
+
+  it("moveEditorToNextGroup no-ops when the workspace has no layout yet", () => {
+    useWorkspace.setState({ current: WS, readOnly: false });
+    moveEditorToNextGroupCommand();
+    expect(useEditorLayout.getState().layouts[WS]).toBeUndefined();
+  });
+
+  it("moveEditorToNextGroup no-ops when the active pane has no active tab", () => {
+    useWorkspace.setState({ current: WS, readOnly: false });
+    useEditorLayout.setState({
+      layouts: {
+        [WS]: {
+          schemaVersion: 1,
+          activePaneId: "p1",
+          root: {
+            type: "split",
+            id: "s",
+            direction: "horizontal",
+            sizes: [0.5, 0.5],
+            children: [
+              { type: "pane", id: "p1", tabs: [], activeTabId: null },
+              { type: "pane", id: "p2", tabs: [], activeTabId: null },
+            ],
+          },
+        },
+      },
+    });
+    const before = useEditorLayout.getState().layouts[WS]?.root;
+    moveEditorToNextGroupCommand();
+    expect(useEditorLayout.getState().layouts[WS]?.root).toBe(before);
+  });
+
+  it("closeActiveTab inside a split with leftover tabs rebuilds the split via replacePaneInLayout", () => {
+    useWorkspace.setState({ current: WS, readOnly: false });
+    useTabs.setState({
+      tabs: [
+        { path: "/a.md", position: POS },
+        { path: "/b.md", position: POS },
+      ],
+      activePath: "/a.md",
+    });
+    useEditorLayout.setState({
+      layouts: {
+        [WS]: {
+          schemaVersion: 1,
+          activePaneId: "p1",
+          root: {
+            type: "split",
+            id: "s",
+            direction: "horizontal",
+            sizes: [0.5, 0.5],
+            children: [
+              {
+                type: "pane",
+                id: "p1",
+                tabs: [
+                  { id: "t1", path: "/a.md", position: POS },
+                  { id: "t2", path: "/b.md", position: POS },
+                ],
+                activeTabId: "t1",
+              },
+              {
+                type: "pane",
+                id: "p2",
+                tabs: [{ id: "t3", path: "/c.md", position: POS }],
+                activeTabId: "t3",
+              },
+            ],
+          },
+        },
+      },
+    });
+    closeActiveTabCommand();
+    const layout = useEditorLayout.getState().layouts[WS];
+    if (!layout || layout.root.type !== "split") throw new Error("expected split root");
+    const p1 = findPane(layout.root, "p1");
+    if (!p1) throw new Error("expected p1");
+    expect(p1.tabs.map((t) => t.id)).toEqual(["t2"]);
+    expect(p1.activeTabId).toBe("t2");
+  });
+
+  it("closeActiveTab is a no-op when the active pane has no active tab", () => {
+    useWorkspace.setState({ current: WS, readOnly: false });
+    const initial = useEditorLayout.getState().ensureLayout(WS);
+    useEditorLayout.getState().setLayout(WS, {
+      ...initial,
+      root: { type: "pane", id: initial.root.id, tabs: [], activeTabId: null },
+    });
+    const before = useEditorLayout.getState().layouts[WS]?.root;
+    closeActiveTabCommand();
+    expect(useEditorLayout.getState().layouts[WS]?.root).toBe(before);
+  });
+
   it("closeActiveTab falls back to useTabs.close when no pane is active", () => {
     useTabs.setState({
       tabs: [{ path: "/legacy.md", position: POS }],

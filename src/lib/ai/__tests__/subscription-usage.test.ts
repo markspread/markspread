@@ -63,6 +63,38 @@ describe("parseUsageHeaders", () => {
     expect(snap.tokens).toBeUndefined();
     expect(snap.quarterly).toBeUndefined();
   });
+
+  it("falls through to key=val when a JSON-looking quota is malformed", () => {
+    const snap = parseUsageHeaders({
+      "x-claude-subscription-quota": "{broken; used=10; limit=20",
+    });
+    expect(snap.quarterly?.used).toBe(10);
+    expect(snap.quarterly?.limit).toBe(20);
+  });
+
+  it("returns no quarterly snapshot when the quota header is unparseable", () => {
+    const snap = parseUsageHeaders({
+      "x-claude-subscription-quota": "garbage with no key=val pairs",
+    });
+    expect(snap.quarterly).toBeUndefined();
+  });
+
+  it("drops non-numeric ratelimit headers rather than coercing them", () => {
+    const snap = parseUsageHeaders({
+      "anthropic-ratelimit-requests-limit": "abc",
+      "anthropic-ratelimit-requests-remaining": "10",
+    });
+    expect(snap.requests).toBeUndefined();
+  });
+
+  it("drops an unparseable reset timestamp", () => {
+    const snap = parseUsageHeaders({
+      "anthropic-ratelimit-tokens-limit": "100",
+      "anthropic-ratelimit-tokens-remaining": "50",
+      "anthropic-ratelimit-tokens-reset": "not-a-date",
+    });
+    expect(snap.tokens?.resetAt).toBeNull();
+  });
 });
 
 describe("quarterly limit signalling", () => {

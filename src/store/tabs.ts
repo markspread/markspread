@@ -146,6 +146,7 @@ export const useTabs = create<TabsState>()(
             ? tabs.map((t, i) => (i === fromIdx ? { ...t, pinned: toPinned } : t))
             : tabs;
         const [moved] = adjusted.splice(fromIdx, 1);
+        /* v8 ignore next -- fromIdx was validated as a tabs.findIndex result above (>= 0), so adjusted.splice(fromIdx, 1) always returns the moved element; the falsy guard is TS-defensive against array drift */
         if (!moved) return;
         const insertAt =
           fromIdx < toIdx ? (before ? toIdx - 1 : toIdx) : before ? toIdx : toIdx + 1;

@@ -29,6 +29,7 @@ export const useTheme = create<ThemeState>()(
     {
       name: "markspread.theme",
       onRehydrateStorage: () => (state) => {
+        /* v8 ignore next -- zustand always passes a defined state when rehydration runs */
         if (!state) return;
         const resolved = state.mode === "system" ? detectSystemTheme() : state.mode;
         state.resolved = resolved;
@@ -38,6 +39,7 @@ export const useTheme = create<ThemeState>()(
   ),
 );
 
+/* v8 ignore next -- the short-circuit on typeof window only fires in non-browser envs (Node SSR); jsdom always defines window */
 if (typeof window !== "undefined" && window.matchMedia) {
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   media.addEventListener("change", () => {
