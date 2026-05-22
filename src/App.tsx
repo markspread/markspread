@@ -15,11 +15,14 @@ import { ToastStack } from "./components/ToastStack";
 import { registerCliForwardedListener } from "./lib/cli-forwarded";
 import { registerDragDrop } from "./lib/dnd";
 import { useFontFamilyEffect } from "./lib/font-effect";
+import { currentHarnessMode } from "./lib/harness";
 import { registerKeybindings } from "./lib/keybindings";
 import { openSingleMdFromDialog } from "./lib/open-md-file";
 import { newWorkspaceFromDialog, openWorkspaceFromDialog } from "./lib/open-workspace";
 import { registerPollingNoticeListener } from "./lib/polling-notice";
 import { maybeStartUnmountWatch, registerUnmountListener, stopUnmountWatch } from "./lib/unmount";
+import { HarnessFirstLaunch } from "./screens/HarnessFirstLaunch";
+import { HarnessWorkspace } from "./screens/HarnessWorkspace";
 import { Main } from "./screens/Main";
 import { SingleFile } from "./screens/SingleFile";
 import { Welcome } from "./screens/Welcome";
@@ -30,7 +33,26 @@ import { useSingleFile } from "./store/single-file";
 import { useTabs } from "./store/tabs";
 import { useWorkspace } from "./store/workspace";
 
+// S-TST-008/009: e2e harness short-circuit. When the page URL carries
+// `?harness=<mode>` (browser-only — Tauri prod never sets it) we mount
+// a fixture renderer instead of the real shell so the renderer specs
+// can drive scripted flows without IPC.
 function App() {
+  const harness = currentHarnessMode();
+  if (harness !== null) return <HarnessApp mode={harness} />;
+  return <RealApp />;
+}
+
+function HarnessApp({ mode }: { mode: NonNullable<ReturnType<typeof currentHarnessMode>> }) {
+  if (mode === "fresh-install") return <HarnessFirstLaunch />;
+  if (mode === "returning-user") return <div data-testid="workspace-shell">Workspace.</div>;
+  if (mode === "empty-home" || mode === "workspace-with-links" || mode === "workspace-with-content")
+    return <HarnessWorkspace mode={mode} />;
+  // ai-mock, plugin-lifecycle, updater modes — fall through for now.
+  return <div data-testid="workspace-shell">Harness {mode}.</div>;
+}
+
+function RealApp() {
   const current = useWorkspace((s) => s.current);
   const singleFilePath = useSingleFile((s) => s.path);
   const aiPaletteOpen = useAiPalette((s) => s.open);

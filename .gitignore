@@ -36,3 +36,9 @@ coverage/
 
 # Tooling scratch
 .playwright-mcp/
+playwright-report/
+test-results/
+
+# Vite local-tsc artefacts
+vite.config.js
+vite.config.d.ts
