@@ -387,11 +387,7 @@ export function HarnessWorkspace({ mode }: { mode: HarnessMode }) {
         >
           <label>
             New name
-            <input
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              autoFocus
-            />
+            <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus />
           </label>
           <label>
             <input
