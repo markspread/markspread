@@ -131,6 +131,9 @@ jobs:
         with: { node-version: 20 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
+      # The renderer project starts `vite preview`, which serves `dist/` —
+      # build it before running the specs.
+      - run: pnpm vite:build
       - run: pnpm exec playwright test --project=renderer --grep "visual:"
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -148,4 +151,7 @@ jobs:
         with: { node-version: 20 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
+      # The renderer project starts `vite preview`, which serves `dist/` —
+      # build it before running the specs.
+      - run: pnpm vite:build
       - run: pnpm exec playwright test --project=renderer --grep "a11y:"

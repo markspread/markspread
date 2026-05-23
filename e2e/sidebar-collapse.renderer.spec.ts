@@ -57,13 +57,13 @@ test("Mod+B toggles the sidebar 5× without drift", async ({ page }) => {
   // Establish a known starting state (visible) regardless of any
   // previously-persisted value the runner picked up.
   if (await sidebarHidden(page)) {
-    await page.keyboard.press("Meta+B");
+    await page.keyboard.press("ControlOrMeta+B");
     await expect(aside).toHaveAttribute("aria-hidden", "false");
   }
 
   let expected = true; // first press hides
   for (let i = 0; i < 5; i += 1) {
-    await page.keyboard.press("Meta+B");
+    await page.keyboard.press("ControlOrMeta+B");
     await expect(aside).toHaveAttribute("aria-hidden", String(expected));
     expected = !expected;
   }
@@ -95,7 +95,7 @@ test("two workspaces keep independent collapsed state", async ({ page }) => {
   await openWorkspace(page, WS_A);
   // Hide A.
   if (!(await sidebarHidden(page))) {
-    await page.keyboard.press("Meta+B");
+    await page.keyboard.press("ControlOrMeta+B");
   }
   await expect(page.locator("aside[data-sidebar-aside]")).toHaveAttribute("aria-hidden", "true");
 

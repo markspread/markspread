@@ -58,6 +58,12 @@ jobs:
           # `--skip-git` was removed in osv-scanner v2 (the action's flag
           # parser rejects it). Recursive directory scan implicitly skips
           # git history, so the flag is no longer needed.
+          # --config: loads the policy allowlist (unmaintained GTK 3
+          # transitives from Tauri 2, dev-only vitest/jsdom mediums)
+          # documented in osv-scanner.toml at the repo root. Matches the
+          # "block critical/high only, medium/low ride the renovate
+          # sweep" policy stated above.
           scan-args: |
+            --config=osv-scanner.toml
             --recursive
             ./

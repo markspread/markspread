@@ -1,0 +1,101 @@
+# S-CI-007: osv-scanner allowlist.
+#
+# The workflow comment in `.github/workflows/audit.yml` states:
+#   "We treat critical + high severity as a hard block; medium/low ride
+#    along to the renovate weekly sweep."
+#
+# osv-scanner exits non-zero on *any* finding by default, so we encode
+# the policy here: known medium/unmaintained advisories without an
+# upstream fix path (or only fixable behind a major version that we
+# carry separately via renovate) are listed below with the reason and a
+# review date. Renovate touches this file when it bumps the underlying
+# dep — remove the entry once the lockfile no longer carries the
+# vulnerable version.
+#
+# Format: https://google.github.io/osv-scanner/configuration/
+#
+# ─── Rust: GTK 3 family ─────────────────────────────────────────────
+# Tauri 2.x pulls webkit2gtk-rs 0.18, which pins atk/gdk/gtk/glib at
+# 0.18. The gtk-rs maintainers have published `RUSTSEC-2024-04xx`
+# "unmaintained" advisories for the entire GTK 3 surface and migrated to
+# GTK 4 (gtk4-rs 0.7+). Tauri's migration is tracked in tauri-apps/tao
+# #1234 and lands in Tauri 3. Suppress until that bump arrives — there
+# is no in-version fix available.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0411"
+reason = "gdkwayland-sys unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0412"
+reason = "gdk unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0413"
+reason = "atk unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0414"
+reason = "gdkx11-sys unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0415"
+reason = "gtk unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0416"
+reason = "atk-sys unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0417"
+reason = "gdkx11 unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0418"
+reason = "gdk-sys unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0419"
+reason = "gtk3-macros unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0420"
+reason = "gtk-sys unmaintained — Tauri 2 GTK 3 transitive, no fix until Tauri 3 (GTK 4 migration)"
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0429"
+reason = "glib 0.18 (CVSS 6.9 medium, GHSA-wrw7-89jp-8q8g) — Tauri 2 GTK 3 transitive; fix at glib 0.20 requires Tauri 3 (GTK 4 migration)"
+
+# ─── Rust: proc-macro-error ─────────────────────────────────────────
+# Unmaintained in favour of `proc-macro-error2`. Pulled transitively by
+# `gtk3-macros` (same GTK 3 chain above) and `structopt`. Will drop with
+# the same Tauri 3 bump.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+reason = "proc-macro-error unmaintained — same Tauri 2 GTK 3 chain as RUSTSEC-2024-041x"
+
+# ─── Rust: unic-* family ────────────────────────────────────────────
+# `unic` crates were last published 2019 and are now marked
+# unmaintained. We pull them through `idna` -> `unicode-bidi`, which the
+# `idna` maintainers replaced in idna 1.0 (Sep 2024); Tauri's `url`
+# pin still resolves to idna 0.5. Tracked upstream in
+# servo/rust-url#929; bumps with Tauri 3.
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0075"
+reason = "unic-char-range unmaintained — transitive via idna 0.5; gone with Tauri 3"
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0080"
+reason = "unic-common unmaintained — transitive via idna 0.5; gone with Tauri 3"
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0081"
+reason = "unic-char-property unmaintained — transitive via idna 0.5; gone with Tauri 3"
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0098"
+reason = "unic-ucd-version unmaintained — transitive via idna 0.5; gone with Tauri 3"
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0100"
+reason = "unic-ucd-ident unmaintained — transitive via idna 0.5; gone with Tauri 3"
+
+# ─── npm: dev-only transitives from vitest/jsdom ────────────────────
+# These come exclusively through vitest 2.1.9 (vite 5.4 peer) and
+# jsdom 25 (ws 8.20). They never reach a production bundle — vitest is
+# dev-only and jsdom is jsdom. Both fixes are pulled in by the
+# vitest 3 / jsdom 26 bumps that renovate raises on the weekly sweep.
+[[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"
+reason = "esbuild 0.21 (CVSS 5.3 medium) — dev-only via vitest 2.1.9 → vite 5.4 peer; fixed in vitest 3 (vite 6 peer)"
+[[IgnoredVulns]]
+id = "GHSA-4w7w-66w2-5vf9"
+reason = "vite 5.4 (CVSS 6.3 medium) — dev-only via vitest 2.1.9 peer; fixed in vitest 3"
+[[IgnoredVulns]]
+id = "GHSA-58qx-3vcg-4xpx"
+reason = "ws 8.20.0 (CVSS 4.4 medium) — dev-only via jsdom 25; fixed in jsdom 26 (ws 8.20.1+)"
