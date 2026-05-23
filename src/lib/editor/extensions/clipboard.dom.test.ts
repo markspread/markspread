@@ -117,9 +117,10 @@ describe("paste handler", () => {
     const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" });
     const ev = makeClipboardEvent([{ kind: "file", type: "image/png", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
-    expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "png");
-    expect(view.state.doc.toString()).toContain("![](assets/abc.png)");
+    await vi.waitFor(() => {
+      expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "png");
+      expect(view.state.doc.toString()).toContain("![](assets/abc.png)");
+    });
   });
 
   it("image paste without workspaceFs returns false", () => {
@@ -144,8 +145,7 @@ describe("paste handler", () => {
     const blob = new Blob([new Uint8Array([1])], { type: "image/jpeg" });
     const ev = makeClipboardEvent([{ kind: "file", type: "image/jpeg", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
-    expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "jpg");
+    await vi.waitFor(() => expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "jpg"));
   });
 
   it("converts svg+xml mime to svg extension", async () => {
@@ -155,8 +155,7 @@ describe("paste handler", () => {
     const blob = new Blob([new Uint8Array([1])], { type: "image/svg+xml" });
     const ev = makeClipboardEvent([{ kind: "file", type: "image/svg+xml", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
-    expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "svg");
+    await vi.waitFor(() => expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "svg"));
   });
 
   it("falls back to 'bin' when mime sub is empty/missing", async () => {
@@ -169,8 +168,7 @@ describe("paste handler", () => {
     // Force the items predicate to pass: use a custom-typed item with image/ prefix.
     const ev = makeClipboardEvent([{ kind: "file", type: "image/png", blob }]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
-    expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "bin");
+    await vi.waitFor(() => expect(saveAsset).toHaveBeenCalledWith(expect.any(Uint8Array), "bin"));
   });
 
   it("converts real-looking HTML to markdown", () => {
@@ -257,8 +255,7 @@ describe("drop handler", () => {
     const f = makeTextFile("FROM-DROP", "n.md", "text/markdown");
     const ev = makeDragEvent([f]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
-    expect(view.state.doc.toString()).toBe("FROM-DROPseed\n");
+    await vi.waitFor(() => expect(view.state.doc.toString()).toBe("FROM-DROPseed\n"));
   });
 
   it("inserts dropped text at the coords-derived position when posAtCoords returns it", async () => {
@@ -267,8 +264,7 @@ describe("drop handler", () => {
     const f = makeTextFile("YY", "n.txt", "text/plain");
     const ev = makeDragEvent([f], { x: 5, y: 5 });
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
-    expect(view.state.doc.toString()).toBe("xYYx\n");
+    await vi.waitFor(() => expect(view.state.doc.toString()).toBe("xYYx\n"));
   });
 
   it("drops an image when workspaceFs is set", async () => {
@@ -278,7 +274,6 @@ describe("drop handler", () => {
     const f = new File([new Uint8Array([1, 2, 3])], "p.png", { type: "image/png" });
     const ev = makeDragEvent([f]);
     view.contentDOM.dispatchEvent(ev);
-    await new Promise((r) => setTimeout(r, 30));
-    expect(view.state.doc.toString()).toContain("![](assets/y.png)");
+    await vi.waitFor(() => expect(view.state.doc.toString()).toContain("![](assets/y.png)"));
   });
 });

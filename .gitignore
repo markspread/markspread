@@ -39,6 +39,10 @@ coverage/
 playwright-report/
 test-results/
 
+# Build artefacts emitted by perf / bundle probes
+perf-stats.jsonl
+bundle-treemap.html
+
 # Vite local-tsc artefacts
 vite.config.js
 vite.config.d.ts

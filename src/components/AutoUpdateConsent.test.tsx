@@ -21,10 +21,21 @@ afterEach(cleanup);
 describe("AutoUpdateConsent", () => {
   beforeEach(() => {
     invokeMock.mockReset();
+    (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
     useUpdater.setState({ consent: "unset", firstRunPromptShown: false });
   });
   afterEach(() => {
+    // biome-ignore lint/performance/noDelete: test cleanup of injected global.
+    delete (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
     useUpdater.setState({ consent: "unset", firstRunPromptShown: false });
+  });
+
+  it("renders nothing outside the tauri runtime", () => {
+    // biome-ignore lint/performance/noDelete: test cleanup of injected global.
+    delete (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+    invokeMock.mockResolvedValue(false);
+    const { container } = render(<AutoUpdateConsent />);
+    expect(container.firstChild).toBeNull();
   });
 
   it("renders nothing while portable status is unknown", () => {

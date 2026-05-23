@@ -90,7 +90,13 @@ jobs:
         # which would otherwise demand TAURI_SIGNING_PRIVATE_KEY).
         run: pnpm tauri build --debug --no-bundle
       - name: Tauri shell specs
-        run: pnpm exec playwright test --project=tauri
+        shell: bash
+        run: |
+          if compgen -G "e2e/*.tauri.spec.ts" > /dev/null; then
+            pnpm exec playwright test --project=tauri
+          else
+            echo "No *.tauri.spec.ts files yet — skipping tauri-driver run."
+          fi
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

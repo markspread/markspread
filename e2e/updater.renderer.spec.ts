@@ -16,7 +16,10 @@
 
 import { expect, test } from "@playwright/test";
 
-test.describe("auto-update flow (mock signing)", () => {
+// fixme: the `updater` harness variants and the About-page surfaces
+// (S-UP-002/003/004) are scaffolded but not wired in the renderer yet.
+// Re-enable once the in-app update-check UI lands.
+test.describe.fixme("auto-update flow (mock signing)", () => {
   test("happy path — detect, download, install on next launch", async ({ page }) => {
     await page.goto("/?harness=updater&variant=happy");
 

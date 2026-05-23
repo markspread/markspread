@@ -292,6 +292,7 @@ export function HarnessWorkspace({ mode }: { mode: HarnessMode }) {
           <div style={{ flex: 1 }}>
             <textarea
               data-testid="editor-surface"
+              aria-label="editor"
               value={editorContent}
               onChange={onEditorChange}
               style={{ width: "100%", minHeight: 200 }}

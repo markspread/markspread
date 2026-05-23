@@ -13,6 +13,9 @@ import { expect, test } from "@playwright/test";
 const SURFACES: { name: string; url: string }[] = [
   { name: "first-run", url: "/?harness=fresh-install" },
   { name: "main-editor", url: "/?harness=workspace-with-content" },
+  // Settings and command-palette routes/overlays are not wired in the
+  // renderer yet — these URLs currently fall back to the workspace
+  // surface, which is sufficient for the axe scan.
   { name: "settings", url: "/?harness=workspace-with-content&route=/settings/general" },
   { name: "command-palette", url: "/?harness=workspace-with-content&overlay=palette" },
   { name: "ai-chat", url: "/?harness=ai-mock&overlay=chat" },

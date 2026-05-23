@@ -99,6 +99,15 @@ async function main() {
   console.log(`probe binary: ${bin}`);
 
   writeFileSync(report, "");
+
+  // Untimed warmup: primes dyld / page caches so subsequent samples
+  // represent a second-launch user experience instead of paying
+  // first-after-build I/O on every CI run. Cold-cold launch variance
+  // (2x slower on shared runners) dominates p95 from only `runs`
+  // samples and obscures real regressions.
+  const warmup = await measureOnce(bin);
+  console.log(`  warmup (discarded): ${warmup}ms`);
+
   const samples = [];
   for (let i = 1; i <= runs; i++) {
     const ms = await measureOnce(bin);

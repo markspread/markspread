@@ -60,6 +60,9 @@ vi.mock("./components/InsertTableDialog", () => ({ InsertTableDialog: () => null
 vi.mock("./components/LinkDialog", () => ({ LinkDialog: () => null }));
 vi.mock("./components/TelemetryConsent", () => ({ TelemetryConsent: () => null }));
 vi.mock("./components/ToastStack", () => ({ ToastStack: () => null }));
+vi.mock("./screens/HarnessRoot", () => ({
+  HarnessRoot: ({ mode }: { mode: string }) => <div data-testid="harness" data-mode={mode} />,
+}));
 
 import App from "./App";
 import { useRecentWorkspaces } from "./store/recent-workspaces";
@@ -114,7 +117,18 @@ describe("App", () => {
     useTabs.setState({ activePath: "/ws/notes/a.md" } as never, false);
     useWorkspace.setState({ current: "/ws" });
     render(<App />);
-    // Mocked ExportDialog ignores the prop — exercising the ternary suffices.
     expect(useTabs.getState().activePath).toBe("/ws/notes/a.md");
+  });
+
+  it("mounts the harness root when ?harness=<mode> is present", () => {
+    const original = window.location.href;
+    window.history.replaceState({}, "", "?harness=returning-user");
+    try {
+      const { getByTestId } = render(<App />);
+      const el = getByTestId("harness");
+      expect(el.getAttribute("data-mode")).toBe("returning-user");
+    } finally {
+      window.history.replaceState({}, "", original);
+    }
   });
 });

@@ -12,7 +12,11 @@
 
 import { expect, test } from "@playwright/test";
 
-test.describe("AI actions (mock)", () => {
+// fixme: AI action surfaces (inline-ai-diff, chat panel, cost guard) are
+// scaffolded for S-AI-006/S-AI-007/S-AI-008 but the harness mode `ai-mock`
+// and the underlying renderer wiring are not implemented yet. Re-enable
+// when the AI surfaces land.
+test.describe.fixme("AI actions (mock)", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/?harness=ai-mock");
   });

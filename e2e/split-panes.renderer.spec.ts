@@ -97,8 +97,7 @@ test("scenario 1: split right, open a different file, edit both, autosave dirty 
       dc.setBaseline(ws, "/a.md", { content: "alpha", encoding: "utf-8" });
       const rightId = el.splitPane(ws, leftId, "horizontal", "after");
       if (!rightId) throw new Error("expected split pane id");
-      const after = el.getState ? null : null;
-      const layout = el.layouts[ws];
+      const layout = dev.editorLayout.getState().layouts[ws];
       if (!layout) throw new Error("expected layout for workspace");
       el.setLayout(ws, {
         ...layout,
@@ -124,7 +123,6 @@ test("scenario 1: split right, open a different file, edit both, autosave dirty 
         bDirty: dc.getLive(ws, "/b.md") !== dc.getBaseline(ws, "/b.md")?.content,
         leftId,
         rightId,
-        _after: after,
       };
     },
     { ws: WS, pos: POS },

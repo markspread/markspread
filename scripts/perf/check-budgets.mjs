@@ -13,10 +13,15 @@
 
 import { readFileSync } from "node:fs";
 
+// Samples come from `cold-start-probe.mjs` after an untimed warmup, so
+// each one represents a second-launch user experience (caches primed).
+// Budgets stay tight enough to flag real regressions; the debug binary
+// runs ~2× the release bundle so these are looser than the release
+// budgets in perf-cold-start.yml.
 const DEFAULT_BUDGETS = {
-  darwin: { p50: 1200, p95: 1800 },
-  linux: { p50: 1500, p95: 2200 },
-  win32: { p50: 2000, p95: 2800 },
+  darwin: { p50: 800, p95: 1200 },
+  linux: { p50: 1000, p95: 1500 },
+  win32: { p50: 1500, p95: 2200 },
 };
 
 const reportPath = process.argv[2];

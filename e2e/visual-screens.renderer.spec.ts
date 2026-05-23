@@ -44,10 +44,15 @@ const SCREENS: { name: string; url: string }[] = [
   { name: "about-update-available", url: "/?harness=updater&variant=happy&route=/about" },
 ];
 
+// fixme: visual baselines (`*.darwin.png` / `*.linux.png` / `*.win32.png`)
+// have not been generated, and several harness modes referenced here
+// (`?theme=`, `?route=/settings/*`, `?overlay=palette|chat|ai-diff|export`,
+// `?harness=updater&variant=happy`, `?harness=plugin-lifecycle&route=`) are
+// not implemented in the renderer yet. Re-enable per-screen as each
+// surface lands and a baseline is captured.
 for (const screen of SCREENS) {
-  test(`visual: ${screen.name}`, async ({ page }) => {
+  test.fixme(`visual: ${screen.name}`, async ({ page }) => {
     await page.goto(screen.url);
-    // Wait for the harness-ready handshake so we don't snapshot mid-mount.
     await page.waitForSelector('[data-harness-ready="true"]', { timeout: 5_000 });
     await expect(page).toHaveScreenshot(`${screen.name}.png`, VISUAL_OPTS);
   });

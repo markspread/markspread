@@ -48,6 +48,9 @@ export default defineConfig({
         "src/vite-env.d.ts",
         // Type-only modules: declarations / interfaces / enums-as-types.
         "src/**/types.ts",
+        // E2E harness fixtures — exercised by playwright, not vitest.
+        "src/lib/harness.ts",
+        "src/screens/Harness*.tsx",
         "packages/*/src/**/*.{test,spec}.{ts,tsx}",
       ],
       thresholds: {

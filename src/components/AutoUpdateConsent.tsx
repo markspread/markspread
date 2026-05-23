@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../lib/focus-trap";
+import { isTauriRuntime } from "../lib/runtime";
 import { useUpdater } from "../store/updater";
 
 export function AutoUpdateConsent() {
@@ -12,6 +13,7 @@ export function AutoUpdateConsent() {
   const [portable, setPortable] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     invoke<boolean>("portable_is_active")
       .then(setPortable)
       .catch(() => setPortable(false));
@@ -21,13 +23,18 @@ export function AutoUpdateConsent() {
     if (portable === true && consent === "unset") setConsent("deny");
   }, [portable, consent, setConsent]);
 
-  const open = !promptShown && consent === "unset" && portable !== null && portable !== true;
+  const open =
+    isTauriRuntime() &&
+    !promptShown &&
+    consent === "unset" &&
+    portable !== null &&
+    portable !== true;
   const trapRef = useFocusTrap<HTMLDivElement>({
     active: open,
     onEscape: () => setConsent("deny"),
   });
 
-  if (promptShown || consent !== "unset" || portable === null || portable === true) return null;
+  if (!open) return null;
 
   return (
     <div

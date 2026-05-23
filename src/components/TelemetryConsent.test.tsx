@@ -8,8 +8,20 @@ afterEach(cleanup);
 
 describe("TelemetryConsent", () => {
   beforeEach(() => {
+    (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
     useTelemetry.setState({ consent: "unset", firstRunPromptShown: false });
     useUpdater.setState({ consent: "allow", firstRunPromptShown: true });
+  });
+  afterEach(() => {
+    // biome-ignore lint/performance/noDelete: test cleanup of injected global.
+    delete (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+  });
+
+  it("renders nothing outside the tauri runtime", () => {
+    // biome-ignore lint/performance/noDelete: test cleanup of injected global.
+    delete (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+    const { container } = render(<TelemetryConsent />);
+    expect(container.firstChild).toBeNull();
   });
 
   it("renders when the updater prompt is resolved and consent is unset", () => {

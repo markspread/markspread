@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../lib/focus-trap";
+import { isTauriRuntime } from "../lib/runtime";
 import { useTelemetry } from "../store/telemetry";
 import { useUpdater } from "../store/updater";
 
@@ -24,7 +25,7 @@ export function TelemetryConsent() {
   // stack on top of each other.
   const updaterPromptShown = useUpdater((s) => s.firstRunPromptShown);
 
-  const open = !promptShown && consent === "unset" && updaterPromptShown;
+  const open = isTauriRuntime() && !promptShown && consent === "unset" && updaterPromptShown;
   // Esc dismisses with the conservative "disabled" choice — we never want to
   // imply opt-in via keyboard accident.
   const trapRef = useFocusTrap<HTMLDivElement>({
