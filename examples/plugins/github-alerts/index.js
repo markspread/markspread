@@ -33,12 +33,7 @@ function renderAlert(kind, body) {
   }
   return {
     kind: "html",
-    html:
-      `<div class="ms-alert ms-alert-${kind}" data-testid="ms-alert-${kind}" ` +
-      `style="border-left: 4px solid ${meta.color}; padding: 8px 12px; margin: 8px 0; background: ${meta.color}11;">` +
-      `<strong style="color: ${meta.color};">${meta.label}</strong>` +
-      `<div>${escapeHtml(body).replace(/\n/g, "<br>")}</div>` +
-      `</div>`,
+    html: `<div class="ms-alert ms-alert-${kind}" data-testid="ms-alert-${kind}" style="border-left: 4px solid ${meta.color}; padding: 8px 12px; margin: 8px 0; background: ${meta.color}11;"><strong style="color: ${meta.color};">${meta.label}</strong><div>${escapeHtml(body).replace(/\n/g, "<br>")}</div></div>`,
   };
 }
 

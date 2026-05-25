@@ -19,7 +19,7 @@ import { createInterface } from "node:readline";
 const rl = createInterface({ input: process.stdin });
 
 function send(obj) {
-  process.stdout.write(JSON.stringify(obj) + "\n");
+  process.stdout.write(`${JSON.stringify(obj)}\n`);
 }
 
 rl.on("line", (line) => {
