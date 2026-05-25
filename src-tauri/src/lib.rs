@@ -1,4 +1,5 @@
 mod access_policy;
+mod acp;
 mod ai_auth;
 mod ai_keys;
 mod backup;
@@ -148,6 +149,11 @@ pub fn run() {
             ai_auth::ai_auth_cancel,
             ai_auth::ai_keys_get_subscription,
             ai_auth::ai_auth_refresh_subscription,
+            acp::acp_list_agents,
+            acp::acp_start_session,
+            acp::acp_send_message,
+            acp::acp_approve_tool,
+            acp::acp_cancel,
             ai_keys::ai_key_list,
             ai_keys::ai_key_save,
             ai_keys::ai_key_remove,
