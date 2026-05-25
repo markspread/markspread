@@ -11,6 +11,7 @@ const VALID_MODES = [
   "workspace-with-links",
   "ai-mock",
   "plugin-lifecycle",
+  "plugin-host",
   "updater",
 ] as const;
 

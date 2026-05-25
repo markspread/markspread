@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { HarnessMode } from "../lib/harness";
 import { HarnessFirstLaunch } from "./HarnessFirstLaunch";
+import { HarnessPluginHost } from "./HarnessPluginHost";
 import { HarnessWorkspace } from "./HarnessWorkspace";
 
 export function HarnessRoot({ mode }: { mode: HarnessMode }) {
@@ -21,5 +22,6 @@ function HarnessContent({ mode }: { mode: HarnessMode }) {
   if (mode === "returning-user") return <div data-testid="workspace-shell">Workspace.</div>;
   if (mode === "empty-home" || mode === "workspace-with-links" || mode === "workspace-with-content")
     return <HarnessWorkspace mode={mode} />;
+  if (mode === "plugin-host") return <HarnessPluginHost />;
   return <div data-testid="workspace-shell">Harness {mode}.</div>;
 }

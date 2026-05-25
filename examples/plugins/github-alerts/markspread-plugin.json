@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "github-alerts",
+  "version": "0.1.0",
+  "entry": "./index.js",
+  "displayName": "GitHub-style alerts",
+  "description": "Render :::note, :::warning, :::tip blocks as styled callouts.",
+  "permissions": [],
+  "allowedHosts": [],
+  "contributes": {
+    "fences": [
+      { "name": "note", "render": "html" },
+      { "name": "warning", "render": "html" },
+      { "name": "tip", "render": "html" }
+    ]
+  },
+  "render": "html",
+  "engines": { "markspread": ">=1.3.0" }
+}

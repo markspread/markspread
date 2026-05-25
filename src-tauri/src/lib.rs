@@ -14,6 +14,7 @@ mod misc;
 mod ops;
 mod os_integration;
 mod path_norm;
+mod plugin_runtime;
 mod plugins;
 mod portable;
 mod search;
@@ -192,6 +193,9 @@ pub fn run() {
             plugins::plugin_marketplace_updates,
             plugins::plugin_marketplace_verify_signature,
             plugins::plugin_install,
+            plugin_runtime::plugin_runtime_dir,
+            plugin_runtime::plugin_runtime_list,
+            plugin_runtime::plugin_runtime_read,
             export::export_document,
             export::export_print,
             export::export_batch,
