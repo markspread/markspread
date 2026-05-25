@@ -2,7 +2,12 @@
 // + codeblock + fence dispatcher tests.
 
 import { describe, expect, it, vi } from "vitest";
-import { HANDSHAKE_TIMEOUT_MS, HOT_RELOAD_DEBOUNCE_MS, PluginHost, type WorkerFactory } from "../host";
+import {
+  HANDSHAKE_TIMEOUT_MS,
+  HOT_RELOAD_DEBOUNCE_MS,
+  PluginHost,
+  type WorkerFactory,
+} from "../host";
 import { type Message, type WorkerLike, createFakeWorkerPair } from "../sandbox-rpc";
 import type { PluginManifest } from "../types";
 
@@ -584,8 +589,8 @@ describe("PluginHost dispatcher", () => {
     await host.disable("p1");
     await host.enable("p1");
     const [h] = host.list();
-    expect(h.state).toBe("error");
-    expect(h.errorMessage).toMatch(/handshake/i);
+    expect(h?.state).toBe("error");
+    expect(h?.errorMessage).toMatch(/handshake/i);
     host.disposeAll();
   });
 });

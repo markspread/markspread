@@ -65,7 +65,8 @@ async function replaceCodeblocks(
     const start = m.index;
     parts.push(html.slice(last, start));
     const lang = m[1] ?? "";
-    const code = decodeEntities(m[2]);
+    /* v8 ignore next -- required regex group; `?? ""` for TS strict index access only. */
+    const code = decodeEntities(m[2] ?? "");
     const replaced = await maybeRenderCodeblock(host, lang, code, ctx);
     parts.push(replaced ?? m[0]);
     last = start + m[0].length;
@@ -86,8 +87,9 @@ async function replaceFences(
   for (const m of matches) {
     const start = m.index;
     parts.push(html.slice(last, start));
-    const name = m[1];
-    const body = decodeEntities(m[2]);
+    /* v8 ignore next 2 -- required regex groups; `?? ""` for TS strict index access only. */
+    const name = m[1] ?? "";
+    const body = decodeEntities(m[2] ?? "");
     const replaced = await maybeRenderFence(host, name, body, ctx);
     parts.push(replaced ?? m[0]);
     last = start + m[0].length;
