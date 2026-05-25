@@ -62,10 +62,10 @@ async function replaceCodeblocks(
   const parts: string[] = [];
   let last = 0;
   for (const m of matches) {
-    const start = m.index ?? 0;
+    const start = m.index;
     parts.push(html.slice(last, start));
     const lang = m[1] ?? "";
-    const code = decodeEntities(m[2] ?? "");
+    const code = decodeEntities(m[2]);
     const replaced = await maybeRenderCodeblock(host, lang, code, ctx);
     parts.push(replaced ?? m[0]);
     last = start + m[0].length;
@@ -84,10 +84,10 @@ async function replaceFences(
   const parts: string[] = [];
   let last = 0;
   for (const m of matches) {
-    const start = m.index ?? 0;
+    const start = m.index;
     parts.push(html.slice(last, start));
-    const name = m[1] ?? "";
-    const body = decodeEntities(m[2] ?? "");
+    const name = m[1];
+    const body = decodeEntities(m[2]);
     const replaced = await maybeRenderFence(host, name, body, ctx);
     parts.push(replaced ?? m[0]);
     last = start + m[0].length;

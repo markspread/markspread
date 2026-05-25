@@ -224,4 +224,67 @@ describe("SandboxRpc round-trip", () => {
     pluginSide.terminate();
     expect(() => hostSide.postMessage({ x: 1 })).not.toThrow();
   });
+
+  it("dispose swallows worker.terminate() exceptions", () => {
+    // Some embeddings (e.g. closed iframe) throw from terminate; we never
+    // want that to bubble out of dispose() — caller can't act on it.
+    const worker: WorkerLike = {
+      postMessage: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      terminate: () => {
+        throw new Error("boom");
+      },
+    };
+    const rpc = new SandboxRpc(worker);
+    expect(() => rpc.dispose()).not.toThrow();
+  });
+
+  it("fake pair pluginSide removeEventListener detaches the listener", () => {
+    const { hostSide, pluginSide } = createFakeWorkerPair();
+    const seen: unknown[] = [];
+    const listener = (ev: { data: unknown }) => seen.push(ev.data);
+    pluginSide.addEventListener("message", listener);
+    hostSide.postMessage({ a: 1 });
+    pluginSide.removeEventListener("message", listener);
+    hostSide.postMessage({ a: 2 });
+    expect(seen).toEqual([{ a: 1 }]);
+  });
+
+  it("pluginSide.postMessage no-ops once the pair is terminated", () => {
+    const { hostSide, pluginSide } = createFakeWorkerPair();
+    const seen: unknown[] = [];
+    hostSide.addEventListener("message", (ev) => seen.push(ev.data));
+    pluginSide.terminate();
+    expect(() => pluginSide.postMessage({ x: 1 })).not.toThrow();
+    expect(seen).toEqual([]);
+  });
+
+  it("settleReject is a no-op if the request entry already resolved", async () => {
+    // Reproduces the race where an AbortController fires *after* the
+    // hook:result message already resolved the pending promise — the
+    // signal listener calls settleReject(requestId) with no entry.
+    const { hostSide, pluginSide } = createFakeWorkerPair();
+    const rpc = new SandboxRpc(hostSide);
+    pluginSide.addEventListener("message", (ev) => {
+      const m = ev.data as Message;
+      if (m.type === "hook:invoke") {
+        pluginSide.postMessage({
+          type: "hook:result",
+          requestId: m.requestId,
+          result: { kind: "html", html: "x" },
+        });
+      }
+    });
+    const ac = new AbortController();
+    const got = await rpc.invokeHook(
+      "codeblock",
+      "k",
+      { source: "s", documentPath: null },
+      { signal: ac.signal },
+    );
+    expect(got.type).toBe("hook:result");
+    expect(() => ac.abort()).not.toThrow();
+    rpc.dispose();
+  });
 });

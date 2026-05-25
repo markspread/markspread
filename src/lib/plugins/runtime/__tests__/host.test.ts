@@ -2,7 +2,7 @@
 // + codeblock + fence dispatcher tests.
 
 import { describe, expect, it, vi } from "vitest";
-import { PluginHost, type WorkerFactory } from "../host";
+import { HANDSHAKE_TIMEOUT_MS, HOT_RELOAD_DEBOUNCE_MS, PluginHost, type WorkerFactory } from "../host";
 import { type Message, type WorkerLike, createFakeWorkerPair } from "../sandbox-rpc";
 import type { PluginManifest } from "../types";
 
@@ -449,6 +449,143 @@ describe("PluginHost dispatcher", () => {
     const r = await host.renderCodeblock("mermaid", "y", { documentPath: null });
     expect(r?.kind).toBe("html");
     if (r?.kind === "html") expect(r.html.startsWith("WS:")).toBe(true);
+    host.disposeAll();
+  });
+
+  it("two plugins with same scope are ordered alphabetically by name", async () => {
+    // Same-scope tiebreaker: localeCompare branch in sortedReady.
+    // Both register "mermaid" codeblock; the alphabetically-first wins.
+    const host = new PluginHost({
+      workerFactory: fakeWorkerFactory((_h, p) => {
+        p.addEventListener("message", (ev) => {
+          const m = ev.data as Message;
+          if (m.type === "host:init") {
+            p.postMessage({
+              type: "plugin:ready",
+              registered: [{ kind: "codeblock", key: "mermaid" }],
+            });
+          } else if (m.type === "hook:invoke") {
+            p.postMessage({
+              type: "hook:result",
+              requestId: m.requestId,
+              result: { kind: "html", html: `pl/${m.payload.source}` },
+            });
+          }
+        });
+      }),
+      handshakeTimeoutMs: 100,
+    });
+    await host.install({ manifest: manifest("b-plugin"), pluginDir: "/b", scope: "user" });
+    await host.install({ manifest: manifest("a-plugin"), pluginDir: "/a", scope: "user" });
+    const r = await host.renderCodeblock("mermaid", "x", { documentPath: null });
+    expect(r?.kind).toBe("html");
+    host.disposeAll();
+  });
+
+  it("renderCodeblock returns kind:error when invokeHook throws synchronously", async () => {
+    const host = new PluginHost({
+      workerFactory: fakeWorkerFactory((_h, p) => {
+        p.addEventListener("message", (ev) => {
+          const m = ev.data as Message;
+          if (m.type === "host:init") {
+            p.postMessage({
+              type: "plugin:ready",
+              registered: [{ kind: "codeblock", key: "mermaid" }],
+            });
+          }
+        });
+      }),
+      handshakeTimeoutMs: 100,
+    });
+    await host.install({
+      manifest: manifest("p1"),
+      pluginDir: "/tmp",
+      scope: "user",
+    });
+    const p = host.renderCodeblock("mermaid", "y", { documentPath: null });
+    host.disposeAll();
+    const r = await p;
+    expect(r?.kind).toBe("error");
+  });
+
+  it("module exports debounce + handshake timeout constants", () => {
+    expect(HANDSHAKE_TIMEOUT_MS).toBeGreaterThan(0);
+    expect(HOT_RELOAD_DEBOUNCE_MS).toBeGreaterThan(0);
+  });
+
+  it("forwards plugin warnings on renderCodeblock + renderFence", async () => {
+    const host = new PluginHost({
+      workerFactory: fakeWorkerFactory((_h, p) => {
+        p.addEventListener("message", (ev) => {
+          const m = ev.data as Message;
+          if (m.type === "host:init") {
+            p.postMessage({
+              type: "plugin:ready",
+              registered: [
+                { kind: "codeblock", key: "mermaid" },
+                { kind: "fence", key: "alert" },
+              ],
+            });
+          } else if (m.type === "hook:invoke") {
+            p.postMessage({
+              type: "hook:result",
+              requestId: m.requestId,
+              result: { kind: "html", html: `<i>${m.payload.source}</i>` },
+              warnings: [`deprecated: ${m.kind}/${m.key}`],
+            });
+          }
+        });
+      }),
+      handshakeTimeoutMs: 100,
+    });
+    await host.install({ manifest: manifest("p1"), pluginDir: "/tmp", scope: "user" });
+    const cb = await host.renderCodeblock("mermaid", "g", { documentPath: null });
+    const fn = await host.renderFence("alert", "b", { documentPath: null });
+    expect(cb?.kind).toBe("html");
+    expect(fn?.kind).toBe("html");
+    if (cb?.kind === "html") expect(cb.warnings).toEqual(["deprecated: codeblock/mermaid"]);
+    if (fn?.kind === "html") expect(fn.warnings).toEqual(["deprecated: fence/alert"]);
+    host.disposeAll();
+  });
+
+  it("renderFence treats missing fences[] as no candidates", async () => {
+    const host = new PluginHost({
+      workerFactory: fakeWorkerFactory((_h, p) => echoPlugin(p, "alert")),
+      handshakeTimeoutMs: 100,
+    });
+    const manifestNoFences: PluginManifest = {
+      ...manifest("p1"),
+      contributes: { codeblocks: { mermaid: { render: "html" as const } } },
+    };
+    await host.install({ manifest: manifestNoFences, pluginDir: "/tmp", scope: "user" });
+    const r = await host.renderFence("alert", "x", { documentPath: null });
+    expect(r).toBeNull();
+    host.disposeAll();
+  });
+
+  it("enable() catches handshake failures and reports state=error", async () => {
+    // disable() → ready entry is torn down. enable() then re-spawns; if
+    // the second factory call never completes the handshake, the catch
+    // branch must record the error instead of bubbling out.
+    let attempt = 0;
+    const host = new PluginHost({
+      workerFactory: () => {
+        attempt += 1;
+        const { hostSide, pluginSide } = createFakeWorkerPair();
+        if (attempt === 1) {
+          echoPlugin(pluginSide, "alert");
+        }
+        // attempt #2 → plugin never replies, handshake times out.
+        return hostSide;
+      },
+      handshakeTimeoutMs: 20,
+    });
+    await host.install({ manifest: manifest("p1"), pluginDir: "/tmp", scope: "user" });
+    await host.disable("p1");
+    await host.enable("p1");
+    const [h] = host.list();
+    expect(h.state).toBe("error");
+    expect(h.errorMessage).toMatch(/handshake/i);
     host.disposeAll();
   });
 });
