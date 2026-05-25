@@ -55,7 +55,8 @@ if (!(globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) {
     import("./store/single-file"),
     import("./store/editor-layout"),
     import("./store/doc-cache"),
-  ]).then(([ws, tabs, sf, editorLayout, docCache]) => {
+    import("./store/workspace-layout"),
+  ]).then(([ws, tabs, sf, editorLayout, docCache, wsLayout]) => {
     (globalThis as { __ms_dev__?: unknown }).__ms_dev__ = {
       workspace: ws.useWorkspace,
       tabs: tabs.useTabs,
@@ -65,6 +66,8 @@ if (!(globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) {
       // pattern (getState/setState) keeps working.
       editorLayout: editorLayout.useEditorLayout,
       docCache: docCache.useDocCache,
+      // S-MWS-001: 셸 레이아웃(워크스페이스 탭 × 스플릿) 도 e2e 에서 직접 조작.
+      workspaceLayout: wsLayout.useWorkspaceLayout,
     };
   });
 }

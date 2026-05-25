@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { EditorPane } from "../components/EditorPane";
 import { FileTree } from "../components/FileTree";
@@ -11,16 +11,46 @@ import { SidebarPeek } from "../components/SidebarPeek";
 import { SidebarSplitter } from "../components/SidebarSplitter";
 import { TabBar } from "../components/TabBar";
 import { WelcomeBanner } from "../components/WelcomeBanner";
+import { WorkspaceShell } from "../components/WorkspaceShell";
 import { useSidebarPeekHover } from "../hooks/useSidebarPeekHover";
 import { useWorkspaceLayoutSync } from "../hooks/useWorkspaceLayoutSync";
 import { useEditorLayout } from "../store/editor-layout";
 import { SIDEBAR_DEFAULT_PX, SIDEBAR_RAIL_PX, useLayout } from "../store/layout";
 import { useSettingsSheet } from "../store/settings-sheet";
 import { useWorkspace } from "../store/workspace";
+import { type WorkspaceTab, forEachTabsNode, useWorkspaceLayout } from "../store/workspace-layout";
 
+/**
+ * S-MWS-003: 단일 탭/단일 스플릿이면 기존 single-workspace fast path 그대로
+ * 렌더. 그 외에는 `WorkspaceShell` 이 트리를 walk 하면서 각 탭마다 본 화면을
+ * 재마운트한다.
+ */
 export function Main() {
+  const layout = useWorkspaceLayout((s) => s.layout);
+  const isMultiShell = useMemo(() => {
+    if (!layout) return false;
+    if (layout.root.type === "ws-split") return true;
+    let total = 0;
+    forEachTabsNode(layout.root, (n) => {
+      total += n.tabs.length;
+    });
+    return total > 1;
+  }, [layout]);
+  if (isMultiShell) {
+    return (
+      <WorkspaceShell
+        renderTabBody={(tab: WorkspaceTab) => <SingleWorkspaceBody workspaceTab={tab} />}
+      />
+    );
+  }
+  return <SingleWorkspaceBody />;
+}
+
+function SingleWorkspaceBody({ workspaceTab }: { workspaceTab?: WorkspaceTab }) {
   const { t } = useTranslation();
-  const current = useWorkspace((s) => s.current);
+  const currentFromStore = useWorkspace((s) => s.current);
+  // 멀티-워크스페이스 트리에서 호출된 경우 그 탭의 경로를 사용. 그 외에는 글로벌 store.
+  const current = workspaceTab?.workspacePath ?? currentFromStore;
   const close = useWorkspace((s) => s.close);
   const sidebarWidth = useLayout((s) =>
     current ? s.getSidebarWidth(current) : SIDEBAR_DEFAULT_PX,

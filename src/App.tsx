@@ -12,6 +12,7 @@ import { InsertTableDialog } from "./components/InsertTableDialog";
 import { LinkDialog } from "./components/LinkDialog";
 import { TelemetryConsent } from "./components/TelemetryConsent";
 import { ToastStack } from "./components/ToastStack";
+import { useWorkspaceShellShortcuts } from "./hooks/useWorkspaceShellShortcuts";
 import { registerCliForwardedListener } from "./lib/cli-forwarded";
 import { registerDragDrop } from "./lib/dnd";
 import { useFontFamilyEffect } from "./lib/font-effect";
@@ -31,6 +32,7 @@ import { useRecentWorkspaces } from "./store/recent-workspaces";
 import { useSingleFile } from "./store/single-file";
 import { useTabs } from "./store/tabs";
 import { useWorkspace } from "./store/workspace";
+import { useWorkspaceLayout } from "./store/workspace-layout";
 
 function App() {
   const harness = currentHarnessMode();
@@ -54,12 +56,20 @@ function RealApp() {
   useEffect(() => registerKeybindings(), []);
   useEffect(() => registerUnmountListener(), []);
   useEffect(() => registerPollingNoticeListener(), []);
+  // S-MWS-004: 워크스페이스 셸 단축키 (Mod+T/W/\\/Shift+\\/1..9).
+  useWorkspaceShellShortcuts();
   useEffect(() => {
     if (!current) return;
     void maybeStartUnmountWatch(current);
     return () => {
       void stopUnmountWatch(current);
     };
+  }, [current]);
+  // S-MWS-005: 워크스페이스가 처음 열릴 때 셸 레이아웃을 초기화. 두 번째 호출부터는
+  // ensure 가 기존 레이아웃을 그대로 반환하므로 비용 없음.
+  useEffect(() => {
+    if (!current) return;
+    useWorkspaceLayout.getState().ensure(current);
   }, [current]);
 
   let body: ReactNode;

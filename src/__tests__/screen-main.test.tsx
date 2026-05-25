@@ -16,6 +16,7 @@ import { useLayout } from "../store/layout";
 import { useOnboarding } from "../store/onboarding";
 import { useSettingsSheet } from "../store/settings-sheet";
 import { useWorkspace } from "../store/workspace";
+import { useWorkspaceLayout } from "../store/workspace-layout";
 
 afterEach(cleanup);
 
@@ -31,6 +32,11 @@ describe("screens/Main", () => {
     useSettingsSheet.setState({ open: false });
     useEditorLayout.setState({ layouts: {} });
     useLayout.setState({ sidebarHidden: {} } as never);
+    useWorkspaceLayout.setState({ layout: null });
+  });
+
+  afterEach(() => {
+    useWorkspaceLayout.setState({ layout: null });
   });
 
   it("renders the workspace shell with the path in the header", () => {
@@ -119,5 +125,25 @@ describe("screens/Main", () => {
     expect(document.querySelectorAll('[data-filetree-root="true"]').length).toBeGreaterThanOrEqual(
       0,
     );
+  });
+
+  // S-MWS-003: multi-shell branch — fires when the shell layout has either
+  // a ws-split root or more than one workspace tab. The fast path stays in
+  // play for single-tab/single-pane layouts (older renderer tests above).
+  it("renders the WorkspaceShell when the shell layout has multiple tabs", () => {
+    useWorkspaceLayout.getState().ensure("/tmp/ws");
+    useWorkspaceLayout.getState().addWorkspaceTab("/tmp/ws2");
+    const { container } = render(<Main />);
+    expect(container.querySelector('[data-workspace-shell="true"]')).not.toBeNull();
+    // 두 개의 워크스페이스 본 화면(aside + section) 이 모두 렌더링됨.
+    expect(container.querySelectorAll("[data-ws-tabs-id]").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders the WorkspaceShell when the shell layout root is split", () => {
+    useWorkspaceLayout.getState().ensure("/tmp/ws");
+    useWorkspaceLayout.getState().splitVertical();
+    const { container } = render(<Main />);
+    expect(container.querySelector('[data-workspace-shell="true"]')).not.toBeNull();
+    expect(container.querySelector('[data-ws-split-direction="horizontal"]')).not.toBeNull();
   });
 });
