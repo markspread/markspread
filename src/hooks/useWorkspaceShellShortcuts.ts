@@ -17,6 +17,16 @@ import {
   useWorkspaceLayout,
 } from "../store/workspace-layout";
 
+// ADR-0010 R3 / D-Keybindings: editor-shell scoped shortcuts only fire
+// when the active shell is the editor (or there's no shell selection
+// yet). When the chat shell is active, these bindings yield so the
+// chat input box keeps Mod+Enter / Mod+K / Mod+/ for itself.
+function isEditorScopeActive(): boolean {
+  const { current, preferredShell } = useWorkspace.getState();
+  if (!current) return true;
+  return preferredShell === "editor";
+}
+
 const isMac = () =>
   typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac");
 
@@ -38,6 +48,9 @@ function modShift(evt: KeyboardEvent): boolean {
 export function useWorkspaceShellShortcuts(): void {
   useEffect(() => {
     const handler = (evt: KeyboardEvent) => {
+      // ADR-0010 R3: scope gate. Editor-shell-only bindings stand down
+      // while the chat shell owns the keymap.
+      if (!isEditorScopeActive()) return;
       // 키 비교는 소문자 normalisation. `\` 는 evt.key 자체로 매칭 (shift 시 `|`).
       const key = evt.key.toLowerCase();
       const store = useWorkspaceLayout.getState();

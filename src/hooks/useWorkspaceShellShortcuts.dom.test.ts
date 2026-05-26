@@ -50,7 +50,10 @@ describe("useWorkspaceShellShortcuts", () => {
   beforeEach(() => {
     setPlatform("MacIntel");
     useWorkspaceLayout.setState({ layout: null });
-    useWorkspace.setState({ current: "/ws-a", readOnly: false });
+    // ADR-0010 scope: these shortcuts only fire when the editor shell
+    // is the active scope. Pin `preferredShell: 'editor'` so the
+    // existing matrix still exercises the binding behaviour.
+    useWorkspace.setState({ current: "/ws-a", readOnly: false, preferredShell: "editor" });
   });
 
   afterEach(() => {
@@ -201,5 +204,30 @@ describe("useWorkspaceShellShortcuts", () => {
       layout: { schemaVersion: 2, root: node, activeTabId: "missing" },
     });
     expect(activeTabsNodeSize()).toBe(0);
+  });
+
+  // ADR-0010 R3 scope gate: the chat shell must own its keymap. When
+  // the workspace's preferredShell flips to chat, our hook stays
+  // silent so the chat input box keeps Mod+T etc. for its own use.
+  it("yields when the chat shell is the active scope", () => {
+    useWorkspace.setState({ current: "/ws-a", preferredShell: "chat" });
+    useWorkspaceLayout.setState({ layout: emptyWindowLayout("/ws-a") });
+    mount();
+    const sizeBefore = activeTabsNodeSize();
+    fire("t", { meta: true });
+    expect(activeTabsNodeSize()).toBe(sizeBefore);
+  });
+
+  // Defensive branch in `isEditorScopeActive`: no workspace open means
+  // the scope gate must let through (we want the shortcut to behave on
+  // the Welcome screen too — though currently the layout guard inside
+  // the handler still short-circuits).
+  it("treats 'no workspace open' as editor scope so the inner layout guard runs", () => {
+    useWorkspace.setState({ current: null, preferredShell: "chat" });
+    mount();
+    fire("t", { meta: true });
+    // No layout means the handler bails after the scope check — no
+    // throw, no state mutation.
+    expect(useWorkspaceLayout.getState().layout).toBeNull();
   });
 });
