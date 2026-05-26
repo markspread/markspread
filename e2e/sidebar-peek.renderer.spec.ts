@@ -39,7 +39,7 @@ async function setupCollapsedWorkspace(page: Page): Promise<void> {
   await waitForDevHooks(page);
   await page.evaluate((path) => {
     const dev = (globalThis as unknown as { __ms_dev__: DevStores }).__ms_dev__;
-    dev.workspace.getState().open(path);
+    dev.workspace.getState().open(path, { preferredShell: "editor" });
   }, WS);
   // The layout store is loaded lazily; import it on-page and force the
   // sidebar collapsed so the rail is rendered for hover targeting.

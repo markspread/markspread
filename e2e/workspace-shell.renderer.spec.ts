@@ -57,7 +57,7 @@ async function waitForDevHooks(page: Page): Promise<void> {
 async function openWorkspace(page: Page, path: string): Promise<void> {
   await page.evaluate((p) => {
     const dev = (globalThis as unknown as { __ms_dev__: DevStores }).__ms_dev__;
-    dev.workspace.getState().open(p);
+    dev.workspace.getState().open(p, { preferredShell: "editor" });
     dev.workspaceLayout.getState().ensure(p);
   }, path);
 }
