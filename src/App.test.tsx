@@ -19,7 +19,8 @@ vi.mock("./lib/open-workspace", () => ({
   newWorkspaceFromDialog: vi.fn(async () => {}),
 }));
 vi.mock("./lib/open-md-file", () => ({ openSingleMdFromDialog: vi.fn(async () => {}) }));
-vi.mock("./screens/Main", () => ({ Main: () => <div data-testid="main" /> }));
+vi.mock("./screens/EditorShell", () => ({ EditorShell: () => <div data-testid="main" /> }));
+vi.mock("./screens/ChatShell", () => ({ ChatShell: () => <div data-testid="chat" /> }));
 vi.mock("./screens/SingleFile", () => ({ SingleFile: () => <div data-testid="single" /> }));
 vi.mock("./screens/Welcome", () => ({
   Welcome: ({
@@ -74,7 +75,7 @@ afterEach(cleanup);
 
 describe("App", () => {
   beforeEach(() => {
-    useWorkspace.setState({ current: null });
+    useWorkspace.setState({ current: null, preferredShell: "chat" });
     useSingleFile.setState({ path: null });
     useTabs.setState({ activePath: null } as never, false);
   });
@@ -84,13 +85,20 @@ describe("App", () => {
     expect(getByTestId("welcome")).toBeTruthy();
   });
 
-  it("renders Main when a workspace is open", () => {
-    useWorkspace.setState({ current: "/ws" });
+  it("renders EditorShell when workspace + preferredShell=editor", () => {
+    useWorkspace.setState({ current: "/ws", preferredShell: "editor" });
     const { getByTestId } = render(<App />);
     expect(getByTestId("main")).toBeTruthy();
   });
 
-  it("renders SingleFile when only a single-file path is set", () => {
+  it("renders ChatShell when workspace + preferredShell=chat", () => {
+    useWorkspace.setState({ current: "/ws", preferredShell: "chat" });
+    const { getByTestId } = render(<App />);
+    expect(getByTestId("chat")).toBeTruthy();
+  });
+
+  it("renders SingleFile when a single-file path is set (wins over workspace)", () => {
+    useWorkspace.setState({ current: "/ws", preferredShell: "chat" });
     useSingleFile.setState({ path: "/a.md" });
     const { getByTestId } = render(<App />);
     expect(getByTestId("single")).toBeTruthy();
@@ -115,9 +123,25 @@ describe("App", () => {
 
   it("derives a basename for the export document title from the active tab path", () => {
     useTabs.setState({ activePath: "/ws/notes/a.md" } as never, false);
-    useWorkspace.setState({ current: "/ws" });
+    useWorkspace.setState({ current: "/ws", preferredShell: "editor" });
     render(<App />);
     expect(useTabs.getState().activePath).toBe("/ws/notes/a.md");
+  });
+
+  it("forces EditorShell when MS_SHELL_CHAT_ENABLED is off", () => {
+    const g = globalThis as unknown as {
+      __MS_ENV?: Record<string, unknown> | undefined;
+    };
+    const prev = g.__MS_ENV;
+    g.__MS_ENV = { MS_SHELL_CHAT_ENABLED: "false" };
+    try {
+      useWorkspace.setState({ current: "/ws", preferredShell: "chat" });
+      const { getByTestId } = render(<App />);
+      expect(getByTestId("main")).toBeTruthy();
+    } finally {
+      if (prev === undefined) Reflect.deleteProperty(g, "__MS_ENV");
+      else g.__MS_ENV = prev;
+    }
   });
 
   it("mounts the harness root when ?harness=<mode> is present", () => {

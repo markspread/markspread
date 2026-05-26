@@ -15,6 +15,7 @@ import { ToastStack } from "./components/ToastStack";
 import { useWorkspaceShellShortcuts } from "./hooks/useWorkspaceShellShortcuts";
 import { registerCliForwardedListener } from "./lib/cli-forwarded";
 import { registerDragDrop } from "./lib/dnd";
+import { isChatShellEnabled } from "./lib/feature-flags";
 import { useFontFamilyEffect } from "./lib/font-effect";
 import { currentHarnessMode } from "./lib/harness";
 import { registerKeybindings } from "./lib/keybindings";
@@ -22,8 +23,9 @@ import { openSingleMdFromDialog } from "./lib/open-md-file";
 import { newWorkspaceFromDialog, openWorkspaceFromDialog } from "./lib/open-workspace";
 import { registerPollingNoticeListener } from "./lib/polling-notice";
 import { maybeStartUnmountWatch, registerUnmountListener, stopUnmountWatch } from "./lib/unmount";
+import { ChatShell } from "./screens/ChatShell";
+import { EditorShell } from "./screens/EditorShell";
 import { HarnessRoot } from "./screens/HarnessRoot";
-import { Main } from "./screens/Main";
 import { SingleFile } from "./screens/SingleFile";
 import { Welcome } from "./screens/Welcome";
 import { useAiPalette } from "./store/ai-palette";
@@ -42,7 +44,9 @@ function App() {
 
 function RealApp() {
   const current = useWorkspace((s) => s.current);
+  const preferredShell = useWorkspace((s) => s.preferredShell);
   const singleFilePath = useSingleFile((s) => s.path);
+  const chatShellEnabled = isChatShellEnabled();
   const aiPaletteOpen = useAiPalette((s) => s.open);
   const aiPaletteContext = useAiPalette((s) => s.context);
   const closeAiPalette = useAiPalette((s) => s.close);
@@ -72,11 +76,18 @@ function RealApp() {
     useWorkspaceLayout.getState().ensure(current);
   }, [current]);
 
+  // ADR-0010 D1 routing matrix:
+  //   singleFile → SingleFile (always EditorShell-shaped)
+  //   workspace + chat + flag on → ChatShell
+  //   workspace (any other case) → EditorShell
+  //   else → Welcome
   let body: ReactNode;
-  if (current) {
-    body = <Main />;
-  } else if (singleFilePath) {
+  if (singleFilePath) {
     body = <SingleFile />;
+  } else if (current && preferredShell === "chat" && chatShellEnabled) {
+    body = <ChatShell />;
+  } else if (current) {
+    body = <EditorShell />;
   } else {
     body = (
       <Welcome
