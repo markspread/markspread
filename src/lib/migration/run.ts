@@ -8,7 +8,12 @@ import { invoke } from "@tauri-apps/api/core";
 // Bump this in lockstep with the Rust migration ladder. The renderer
 // owns the constant because every other store on disk reads through
 // adapters that depend on the same value.
-export const CURRENT_SCHEMA_VERSION = 1;
+//
+// v2 (ADR-0010): `.markspread/layout.json` gains `shell` and `chat`
+// keys. The v1 → v2 transformer lives in `./layout-shell.ts`; this
+// constant only signals to the Rust side which ladder step is
+// expected.
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export async function runMigration(): Promise<void> {
   try {

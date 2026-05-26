@@ -15,7 +15,9 @@ beforeEach(() => {
 
 describe("runMigration", () => {
   it("exposes the current schema version", () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(1);
+    // Bumped to 2 with ADR-0010 (chat-first shell). The Rust side now
+    // expects to see schemaVersion=2 on every boot.
+    expect(CURRENT_SCHEMA_VERSION).toBe(2);
   });
 
   it("invokes migration_run with the current schema version", async () => {
