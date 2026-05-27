@@ -52,7 +52,19 @@ vi.mock("./Icon", () => ({
   Icon: ({ name }: { name: string }) => <span data-testid={`icon-${name}`} />,
 }));
 
-import { useFileTree } from "../store/file-tree";
+import { splitKeyForWorkspace, useFileTree } from "../store/file-tree";
+
+// MAR-1014: the store is now keyed by composite split-key. Tests in this
+// file all run under the default split slot, so we resolve the key once
+// per workspace and shape `{ splits: { [key]: paths } }` payloads.
+function seedExpanded(map: Record<string, string[]>) {
+  const splits: Record<string, string[]> = {};
+  for (const ws of Object.keys(map)) {
+    const paths = map[ws];
+    if (paths) splits[splitKeyForWorkspace(ws)] = paths;
+  }
+  useFileTree.setState({ splits });
+}
 import { useLayout } from "../store/layout";
 import { useSettings } from "../store/settings";
 import { useTabs } from "../store/tabs";
@@ -105,7 +117,7 @@ function defaultInvoke(cmd: string, args: { path?: string } = {}) {
 }
 
 function resetStores() {
-  useFileTree.setState({ expanded: {} });
+  useFileTree.setState({ splits: {} });
   useTabs.setState({ tabs: [], activePath: null });
   useToasts.setState({ toasts: [] });
   useSettings.setState({ previewTabsEnabled: false } as never);
@@ -158,9 +170,7 @@ describe("FileTree", () => {
     });
 
     it("keeps a directory visible when its subtree contains a fuzzy match", async () => {
-      useFileTree.setState({
-        expanded: { "/ws": ["/ws/docs", "/ws/docs/sub"] },
-      });
+      seedExpanded({ "/ws": ["/ws/docs", "/ws/docs/sub"] });
       await renderRoot();
       await waitFor(() => expect(screen.getByText("deep.md")).toBeTruthy());
       fireEvent.change(screen.getByLabelText("Filter files"), {
@@ -290,7 +300,7 @@ describe("FileTree", () => {
     });
 
     it("ArrowLeft collapses an expanded dir then jumps to parent", async () => {
-      useFileTree.setState({ expanded: { "/ws": ["/ws/docs"] } });
+      seedExpanded({ "/ws": ["/ws/docs"] });
       const { tree } = await setupTree();
       // Step down into a.md (child of docs)
       fireEvent.keyDown(tree, { key: "ArrowDown" });
@@ -494,7 +504,7 @@ describe("FileTree", () => {
     });
 
     it("creating from a file row places the new entry alongside it (parent scan)", async () => {
-      useFileTree.setState({ expanded: { "/ws": ["/ws/docs"] } });
+      seedExpanded({ "/ws": ["/ws/docs"] });
       await renderRoot();
       await waitFor(() => expect(screen.getByText("a.md")).toBeTruthy());
       // Click on a.md (a file inside docs, depth 1) so the parent-scan path runs.
@@ -600,7 +610,7 @@ describe("FileTree", () => {
     });
 
     it("renaming a directory drops cached child entries for the old path", async () => {
-      useFileTree.setState({ expanded: { "/ws": ["/ws/docs"] } });
+      seedExpanded({ "/ws": ["/ws/docs"] });
       await renderRoot();
       await waitFor(() => expect(screen.getByText("a.md")).toBeTruthy());
       const tree = screen.getByRole("tree");
@@ -914,7 +924,7 @@ describe("FileTree", () => {
 
     it("warns when a single-row drop targets itself", async () => {
       // Build a deeper structure: /ws/docs onto /ws/docs (invalid target)
-      useFileTree.setState({ expanded: { "/ws": ["/ws/docs"] } });
+      seedExpanded({ "/ws": ["/ws/docs"] });
       await renderRoot();
       await waitFor(() => expect(screen.getByText("a.md")).toBeTruthy());
       const docsRow = screen.getByText("docs").closest("li");
@@ -1244,9 +1254,7 @@ describe("FileTree", () => {
     });
 
     it("renamed events drop cached children for nested subdirectories", async () => {
-      useFileTree.setState({
-        expanded: { "/ws": ["/ws/docs", "/ws/docs/sub"] },
-      });
+      seedExpanded({ "/ws": ["/ws/docs", "/ws/docs/sub"] });
       await renderRoot();
       await waitFor(() => expect(screen.getByText("deep.md")).toBeTruthy());
       await waitFor(() => expect(fsEventHandler).toBeTruthy());
@@ -1258,9 +1266,7 @@ describe("FileTree", () => {
     });
 
     it("removed events drop nested cached children", async () => {
-      useFileTree.setState({
-        expanded: { "/ws": ["/ws/docs", "/ws/docs/sub"] },
-      });
+      seedExpanded({ "/ws": ["/ws/docs", "/ws/docs/sub"] });
       await renderRoot();
       await waitFor(() => expect(screen.getByText("deep.md")).toBeTruthy());
       await waitFor(() => expect(fsEventHandler).toBeTruthy());
@@ -1707,7 +1713,7 @@ describe("FileTree", () => {
 
   describe("session-restore expanded set", () => {
     it("auto-loads expanded directories whose children aren't cached yet", async () => {
-      useFileTree.setState({ expanded: { "/ws": ["/ws/docs"] } });
+      seedExpanded({ "/ws": ["/ws/docs"] });
       await renderRoot();
       await waitFor(() => expect(screen.getByText("a.md")).toBeTruthy());
     });

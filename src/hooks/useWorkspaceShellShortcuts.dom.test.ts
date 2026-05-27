@@ -10,7 +10,13 @@ import {
   forEachTabsNode,
   useWorkspaceLayout,
 } from "../store/workspace-layout";
-import { activeTabsNodeSize, useWorkspaceShellShortcuts } from "./useWorkspaceShellShortcuts";
+import {
+  activeTabsNodeSize,
+  computeLeafRects,
+  focusSplitInDirection,
+  pickNeighbourLeaf,
+  useWorkspaceShellShortcuts,
+} from "./useWorkspaceShellShortcuts";
 
 function fire(
   key: string,
@@ -229,5 +235,228 @@ describe("useWorkspaceShellShortcuts", () => {
     // No layout means the handler bails after the scope check — no
     // throw, no state mutation.
     expect(useWorkspaceLayout.getState().layout).toBeNull();
+  });
+
+  // MAR-1015: Mod+Alt+Arrow split focus navigation matrix on a 2x2 split.
+  describe("Mod+Alt+Arrow split focus navigation (MAR-1015)", () => {
+    function build2x2(): {
+      ids: { tl: string; tr: string; bl: string; br: string };
+      tabIds: { tl: string; tr: string; bl: string; br: string };
+    } {
+      // Build a 2x2 grid: outer split is vertical (top-row / bottom-row);
+      // each row is a horizontal split (left / right).
+      useWorkspaceLayout.setState({ layout: emptyWindowLayout("/ws-a") });
+      useWorkspaceLayout.getState().splitVertical(); // horizontal (left|right)
+      useWorkspaceLayout.getState().splitHorizontal(); // vertical (top/bottom) of the right side
+      // Now the right column has top/bottom. Split the left column too.
+      const layout = useWorkspaceLayout.getState().layout;
+      if (!layout || layout.root.type !== "ws-split") throw new Error("bad setup");
+      // Find the left ws-tabs node, set it active, then split horizontally.
+      const leftFirstTab = (() => {
+        const firstChild = layout.root.children[0];
+        if (!firstChild || firstChild.type !== "ws-tabs") return null;
+        return firstChild.tabs[0]?.id ?? null;
+      })();
+      if (!leftFirstTab) throw new Error("expected left tab");
+      useWorkspaceLayout.getState().setActiveTab(leftFirstTab);
+      useWorkspaceLayout.getState().splitHorizontal();
+      const final = useWorkspaceLayout.getState().layout;
+      if (!final || final.root.type !== "ws-split") throw new Error("expected outer split");
+      // Layout shape: ws-split horizontal [leftCol, rightCol]
+      //   leftCol  = ws-split vertical [tlTabs, blTabs]
+      //   rightCol = ws-split vertical [trTabs, brTabs]
+      const root = final.root;
+      const leftCol = root.children[0];
+      const rightCol = root.children[1];
+      if (!leftCol || leftCol.type !== "ws-split") throw new Error("leftCol");
+      if (!rightCol || rightCol.type !== "ws-split") throw new Error("rightCol");
+      const tlTabs = leftCol.children[0];
+      const blTabs = leftCol.children[1];
+      const trTabs = rightCol.children[0];
+      const brTabs = rightCol.children[1];
+      if (
+        !tlTabs ||
+        !blTabs ||
+        !trTabs ||
+        !brTabs ||
+        tlTabs.type !== "ws-tabs" ||
+        blTabs.type !== "ws-tabs" ||
+        trTabs.type !== "ws-tabs" ||
+        brTabs.type !== "ws-tabs"
+      ) {
+        throw new Error("expected 4 leaves");
+      }
+      return {
+        ids: { tl: tlTabs.id, tr: trTabs.id, bl: blTabs.id, br: brTabs.id },
+        tabIds: {
+          tl: tlTabs.tabs[0]?.id ?? "",
+          tr: trTabs.tabs[0]?.id ?? "",
+          bl: blTabs.tabs[0]?.id ?? "",
+          br: brTabs.tabs[0]?.id ?? "",
+        },
+      };
+    }
+
+    it("computeLeafRects partitions the unit square per split", () => {
+      const { ids } = build2x2();
+      const layout = useWorkspaceLayout.getState().layout;
+      if (!layout) throw new Error("layout");
+      const rects = computeLeafRects(layout.root);
+      expect(rects).toHaveLength(4);
+      const tl = rects.find((r) => r.nodeId === ids.tl);
+      const br = rects.find((r) => r.nodeId === ids.br);
+      expect(tl?.x0).toBeCloseTo(0);
+      expect(tl?.y0).toBeCloseTo(0);
+      expect(br?.x1).toBeCloseTo(1);
+      expect(br?.y1).toBeCloseTo(1);
+    });
+
+    it("pickNeighbourLeaf returns null when active leaf is missing", () => {
+      const layout = useWorkspaceLayout.getState().layout;
+      const rects = layout ? computeLeafRects(layout.root) : [];
+      expect(pickNeighbourLeaf(rects, "ghost", "left")).toBeNull();
+    });
+
+    it("Mod+Alt+Right moves focus from top-left to top-right", () => {
+      const { ids, tabIds } = build2x2();
+      useWorkspaceLayout.getState().setActiveTab(tabIds.tl);
+      mount();
+      const evt = fire("ArrowRight", { meta: true, alt: true });
+      expect(evt.defaultPrevented).toBe(true);
+      // Active tab should belong to top-right's tabs node.
+      const layout = useWorkspaceLayout.getState().layout;
+      if (!layout) throw new Error("layout");
+      const located = layout?.activeTabId;
+      const nodeId = (() => {
+        let id = "";
+        forEachTabsNode(layout.root, (n) => {
+          if (n.tabs.some((t) => t.id === located)) {
+            id = n.id;
+            return false;
+          }
+        });
+        return id;
+      })();
+      expect(nodeId).toBe(ids.tr);
+    });
+
+    it("Mod+Alt+Down moves focus to the leaf below", () => {
+      const { ids, tabIds } = build2x2();
+      useWorkspaceLayout.getState().setActiveTab(tabIds.tl);
+      mount();
+      fire("ArrowDown", { meta: true, alt: true });
+      const layout = useWorkspaceLayout.getState().layout;
+      if (!layout) throw new Error("layout");
+      const located = layout.activeTabId;
+      let nodeId = "";
+      forEachTabsNode(layout.root, (n) => {
+        if (n.tabs.some((t) => t.id === located)) {
+          nodeId = n.id;
+          return false;
+        }
+      });
+      expect(nodeId).toBe(ids.bl);
+    });
+
+    it("Mod+Alt+Left from top-left is a noop (no neighbour)", () => {
+      const { tabIds } = build2x2();
+      useWorkspaceLayout.getState().setActiveTab(tabIds.tl);
+      mount();
+      const evt = fire("ArrowLeft", { meta: true, alt: true });
+      expect(evt.defaultPrevented).toBe(false);
+      expect(useWorkspaceLayout.getState().layout?.activeTabId).toBe(tabIds.tl);
+    });
+
+    it("Mod+Alt+Up from bottom-right lands in top-right", () => {
+      const { ids, tabIds } = build2x2();
+      useWorkspaceLayout.getState().setActiveTab(tabIds.br);
+      mount();
+      fire("ArrowUp", { meta: true, alt: true });
+      const layout = useWorkspaceLayout.getState().layout;
+      if (!layout) throw new Error("layout");
+      const located = layout.activeTabId;
+      let nodeId = "";
+      forEachTabsNode(layout.root, (n) => {
+        if (n.tabs.some((t) => t.id === located)) {
+          nodeId = n.id;
+          return false;
+        }
+      });
+      expect(nodeId).toBe(ids.tr);
+    });
+
+    it("Mod+Alt+Arrow is a noop on a single ws-tabs root", () => {
+      useWorkspaceLayout.setState({ layout: emptyWindowLayout("/ws-a") });
+      mount();
+      const evt = fire("ArrowRight", { meta: true, alt: true });
+      expect(evt.defaultPrevented).toBe(false);
+    });
+
+    it("focusSplitInDirection returns false without a layout", () => {
+      useWorkspaceLayout.setState({ layout: null });
+      expect(focusSplitInDirection("left")).toBe(false);
+    });
+
+    it("focusSplitInDirection returns false when root is a single ws-tabs", () => {
+      useWorkspaceLayout.setState({ layout: emptyWindowLayout("/ws-a") });
+      expect(focusSplitInDirection("left")).toBe(false);
+    });
+
+    it("focusSplitInDirection returns false when active id is orphaned", () => {
+      const { tabIds } = build2x2();
+      void tabIds;
+      const layout = useWorkspaceLayout.getState().layout;
+      if (!layout) throw new Error("layout");
+      useWorkspaceLayout.setState({ layout: { ...layout, activeTabId: "ghost" } });
+      expect(focusSplitInDirection("right")).toBe(false);
+    });
+
+    it("focusSplitInDirection returns false at the edge of the grid", () => {
+      const { tabIds } = build2x2();
+      useWorkspaceLayout.getState().setActiveTab(tabIds.br);
+      expect(focusSplitInDirection("right")).toBe(false);
+    });
+
+    it("pickNeighbourLeaf prefers larger perpendicular overlap on ties (right)", () => {
+      // Synthesize three candidate rects with the same direction-axis
+      // distance from the active leaf — the helper should prefer the one
+      // with the larger overlap span.
+      const rects = [
+        { nodeId: "active", x0: 0, y0: 0, x1: 0.5, y1: 1 },
+        { nodeId: "tiny", x0: 0.5, y0: 0, x1: 1, y1: 0.2 },
+        { nodeId: "big", x0: 0.5, y0: 0, x1: 1, y1: 0.9 },
+      ];
+      expect(pickNeighbourLeaf(rects, "active", "right")?.nodeId).toBe("big");
+    });
+
+    it("pickNeighbourLeaf prefers larger perpendicular overlap on ties (down)", () => {
+      // Two candidates both directly below the active leaf at the same
+      // distance — picker must walk the "down" branch of the sort and
+      // pick the one with the wider x-overlap.
+      const rects = [
+        { nodeId: "active", x0: 0, y0: 0, x1: 1, y1: 0.5 },
+        { nodeId: "tiny", x0: 0, y0: 0.5, x1: 0.2, y1: 1 },
+        { nodeId: "big", x0: 0, y0: 0.5, x1: 0.9, y1: 1 },
+      ];
+      expect(pickNeighbourLeaf(rects, "active", "down")?.nodeId).toBe("big");
+    });
+
+    it("pickNeighbourLeaf prefers larger perpendicular overlap on ties (up)", () => {
+      const rects = [
+        { nodeId: "active", x0: 0, y0: 0.5, x1: 1, y1: 1 },
+        { nodeId: "tiny", x0: 0, y0: 0, x1: 0.2, y1: 0.5 },
+        { nodeId: "big", x0: 0, y0: 0, x1: 0.9, y1: 0.5 },
+      ];
+      expect(pickNeighbourLeaf(rects, "active", "up")?.nodeId).toBe("big");
+    });
+
+    it("pickNeighbourLeaf prefers larger perpendicular overlap on ties (left)", () => {
+      const rects = [
+        { nodeId: "active", x0: 0.5, y0: 0, x1: 1, y1: 1 },
+        { nodeId: "tiny", x0: 0, y0: 0, x1: 0.5, y1: 0.2 },
+        { nodeId: "big", x0: 0, y0: 0, x1: 0.5, y1: 0.9 },
+      ];
+      expect(pickNeighbourLeaf(rects, "active", "left")?.nodeId).toBe("big");
+    });
   });
 });
