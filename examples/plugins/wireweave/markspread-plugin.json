@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "name": "wireweave",
+  "version": "0.1.0",
+  "entry": "./index.js",
+  "displayName": "Wireweave wireframes",
+  "description": "Render ```wireweave fenced blocks (boxes + arrows) as inline SVG.",
+  "permissions": [],
+  "allowedHosts": [],
+  "contributes": {
+    "codeblocks": {
+      "wireweave": { "render": "html" }
+    }
+  },
+  "render": "html",
+  "engines": { "markspread": ">=1.3.0" }
+}
