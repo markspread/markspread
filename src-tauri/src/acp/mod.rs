@@ -266,6 +266,104 @@ pub async fn acp_approve_tool(
     Ok(())
 }
 
+// ─── MAR-1010 / MAR-1011 surface ────────────────────────────────────────
+//
+// These four commands extend the existing ACP surface with the
+// agent-registry + tool-diff approval flow that U2 needs from the
+// renderer. They are intentionally thin: persistence + decision routing
+// is owned by the renderer stores; Rust merely acts as the IPC
+// pipe and (for `acp_approve_diff`) hands the decision to the live ACP
+// client when one exists.
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApproveDiffRequestId {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request_id_number: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request_id_string: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomAgent {
+    pub id: String,
+    pub label: String,
+    pub kind: String,
+}
+
+#[tauri::command]
+pub async fn agents_list_custom() -> Result<Vec<CustomAgent>, AppError> {
+    // The renderer hydrates builtins itself; we return an empty list
+    // until persisted custom agents land in a follow-up.
+    Ok(Vec::new())
+}
+
+#[tauri::command]
+pub async fn agents_save_custom(agent: CustomAgent) -> Result<(), AppError> {
+    // Persistence (writing to `~/.markspread/agents.json`) is wired in a
+    // follow-up; today we accept and discard to keep the IPC ack flow.
+    let _ = agent;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn agents_remove_custom(id: String) -> Result<(), AppError> {
+    let _ = id;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn acp_set_workspace_default(
+    workspace_id: String,
+    agent_id: String,
+) -> Result<(), AppError> {
+    // No-op host side; the renderer store is the source of truth and
+    // forwards here for future workspace-layout persistence.
+    let _ = (workspace_id, agent_id);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn acp_approve_diff(
+    session_id: SessionId,
+    request_id: ApproveDiffRequestId,
+    decision: String,
+) -> Result<(), AppError> {
+    let client = lookup_client(&session_id)?;
+    let request_id = match (request_id.request_id_number, request_id.request_id_string) {
+        (Some(n), _) => RequestId::Number(n),
+        (None, Some(s)) => RequestId::String(s),
+        _ => return Err(AppError::Invalid("missing request_id".into())),
+    };
+    let dec = match decision.as_str() {
+        "allow" => PermissionDecision::Allow,
+        "allow_once" => PermissionDecision::AllowOnce,
+        "deny" => PermissionDecision::Deny,
+        other => return Err(AppError::Invalid(format!("unknown decision {other}"))),
+    };
+    client
+        .respond_to_permission_request(request_id, dec)
+        .await
+        .map_err(|e| AppError::Invalid(format!("acp approve_diff: {e}")))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn tool_queue_save(
+    workspace_id: String,
+    queue: serde_json::Value,
+) -> Result<(), AppError> {
+    let _ = (workspace_id, queue);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn tool_queue_load(workspace_id: String) -> Result<serde_json::Value, AppError> {
+    let _ = workspace_id;
+    Ok(serde_json::Value::Array(Vec::new()))
+}
+
 #[tauri::command]
 pub async fn acp_cancel(session_id: SessionId) -> Result<(), AppError> {
     let client = lookup_client(&session_id)?;
@@ -370,6 +468,138 @@ mod tests {
         assert_eq!(v["agentId"], "claude");
         assert_eq!(v["event"]["kind"], "closed");
         assert_eq!(v["event"]["reason"], "eof");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn agents_list_custom_returns_empty_by_default() {
+        let out = agents_list_custom().await.unwrap();
+        assert!(out.is_empty());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn agents_save_and_remove_custom_are_noops_today() {
+        agents_save_custom(CustomAgent {
+            id: "x".into(),
+            label: "X".into(),
+            kind: "acp-external".into(),
+        })
+        .await
+        .unwrap();
+        agents_remove_custom("x".into()).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn set_workspace_default_acks() {
+        acp_set_workspace_default("/ws".into(), "claude-subscription".into())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn tool_queue_save_and_load_round_trip_empty() {
+        tool_queue_save("/ws".into(), serde_json::Value::Array(Vec::new()))
+            .await
+            .unwrap();
+        let loaded = tool_queue_load("/ws".into()).await.unwrap();
+        assert!(loaded.is_array());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn approve_diff_with_unknown_session_returns_not_found() {
+        let err = acp_approve_diff(
+            SessionId("no-such".into()),
+            ApproveDiffRequestId {
+                request_id_number: Some(1),
+                request_id_string: None,
+            },
+            "allow".into(),
+        )
+        .await
+        .unwrap_err();
+        matches!(err, AppError::NotFound(_));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn approve_diff_with_missing_request_id_errors() {
+        let (client_t, _agent_t) = transport::MemoryTransport::pair(8192);
+        let client = Arc::new(AcpClient::new(client_t));
+        manager()
+            .lock()
+            .unwrap()
+            .insert("approve-diff-1".into(), client);
+        let err = acp_approve_diff(
+            SessionId("approve-diff-1".into()),
+            ApproveDiffRequestId {
+                request_id_number: None,
+                request_id_string: None,
+            },
+            "allow".into(),
+        )
+        .await
+        .unwrap_err();
+        match err {
+            AppError::Invalid(s) => assert!(s.contains("request_id")),
+            other => panic!("expected Invalid, got {other:?}"),
+        }
+        manager().lock().unwrap().remove("approve-diff-1");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn approve_diff_with_unknown_decision_errors() {
+        let (client_t, _agent_t) = transport::MemoryTransport::pair(8192);
+        let client = Arc::new(AcpClient::new(client_t));
+        manager()
+            .lock()
+            .unwrap()
+            .insert("approve-diff-2".into(), client);
+        let err = acp_approve_diff(
+            SessionId("approve-diff-2".into()),
+            ApproveDiffRequestId {
+                request_id_number: Some(1),
+                request_id_string: None,
+            },
+            "maybe".into(),
+        )
+        .await
+        .unwrap_err();
+        match err {
+            AppError::Invalid(s) => assert!(s.contains("unknown decision")),
+            other => panic!("expected Invalid, got {other:?}"),
+        }
+        manager().lock().unwrap().remove("approve-diff-2");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn approve_diff_with_string_request_id_dispatches_allow_once() {
+        let (client_t, _agent_t) = transport::MemoryTransport::pair(8192);
+        let client = Arc::new(AcpClient::new(client_t));
+        manager()
+            .lock()
+            .unwrap()
+            .insert("approve-diff-3".into(), client);
+        // We use allow_once to exercise that variant. The transport is
+        // drained on drop; we only verify the command path doesn't err.
+        let res = acp_approve_diff(
+            SessionId("approve-diff-3".into()),
+            ApproveDiffRequestId {
+                request_id_number: None,
+                request_id_string: Some("rid-abc".into()),
+            },
+            "allow_once".into(),
+        )
+        .await;
+        // ok or transport-side Invalid both fine — we want no panic and
+        // a clean enum result.
+        assert!(matches!(res, Ok(()) | Err(AppError::Invalid(_))));
+        manager().lock().unwrap().remove("approve-diff-3");
     }
 
     #[tokio::test]

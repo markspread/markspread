@@ -1,21 +1,36 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(async () => undefined),
 }));
 
+import { type AcpAdapter, resetAcpAdapter, setAcpAdapter } from "../../lib/agents/acp-adapter";
+import { useAgentRegistry } from "../../store/agent-registry";
 import { _cancelChatFlush, useChatSessions } from "../../store/chat-sessions";
 import { subscribeTelemetry, useTelemetry } from "../../store/telemetry";
+import { useToolApprovalQueue } from "../../store/tool-approval-queue";
 import { useWorkspace } from "../../store/workspace";
 import { ChatShell } from "../ChatShell";
+
+function fakeAdapter(overrides: Partial<AcpAdapter> = {}): AcpAdapter {
+  return {
+    startSession: vi.fn(async () => "fake-sess"),
+    sendMessage: vi.fn(async () => {}),
+    approveTool: vi.fn(async () => {}),
+    ...overrides,
+  };
+}
 
 function resetStores() {
   useChatSessions.getState()._reset();
   _cancelChatFlush();
   useWorkspace.setState({ current: "/ws-1", preferredShell: "chat" });
   useTelemetry.setState({ consent: "enabled" });
+  useAgentRegistry.getState()._reset();
+  useToolApprovalQueue.getState()._reset();
+  resetAcpAdapter();
 }
 
 afterEach(() => {
@@ -24,6 +39,9 @@ afterEach(() => {
   _cancelChatFlush();
   useWorkspace.setState({ current: null, preferredShell: "chat" });
   useTelemetry.setState({ consent: "unset" });
+  useAgentRegistry.getState()._reset();
+  useToolApprovalQueue.getState()._reset();
+  resetAcpAdapter();
 });
 
 describe("ChatShell", () => {
@@ -34,7 +52,6 @@ describe("ChatShell", () => {
     expect(getByTestId("chat-workspace-nav")).toBeTruthy();
     expect(getByTestId("chat-stream-region")).toBeTruthy();
     expect(getByTestId("chat-context-panel")).toBeTruthy();
-    // Auto-created session is active.
     expect(useChatSessions.getState().activeSessionId).not.toBeNull();
   });
 
@@ -52,7 +69,6 @@ describe("ChatShell", () => {
     expect(queryByTestId("chat-workspace-nav")).toBeNull();
     fireEvent.click(getByTestId("chat-toggle-context"));
     expect(queryByTestId("chat-context-panel")).toBeNull();
-    // Toggle back on.
     fireEvent.click(getByTestId("chat-toggle-nav"));
     fireEvent.click(getByTestId("chat-toggle-context"));
     expect(queryByTestId("chat-workspace-nav")).toBeTruthy();
@@ -70,17 +86,104 @@ describe("ChatShell", () => {
     off();
   });
 
-  it("sending a message appends user + placeholder assistant cards", () => {
+  it("sending a message routes user text to the ACP adapter (subscription agent)", async () => {
+    const adapter = fakeAdapter();
+    setAcpAdapter(adapter);
     const { getByTestId } = render(<ChatShell />);
-    const input = getByTestId("chat-input") as HTMLTextAreaElement;
-    fireEvent.change(input, { target: { value: "hello" } });
+    fireEvent.change(getByTestId("chat-input"), { target: { value: "hi" } });
     fireEvent.click(getByTestId("chat-send"));
-    expect(getByTestId("chat-msg-user").textContent).toContain("hello");
-    expect(getByTestId("chat-msg-assistant").textContent).toContain("not yet connected");
+    await waitFor(() => expect(adapter.startSession).toHaveBeenCalled());
+    expect(adapter.sendMessage).toHaveBeenCalledWith("fake-sess", "hi");
+    expect(getByTestId("chat-msg-user").textContent).toContain("hi");
+  });
+
+  it("api-key agent bypasses the ACP adapter and prints a legacy notice", async () => {
+    const adapter = fakeAdapter();
+    setAcpAdapter(adapter);
+    // Force the workspace default to api-key BEFORE the first session is auto-created.
+    useAgentRegistry.getState().setWorkspaceDefault("/ws-1", "claude-api-key");
+    const { getByTestId, container } = render(<ChatShell />);
+    fireEvent.change(getByTestId("chat-input"), { target: { value: "yo" } });
+    fireEvent.click(getByTestId("chat-send"));
+    await waitFor(() => {
+      const txt = container.textContent ?? "";
+      expect(txt).toContain("api-key agent");
+    });
+    expect(adapter.startSession).not.toHaveBeenCalled();
+  });
+
+  it("adapter errors surface as a system message", async () => {
+    const adapter = fakeAdapter({
+      startSession: vi.fn(async () => {
+        throw new Error("spawn failed");
+      }),
+    });
+    setAcpAdapter(adapter);
+    const { getByTestId, container } = render(<ChatShell />);
+    fireEvent.change(getByTestId("chat-input"), { target: { value: "x" } });
+    fireEvent.click(getByTestId("chat-send"));
+    await waitFor(() => {
+      expect(container.textContent ?? "").toContain("Agent error");
+    });
+  });
+
+  it("non-Error adapter rejection still produces a system message", async () => {
+    const adapter = fakeAdapter({
+      sendMessage: vi.fn(async () => {
+        throw "boom-string";
+      }),
+    });
+    setAcpAdapter(adapter);
+    const { getByTestId, container } = render(<ChatShell />);
+    fireEvent.change(getByTestId("chat-input"), { target: { value: "x" } });
+    fireEvent.click(getByTestId("chat-send"));
+    await waitFor(() => {
+      expect(container.textContent ?? "").toContain("boom-string");
+    });
+  });
+
+  it("re-uses the cached ACP session id on the second message", async () => {
+    const adapter = fakeAdapter();
+    setAcpAdapter(adapter);
+    const { getByTestId } = render(<ChatShell />);
+    fireEvent.change(getByTestId("chat-input"), { target: { value: "one" } });
+    fireEvent.click(getByTestId("chat-send"));
+    await waitFor(() => expect(adapter.sendMessage).toHaveBeenCalledTimes(1));
+    fireEvent.change(getByTestId("chat-input"), { target: { value: "two" } });
+    fireEvent.click(getByTestId("chat-send"));
+    await waitFor(() => expect(adapter.sendMessage).toHaveBeenCalledTimes(2));
+    // startSession only invoked once total.
+    expect(adapter.startSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("sending with no registered agent prints a system fallback", async () => {
+    setAcpAdapter(fakeAdapter());
+    useAgentRegistry.setState({ byId: {}, order: [] });
+    const { getByTestId, container } = render(<ChatShell />);
+    fireEvent.change(getByTestId("chat-input"), { target: { value: "x" } });
+    fireEvent.click(getByTestId("chat-send"));
+    await waitFor(() => {
+      expect(container.textContent ?? "").toContain("No agent registered");
+    });
+  });
+
+  it("renders queued tool-diff cards above the chat stream", () => {
+    useToolApprovalQueue.getState().enqueue({
+      sessionId: "s1",
+      agentId: "claude-subscription",
+      toolCallId: "tc",
+      requestId: 1,
+      tool: "write_file",
+      filePath: "/a.md",
+      before: "a",
+      after: "b",
+    });
+    const { getByTestId } = render(<ChatShell />);
+    expect(getByTestId("chat-tool-queue")).toBeTruthy();
+    expect(getByTestId("tool-diff-dialog")).toBeTruthy();
   });
 
   it("re-selects an existing session when one is already created", () => {
-    // Pre-create a session and then mount.
     const existing = useChatSessions.getState().createSession("/ws-1", "existing");
     useChatSessions.setState({ activeSessionId: null });
     render(<ChatShell />);
@@ -89,7 +192,6 @@ describe("ChatShell", () => {
 
   it("uses workspaceIdOverride when supplied", () => {
     const { getByTestId } = render(<ChatShell workspaceIdOverride="/other" />);
-    // Toolbar shows the override.
     expect(getByTestId("chat-toolbar").textContent).toContain("/other");
   });
 
@@ -97,7 +199,6 @@ describe("ChatShell", () => {
     useWorkspace.setState({ current: null, preferredShell: "chat" });
     const { getByTestId } = render(<ChatShell />);
     expect(getByTestId("chat-toolbar").textContent).toContain("(no workspace)");
-    // No auto-session created when there's no workspace id.
     expect(useChatSessions.getState().activeSessionId).toBeNull();
   });
 
@@ -113,7 +214,6 @@ describe("ChatShell", () => {
     const { getByTestId } = render(<ChatShell />);
     const wsList = useChatSessions.getState().byWorkspace["/ws-1"] ?? [];
     expect(wsList.length).toBeGreaterThan(0);
-    // Create one more.
     act(() => {
       useChatSessions.getState().createSession("/ws-1", "Second");
     });
