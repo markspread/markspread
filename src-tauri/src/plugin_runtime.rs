@@ -164,10 +164,7 @@ fn is_safe_relative_path(rel: &str) -> bool {
 }
 
 #[tauri::command]
-pub fn plugin_scaffold_install(
-    name: String,
-    files: HashMap<String, String>,
-) -> AppResult<String> {
+pub fn plugin_scaffold_install(name: String, files: HashMap<String, String>) -> AppResult<String> {
     if !is_safe_plugin_name(&name) {
         return Err(AppError::Invalid(format!("unsafe plugin name: {name}")));
     }

@@ -489,6 +489,12 @@ describe("FileTree", () => {
       // Default focusedIdx=0 lands on "docs" (first row), so beginCreate
       // nests the new entry under /ws/docs.
       await renderRoot();
+      // Wait until the root listing settled with docs as the first treeitem
+      // so the new-file event fires with focusedIdx=0 on a stable flat list.
+      await waitFor(() => {
+        const rows = screen.getAllByRole("treeitem");
+        expect(rows[0]?.textContent).toContain("docs");
+      });
       act(() => {
         window.dispatchEvent(new Event("markspread:filetree:new-file"));
       });
