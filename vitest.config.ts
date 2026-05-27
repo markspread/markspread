@@ -35,6 +35,9 @@ export default defineConfig({
       // S-PSDK-001: workspace packages live alongside src and share the
       // same vitest run so CI catches SDK regressions in one pass.
       "packages/*/src/**/*.{test,spec}.{ts,tsx}",
+      // MAR-1020: sample plugin manifests live outside `src/` but ship
+      // with the runtime; their schema must stay aligned with ADR-0012.
+      "examples/plugins/*/__tests__/*.{test,spec}.{ts,tsx}",
     ],
     exclude: ["e2e/**", "node_modules/**", "src-tauri/**"],
     coverage: {
