@@ -18,8 +18,12 @@ import {
 } from "../store/workspace-layout";
 
 interface WorkspaceShellProps {
-  /** 각 워크스페이스 탭의 body 렌더 (사이드바 + 에디터). 호출자가 주입. */
-  renderTabBody: (tab: WorkspaceTab) => ReactNode;
+  /**
+   * 각 워크스페이스 탭의 body 렌더 (사이드바 + 에디터). 호출자가 주입.
+   * `splitId` 는 그 탭이 속한 `ws-tabs` 노드 id — MAR-1014 의 per-split
+   * FileTree 상태 분리를 위해 필요하다.
+   */
+  renderTabBody: (tab: WorkspaceTab, splitId: string) => ReactNode;
 }
 
 export function WorkspaceShell({ renderTabBody }: WorkspaceShellProps) {
@@ -37,7 +41,7 @@ function ShellNode({
   renderTabBody,
 }: {
   node: WorkspaceLayoutNode;
-  renderTabBody: (tab: WorkspaceTab) => ReactNode;
+  renderTabBody: (tab: WorkspaceTab, splitId: string) => ReactNode;
 }) {
   if (node.type === "ws-tabs") {
     return <TabsLeaf node={node} renderTabBody={renderTabBody} />;
@@ -50,7 +54,7 @@ function SplitContainer({
   renderTabBody,
 }: {
   node: WorkspaceSplitNode;
-  renderTabBody: (tab: WorkspaceTab) => ReactNode;
+  renderTabBody: (tab: WorkspaceTab, splitId: string) => ReactNode;
 }) {
   const isHorizontal = node.direction === "horizontal";
   const total = useMemo(
@@ -93,7 +97,7 @@ function ShellSlot({
   flex,
 }: {
   child: WorkspaceLayoutNode;
-  renderTabBody: (tab: WorkspaceTab) => ReactNode;
+  renderTabBody: (tab: WorkspaceTab, splitId: string) => ReactNode;
   split: WorkspaceSplitNode;
   childIdx: number;
   flex: string;
@@ -129,7 +133,7 @@ function TabsLeaf({
   renderTabBody,
 }: {
   node: WorkspaceTabsNode;
-  renderTabBody: (tab: WorkspaceTab) => ReactNode;
+  renderTabBody: (tab: WorkspaceTab, splitId: string) => ReactNode;
 }) {
   const setActiveTab = useWorkspaceLayout((s) => s.setActiveTab);
   const closeWorkspaceTab = useWorkspaceLayout((s) => s.closeWorkspaceTab);
@@ -151,7 +155,7 @@ function TabsLeaf({
         onActivate={(id) => setActiveTab(id)}
         onClose={(id) => closeWorkspaceTab(id)}
       />
-      <div className="flex min-h-0 min-w-0 flex-1">{renderTabBody(activeTab)}</div>
+      <div className="flex min-h-0 min-w-0 flex-1">{renderTabBody(activeTab, node.id)}</div>
     </section>
   );
 }

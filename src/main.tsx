@@ -6,6 +6,7 @@ import App from "./App";
 // any component see initialized resources without suspending.
 import "./lib/i18n-init";
 import { bootstrapSidebarPaletteItems } from "./lib/palette/bootstrap";
+import { bootstrapWorkspacePaletteCommands } from "./lib/palette/workspace-commands";
 import { restoreSessionOrFallback } from "./lib/session";
 import { markFirstPaint } from "./lib/startup";
 import { getWindowInfo } from "./lib/window-id";
@@ -43,6 +44,7 @@ if (!rootEl) {
 document.documentElement.lang = useLocale.getState().locale;
 useTheme.getState().syncFromSystem();
 bootstrapSidebarPaletteItems();
+bootstrapWorkspacePaletteCommands();
 
 // Dev escape hatch: when running outside Tauri (e.g., `vite dev` for
 // browser-driven Playwright checks), expose the zustand stores so a

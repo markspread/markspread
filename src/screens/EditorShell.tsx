@@ -14,12 +14,19 @@ import { WelcomeBanner } from "../components/WelcomeBanner";
 import { WorkspaceShell } from "../components/WorkspaceShell";
 import { useSidebarPeekHover } from "../hooks/useSidebarPeekHover";
 import { useWorkspaceLayoutSync } from "../hooks/useWorkspaceLayoutSync";
+import { syncWindowLabel } from "../lib/window-id";
 import { useEditorLayout } from "../store/editor-layout";
+import { DEFAULT_SPLIT_ID, fileTreeSplitKey, useFileTree } from "../store/file-tree";
 import { SIDEBAR_DEFAULT_PX, SIDEBAR_RAIL_PX, useLayout } from "../store/layout";
 import { useSettingsSheet } from "../store/settings-sheet";
 import { emitTelemetry } from "../store/telemetry";
 import { useWorkspace } from "../store/workspace";
-import { type WorkspaceTab, forEachTabsNode, useWorkspaceLayout } from "../store/workspace-layout";
+import {
+  type WorkspaceTab,
+  forEachTabsNode,
+  useWorkspaceLayout,
+  workspaceIdFor,
+} from "../store/workspace-layout";
 
 /**
  * ADR-0010 D1/D3: `EditorShell` is the renamed `Main` screen. The
@@ -58,17 +65,45 @@ export function EditorShell() {
     });
     return total > 1;
   }, [layout]);
+  // MAR-1014 GC: prune file-tree split-keyed expansion sets whose split
+  // no longer exists in the layout. Runs on every layout change — a
+  // split close drops its entry on the same tick.
+  useEffect(() => {
+    const label = syncWindowLabel();
+    const keep = new Set<string>();
+    // Always keep the default split slot per workspace for back-compat
+    // (single-shell EditorShell + SidebarPeek lookups go through this).
+    if (currentWs) {
+      keep.add(fileTreeSplitKey(label, DEFAULT_SPLIT_ID, workspaceIdFor(currentWs)));
+    }
+    if (layout) {
+      forEachTabsNode(layout.root, (n) => {
+        for (const tab of n.tabs) {
+          keep.add(fileTreeSplitKey(label, n.id, tab.workspaceId));
+        }
+      });
+    }
+    useFileTree.getState().retainSplits(keep);
+  }, [layout, currentWs]);
   if (isMultiShell) {
     return (
       <WorkspaceShell
-        renderTabBody={(tab: WorkspaceTab) => <SingleWorkspaceBody workspaceTab={tab} />}
+        renderTabBody={(tab: WorkspaceTab, splitId: string) => (
+          <SingleWorkspaceBody workspaceTab={tab} splitId={splitId} />
+        )}
       />
     );
   }
   return <SingleWorkspaceBody />;
 }
 
-function SingleWorkspaceBody({ workspaceTab }: { workspaceTab?: WorkspaceTab }) {
+function SingleWorkspaceBody({
+  workspaceTab,
+  splitId,
+}: {
+  workspaceTab?: WorkspaceTab;
+  splitId?: string;
+}) {
   const { t } = useTranslation();
   const currentFromStore = useWorkspace((s) => s.current);
   // 멀티-워크스페이스 트리에서 호출된 경우 그 탭의 경로를 사용. 그 외에는 글로벌 store.
@@ -195,7 +230,9 @@ function SingleWorkspaceBody({ workspaceTab }: { workspaceTab?: WorkspaceTab }) 
           aria-hidden={sidebarHidden}
           inert={sidebarHidden}
         >
-          {current && <FileTree workspace={current} />}
+          {current && (
+            <FileTree workspace={current} {...(splitId !== undefined ? { splitId } : {})} />
+          )}
         </aside>
         {/* S-SBC-003: slim rail when collapsed-in-rail-mode. Clicking it
             reopens the sidebar (also re-arms the resize splitter). F2 will

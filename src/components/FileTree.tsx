@@ -3,7 +3,7 @@ import { type UnlistenFn, listen } from "@tauri-apps/api/event";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { newFileCommand, newFolderCommand } from "../lib/commands/new-file";
-import { useFileTree } from "../store/file-tree";
+import { DEFAULT_SPLIT_ID, splitKeyForWorkspace, useFileTree } from "../store/file-tree";
 import { SORT_LABEL, SORT_MODES, useLayout } from "../store/layout";
 import { useSettings } from "../store/settings";
 import { useTabs } from "../store/tabs";
@@ -28,6 +28,14 @@ const EMPTY_EXPANDED: readonly string[] = Object.freeze([]);
 
 interface FileTreeProps {
   workspace: string;
+  /**
+   * MAR-1014: per-split expansion isolation. When omitted the FileTree
+   * uses the window's default split slot, preserving the legacy
+   * single-shell behaviour. Each split leaf in `WorkspaceShell` passes
+   * its own id so two splits over the same workspace keep independent
+   * expand/collapse state.
+   */
+  splitId?: string;
 }
 
 interface FlatNode {
@@ -79,11 +87,26 @@ function fuzzyMatch(query: string, target: string): boolean {
  * persists in zustand. Above 500 visible rows we switch to a windowed
  * renderer so opening a 10k-file folder doesn't tank the frame.
  */
-export const FileTree = memo(function FileTree({ workspace }: FileTreeProps) {
+export const FileTree = memo(function FileTree({
+  workspace,
+  splitId = DEFAULT_SPLIT_ID,
+}: FileTreeProps) {
   const { t } = useTranslation();
-  const expandedSet = useFileTree((s) => s.expanded[workspace] ?? EMPTY_EXPANDED);
-  const toggle = useFileTree((s) => s.toggle);
-  const setExpanded = useFileTree((s) => s.setExpanded);
+  // MAR-1014: subscribe to this split's slice. The composite key is recomputed
+  // by the selector whenever (workspace, splitId) changes; back-compat callers
+  // that omit splitId share the default slot.
+  const splitKey = useMemo(() => splitKeyForWorkspace(workspace, splitId), [workspace, splitId]);
+  const expandedSet = useFileTree((s) => s.splits[splitKey] ?? EMPTY_EXPANDED);
+  const toggleFor = useFileTree((s) => s.toggleFor);
+  const setExpandedFor = useFileTree((s) => s.setExpandedFor);
+  const toggle = useCallback(
+    (_ws: string, path: string) => toggleFor(splitKey, path),
+    [splitKey, toggleFor],
+  );
+  const setExpanded = useCallback(
+    (_ws: string, path: string, expanded: boolean) => setExpandedFor(splitKey, path, expanded),
+    [splitKey, setExpandedFor],
+  );
   const previewEnabled = useSettings((s) => s.previewTabsEnabled);
   const openTab = useTabs((s) => s.open);
 
