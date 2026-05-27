@@ -10,8 +10,13 @@
 // placeholder assistant card. The real LLM wiring lands in U2.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AgentPicker } from "../components/AgentPicker";
+import { ToolDiffDialog } from "../components/ToolDiffDialog";
+import { getAcpAdapter } from "../lib/agents/acp-adapter";
+import { useAgentRegistry } from "../store/agent-registry";
 import { useChatSessions } from "../store/chat-sessions";
 import { emitTelemetry } from "../store/telemetry";
+import { useToolApprovalQueue } from "../store/tool-approval-queue";
 import { useWorkspace } from "../store/workspace";
 import { ChatStream } from "./chat/ChatStream";
 import { ContextPanel } from "./chat/ContextPanel";
@@ -76,14 +81,44 @@ export function ChatShell({ workspaceIdOverride }: ChatShellProps = {}) {
     [activeSessionId, sessionsMap],
   );
 
-  const onSend = (text: string) => {
+  const resolveAgent = useAgentRegistry((s) => s.resolve);
+  const pendingDiffs = useToolApprovalQueue((s) => s.queue);
+  // Per-session ACP session id (from acp_start_session). Lazily populated.
+  const acpSessionRef = useRef<Map<string, string>>(new Map());
+
+  const onSend = async (text: string) => {
     /* v8 ignore next -- the ChatStream Send button is disabled while there is no active session, so this guard never fires from the UI */
     if (!session) return;
     appendMessage(session.id, { role: "user", content: text });
-    appendMessage(session.id, {
-      role: "assistant",
-      content: "Agent SDK not yet connected. (U2 will wire the response stream.)",
-    });
+    const agent = resolveAgent(workspaceId, session.id);
+    if (!agent) {
+      appendMessage(session.id, {
+        role: "system",
+        content: "No agent registered — open the picker to add one.",
+      });
+      return;
+    }
+    if (agent.kind === "api-key") {
+      // ADR-0004 contract: api-key path keeps the legacy provider flow.
+      appendMessage(session.id, {
+        role: "assistant",
+        content: `(api-key agent ${agent.label}: legacy provider path)`,
+      });
+      return;
+    }
+    try {
+      let sessionAcpId = acpSessionRef.current.get(session.id);
+      if (!sessionAcpId) {
+        sessionAcpId = await getAcpAdapter().startSession(agent, workspaceId);
+        acpSessionRef.current.set(session.id, sessionAcpId);
+      }
+      await getAcpAdapter().sendMessage(sessionAcpId, text);
+    } catch (err) {
+      appendMessage(session.id, {
+        role: "system",
+        content: `Agent error: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
   };
 
   const onSwitchToEditor = () => {
@@ -121,6 +156,7 @@ export function ChatShell({ workspaceIdOverride }: ChatShellProps = {}) {
           <span className="truncate font-medium text-sm" title={workspaceId}>
             {workspaceId || "(no workspace)"}
           </span>
+          <AgentPicker workspaceId={workspaceId} sessionId={activeSessionId} />
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -166,6 +202,16 @@ export function ChatShell({ workspaceIdOverride }: ChatShellProps = {}) {
           aria-label="Chat stream"
           data-testid="chat-stream-region"
         >
+          {pendingDiffs.length > 0 && (
+            <div
+              data-testid="chat-tool-queue"
+              className="border-[var(--color-border)] border-b p-3"
+            >
+              {pendingDiffs.map((p) => (
+                <ToolDiffDialog key={p.id} proposal={p} />
+              ))}
+            </div>
+          )}
           <ChatStream messages={session?.messages ?? []} onSend={onSend} />
         </section>
         {!contextCollapsed && (
