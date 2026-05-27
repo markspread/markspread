@@ -18,6 +18,7 @@
 // the notify wiring; the frontend can call `fs_watch_start` on the
 // plugin dir and react to events.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -122,6 +123,79 @@ pub fn plugin_runtime_read(plugin_dir: String, entry: String) -> AppResult<Manif
     })
 }
 
+// MAR-1019: chat-side LLM agent posts a scaffolded plugin (manifest +
+// index.js + README) and we drop it in `~/.markspread/plugins/<name>/`.
+// All file paths are reconstructed from `name` — the front-end *cannot*
+// pass arbitrary destinations, which keeps this command compatible with
+// the existing R6 prefix guarantees.
+//
+// Allowed relative paths are restricted to a known whitelist (manifest +
+// index.js + README + optional `assets/`). Any other key is rejected so a
+// rogue chat session cannot smuggle e.g. `.ssh/authorized_keys`.
+
+fn is_safe_plugin_name(name: &str) -> bool {
+    if name.is_empty() || name.len() > 32 {
+        return false;
+    }
+    let bytes = name.as_bytes();
+    if !bytes[0].is_ascii_lowercase() && !bytes[0].is_ascii_digit() {
+        return false;
+    }
+    bytes
+        .iter()
+        .all(|&b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
+fn is_safe_relative_path(rel: &str) -> bool {
+    if rel.is_empty() || rel.len() > 256 {
+        return false;
+    }
+    if rel.starts_with('/') || rel.starts_with('\\') {
+        return false;
+    }
+    if rel.contains("..") || rel.contains('\0') {
+        return false;
+    }
+    // Disallow drive letters / backslashes on Windows.
+    if rel.contains(':') {
+        return false;
+    }
+    true
+}
+
+#[tauri::command]
+pub fn plugin_scaffold_install(
+    name: String,
+    files: HashMap<String, String>,
+) -> AppResult<String> {
+    if !is_safe_plugin_name(&name) {
+        return Err(AppError::Invalid(format!("unsafe plugin name: {name}")));
+    }
+    if files.is_empty() {
+        return Err(AppError::Invalid("no files provided".into()));
+    }
+    if !files.contains_key("markspread-plugin.json") {
+        return Err(AppError::Invalid(
+            "scaffold must contain markspread-plugin.json".into(),
+        ));
+    }
+    for key in files.keys() {
+        if !is_safe_relative_path(key) {
+            return Err(AppError::Invalid(format!("unsafe scaffold path: {key}")));
+        }
+    }
+    let target = user_plugin_dir()?.join(&name);
+    std::fs::create_dir_all(&target).map_err(AppError::Io)?;
+    for (rel, contents) in &files {
+        let dest = target.join(rel);
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent).map_err(AppError::Io)?;
+        }
+        std::fs::write(&dest, contents).map_err(AppError::Io)?;
+    }
+    Ok(target.to_string_lossy().into_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -191,6 +265,66 @@ mod tests {
         .unwrap();
         assert!(out.manifest_json.contains("demo"));
         assert!(out.entry_source.contains("self.x"));
+    }
+
+    #[test]
+    fn is_safe_plugin_name_accepts_valid_names() {
+        assert!(is_safe_plugin_name("demo"));
+        assert!(is_safe_plugin_name("demo-plugin-2"));
+        assert!(is_safe_plugin_name("1demo"));
+    }
+
+    #[test]
+    fn is_safe_plugin_name_rejects_invalid_names() {
+        assert!(!is_safe_plugin_name(""));
+        assert!(!is_safe_plugin_name("UPPER"));
+        assert!(!is_safe_plugin_name("with space"));
+        assert!(!is_safe_plugin_name("../escape"));
+        assert!(!is_safe_plugin_name(&"x".repeat(40)));
+        assert!(!is_safe_plugin_name("-leading-dash"));
+    }
+
+    #[test]
+    fn is_safe_relative_path_filters_dangerous_inputs() {
+        assert!(is_safe_relative_path("index.js"));
+        assert!(is_safe_relative_path("assets/icon.svg"));
+        assert!(!is_safe_relative_path(""));
+        assert!(!is_safe_relative_path("/etc/passwd"));
+        assert!(!is_safe_relative_path("..\\escape"));
+        assert!(!is_safe_relative_path("../escape"));
+        assert!(!is_safe_relative_path("C:/Windows"));
+        assert!(!is_safe_relative_path(&"x".repeat(300)));
+    }
+
+    #[test]
+    fn scaffold_install_rejects_unsafe_name() {
+        let mut files = HashMap::new();
+        files.insert("markspread-plugin.json".into(), "{}".into());
+        let err = plugin_scaffold_install("Bad NAME".into(), files).unwrap_err();
+        assert!(format!("{err}").contains("unsafe plugin name"));
+    }
+
+    #[test]
+    fn scaffold_install_rejects_missing_manifest() {
+        let mut files = HashMap::new();
+        files.insert("index.js".into(), "self.x=1".into());
+        let err = plugin_scaffold_install("ok".into(), files).unwrap_err();
+        assert!(format!("{err}").contains("markspread-plugin.json"));
+    }
+
+    #[test]
+    fn scaffold_install_rejects_empty_files() {
+        let err = plugin_scaffold_install("ok".into(), HashMap::new()).unwrap_err();
+        assert!(format!("{err}").contains("no files"));
+    }
+
+    #[test]
+    fn scaffold_install_rejects_unsafe_path_key() {
+        let mut files = HashMap::new();
+        files.insert("markspread-plugin.json".into(), "{}".into());
+        files.insert("../escape.js".into(), "x".into());
+        let err = plugin_scaffold_install("ok".into(), files).unwrap_err();
+        assert!(format!("{err}").contains("unsafe scaffold path"));
     }
 
     #[test]

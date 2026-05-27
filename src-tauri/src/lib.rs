@@ -202,6 +202,7 @@ pub fn run() {
             plugin_runtime::plugin_runtime_dir,
             plugin_runtime::plugin_runtime_list,
             plugin_runtime::plugin_runtime_read,
+            plugin_runtime::plugin_scaffold_install,
             export::export_document,
             export::export_print,
             export::export_batch,
