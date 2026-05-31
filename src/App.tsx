@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect } from "react";
+import { ActivityBar } from "./components/ActivityBar";
 import { AiActionPalette } from "./components/AiActionPalette";
 import { AutoUpdateConsent } from "./components/AutoUpdateConsent";
 import { ChordIndicator } from "./components/ChordIndicator";
@@ -26,8 +27,10 @@ import { maybeStartUnmountWatch, registerUnmountListener, stopUnmountWatch } fro
 import { ChatShell } from "./screens/ChatShell";
 import { EditorShell } from "./screens/EditorShell";
 import { HarnessRoot } from "./screens/HarnessRoot";
+import { ParserWorkbench } from "./screens/ParserWorkbench";
 import { SingleFile } from "./screens/SingleFile";
 import { Welcome } from "./screens/Welcome";
+import { useActivityMode } from "./store/activity-mode";
 import { useAiPalette } from "./store/ai-palette";
 import { useDialogs } from "./store/dialogs";
 import { useRecentWorkspaces } from "./store/recent-workspaces";
@@ -47,6 +50,7 @@ function RealApp() {
   const preferredShell = useWorkspace((s) => s.preferredShell);
   const singleFilePath = useSingleFile((s) => s.path);
   const chatShellEnabled = isChatShellEnabled();
+  const activityMode = useActivityMode((s) => s.mode);
   const aiPaletteOpen = useAiPalette((s) => s.open);
   const aiPaletteContext = useAiPalette((s) => s.context);
   const closeAiPalette = useAiPalette((s) => s.close);
@@ -84,10 +88,20 @@ function RealApp() {
   let body: ReactNode;
   if (singleFilePath) {
     body = <SingleFile />;
-  } else if (current && preferredShell === "chat" && chatShellEnabled) {
-    body = <ChatShell />;
   } else if (current) {
-    body = <EditorShell />;
+    // ADR-0019: 워크스페이스 진입 시 좌측 활동바 + 2모드 라우터.
+    //   parser    → ParserWorkbench (파서 개발)
+    //   workspace → 기존 리뷰 셸 (chat | editor)
+    const reviewShell =
+      preferredShell === "chat" && chatShellEnabled ? <ChatShell /> : <EditorShell />;
+    body = (
+      <div className="flex h-full w-full min-h-0">
+        <ActivityBar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          {activityMode === "parser" ? <ParserWorkbench workspace={current} /> : reviewShell}
+        </div>
+      </div>
+    );
   } else {
     body = (
       <Welcome

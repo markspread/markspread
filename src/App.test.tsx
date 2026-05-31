@@ -64,8 +64,12 @@ vi.mock("./components/ToastStack", () => ({ ToastStack: () => null }));
 vi.mock("./screens/HarnessRoot", () => ({
   HarnessRoot: ({ mode }: { mode: string }) => <div data-testid="harness" data-mode={mode} />,
 }));
+vi.mock("./screens/ParserWorkbench", () => ({
+  ParserWorkbench: () => <div data-testid="parser" />,
+}));
 
 import App from "./App";
+import { useActivityMode } from "./store/activity-mode";
 import { useRecentWorkspaces } from "./store/recent-workspaces";
 import { useSingleFile } from "./store/single-file";
 import { useTabs } from "./store/tabs";
@@ -78,6 +82,7 @@ describe("App", () => {
     useWorkspace.setState({ current: null, preferredShell: "chat" });
     useSingleFile.setState({ path: null });
     useTabs.setState({ activePath: null } as never, false);
+    useActivityMode.setState({ mode: "workspace" });
   });
 
   it("renders Welcome when no workspace and no single file", () => {
@@ -95,6 +100,15 @@ describe("App", () => {
     useWorkspace.setState({ current: "/ws", preferredShell: "chat" });
     const { getByTestId } = render(<App />);
     expect(getByTestId("chat")).toBeTruthy();
+  });
+
+  it("renders ParserWorkbench when workspace + activity mode = parser", () => {
+    useWorkspace.setState({ current: "/ws", preferredShell: "chat" });
+    useActivityMode.setState({ mode: "parser" });
+    const { getByTestId } = render(<App />);
+    expect(getByTestId("parser")).toBeTruthy();
+    // activity bar is present so the user can switch back
+    expect(getByTestId("activity-bar")).toBeTruthy();
   });
 
   it("renders SingleFile when a single-file path is set (wins over workspace)", () => {
