@@ -10,6 +10,12 @@
 // on unexpected console.error keeps regressions visible.
 
 import { afterEach, vi } from "vitest";
+// jsdom leaves Range.getClientRects/getBoundingClientRect unimplemented, so
+// CodeMirror's deferred measure() pass (scheduled on an animation frame after
+// dispatch) throws an uncaught TypeError inside any jsdom test that mounts an
+// editor/code-viewer — not just the editor suites. Installing the shim here in
+// shared setup covers every jsdom environment; it's a guarded no-op under node.
+import "./src/lib/editor/extensions/jsdomLayoutShim";
 
 const realError = console.error;
 const realWarn = console.warn;
