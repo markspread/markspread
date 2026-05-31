@@ -10,6 +10,33 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
+// vitest 3 removed `environmentMatchGlobs` (gone in 4) in favour of `projects`.
+// We split the run into two inline projects so DOM suites get jsdom while the
+// pure-logic units stay on cheap node. The two `include` sets are kept mutually
+// exclusive (the node project excludes the jsdom globs) so no file runs twice.
+// Files carrying a `// @vitest-environment jsdom` docblock (e.g. *.dom.test.tsx)
+// override their project's environment regardless of which project owns them.
+const JSDOM_GLOBS = [
+  "src/components/**/*.{test,spec}.{ts,tsx}",
+  "src/lib/security/markdown-sanitize.test.ts",
+  // threat-model exercises sanitiseMarkdownHtml (DOMParser) and the
+  // path-canonical IPC seam — both need a DOM/window environment.
+  "src/lib/security/threat-model.test.ts",
+  // a11y suites mount real React components via testing-library.
+  "src/__tests__/a11y-*.test.tsx",
+  "**/*.dom.test.ts",
+];
+const BASE_INCLUDE = [
+  "src/**/*.{test,spec}.{ts,tsx}",
+  // S-PSDK-001: workspace packages live alongside src and share the
+  // same vitest run so CI catches SDK regressions in one pass.
+  "packages/*/src/**/*.{test,spec}.{ts,tsx}",
+  // MAR-1020: sample plugin manifests live outside `src/` but ship
+  // with the runtime; their schema must stay aligned with ADR-0012.
+  "examples/plugins/*/__tests__/*.{test,spec}.{ts,tsx}",
+];
+const BASE_EXCLUDE = ["e2e/**", "node_modules/**", "src-tauri/**"];
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -18,28 +45,30 @@ export default defineConfig({
   },
   test: {
     globals: false,
-    setupFiles: ["./vitest.setup.ts"],
-    environmentMatchGlobs: [
-      ["src/components/**", "jsdom"],
-      ["src/lib/security/markdown-sanitize.test.ts", "jsdom"],
-      // threat-model exercises sanitiseMarkdownHtml (DOMParser) and the
-      // path-canonical IPC seam — both need a DOM/window environment.
-      ["src/lib/security/threat-model.test.ts", "jsdom"],
-      // a11y suites mount real React components via testing-library.
-      ["src/__tests__/a11y-*.test.tsx", "jsdom"],
-      ["**/*.dom.test.ts", "jsdom"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "node",
+          environment: "node",
+          globals: false,
+          setupFiles: ["./vitest.setup.ts"],
+          include: BASE_INCLUDE,
+          exclude: [...BASE_EXCLUDE, ...JSDOM_GLOBS],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "jsdom",
+          environment: "jsdom",
+          globals: false,
+          setupFiles: ["./vitest.setup.ts"],
+          include: JSDOM_GLOBS,
+          exclude: BASE_EXCLUDE,
+        },
+      },
     ],
-    environment: "node",
-    include: [
-      "src/**/*.{test,spec}.{ts,tsx}",
-      // S-PSDK-001: workspace packages live alongside src and share the
-      // same vitest run so CI catches SDK regressions in one pass.
-      "packages/*/src/**/*.{test,spec}.{ts,tsx}",
-      // MAR-1020: sample plugin manifests live outside `src/` but ship
-      // with the runtime; their schema must stay aligned with ADR-0012.
-      "examples/plugins/*/__tests__/*.{test,spec}.{ts,tsx}",
-    ],
-    exclude: ["e2e/**", "node_modules/**", "src-tauri/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
