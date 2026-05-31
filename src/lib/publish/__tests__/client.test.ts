@@ -86,6 +86,40 @@ describe("PublishClient.publish", () => {
     expect(sent.aiHistory).toEqual([]);
   });
 
+  it("defaults aiHistory to [] when doc has none", async () => {
+    let sent: { aiHistory?: unknown[] } = {};
+    const client = new PublishClient(
+      creds,
+      cfg((_url, init) => {
+        sent = JSON.parse((init?.body as string) ?? "{}");
+        return { url: "https://x" };
+      }),
+    );
+    const docNoHistory: PublishedDocument = { sourcePath: "/ws/n.md", htmlBody: "<p>x</p>" };
+    await client.publish(docNoHistory, { sitename: "test" });
+    expect(sent.aiHistory).toEqual([]);
+  });
+
+  it("returns errors from backend when no url present", async () => {
+    const client = new PublishClient(
+      creds,
+      cfg(() => ({ errors: ["sitename taken"] })),
+    );
+    const r = await client.publish(doc, { sitename: "test" });
+    expect(r.ok).toBe(false);
+    expect(r.errors).toEqual(["sitename taken"]);
+  });
+
+  it("returns unknown error when no url and no errors", async () => {
+    const client = new PublishClient(
+      creds,
+      cfg(() => ({})),
+    );
+    const r = await client.publish(doc, { sitename: "test" });
+    expect(r.ok).toBe(false);
+    expect(r.errors).toEqual(["unknown error"]);
+  });
+
   it("returns errors on http failure", async () => {
     const client = new PublishClient(
       creds,
@@ -130,5 +164,13 @@ describe("PublishClient.getSite", () => {
       cfg(() => new Response("nf", { status: 404 })),
     );
     expect(await client.getSite("missing")).toBeNull();
+  });
+
+  it("throws on non-404 http error", async () => {
+    const client = new PublishClient(
+      creds,
+      cfg(() => new Response("err", { status: 500 })),
+    );
+    await expect(client.getSite("boom")).rejects.toThrow(/500/);
   });
 });

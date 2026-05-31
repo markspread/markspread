@@ -226,6 +226,7 @@ function walk(node: Element, opts: SanitizeOptions): void {
       // 토글은 별도 plugin (checkboxToggle.ts) 이 attach 함.
       const type = (child.getAttribute("type") ?? "").toLowerCase();
       if (type !== "checkbox") {
+        /* v8 ignore next -- <input> is a void element, so a parsed input never has children; child.firstChild is always null and this unwrap loop body never runs (defensive mirror of the generic disallowed-tag unwrap above) */
         while (child.firstChild) node.insertBefore(child.firstChild, child);
         node.removeChild(child);
         continue;

@@ -86,6 +86,20 @@ describe("exportToVSCode", () => {
     expect(r.ok).toBe(false);
   });
 
+  it("rejects missing version", () => {
+    const r = exportToVSCode(baseManifest({ version: "" as unknown as string }));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.some((e) => e.path === "version")).toBe(true);
+  });
+
+  it("rejects missing entry", () => {
+    const r = exportToVSCode(baseManifest({ entry: "" as unknown as string }));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.some((e) => e.path === "entry")).toBe(true);
+  });
+
   it("rejects non-relative entry", () => {
     const m = baseManifest();
     (m as { entry: string }).entry = "/etc/passwd";
@@ -108,6 +122,13 @@ describe("exportToVSCodeText", () => {
     const parsed = JSON.parse(r.json) as { name: string; version: string };
     expect(parsed.name).toBe("vscode-markdown-mermaid");
     expect(parsed.version).toBe("1.20.0");
+  });
+
+  it("forwards errors when underlying export fails", () => {
+    const r = exportToVSCodeText(baseManifest({ name: "" as unknown as string }));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.some((e) => e.path === "name")).toBe(true);
   });
 });
 

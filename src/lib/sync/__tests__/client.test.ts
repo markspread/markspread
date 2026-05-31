@@ -162,6 +162,14 @@ describe("SyncClient.list", () => {
     expect(lst).toHaveLength(2);
     expect(lst[0]?.kind).toBe("settings");
   });
+
+  it("throws on http error", async () => {
+    const client = new SyncClient(
+      creds,
+      cfg(() => new Response("err", { status: 500 })),
+    );
+    await expect(client.list("ws-3")).rejects.toThrow(/500/);
+  });
 });
 
 describe("makeEnvelope", () => {

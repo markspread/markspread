@@ -85,6 +85,51 @@ describe("chat-sessions store", () => {
     ).toThrowError(/unknown session/);
   });
 
+  it("appendAssistantChunk ignores empty chunks", () => {
+    const s = useChatSessions.getState().createSession("ws1");
+    useChatSessions.getState().appendAssistantChunk(s.id, "");
+    expect(useChatSessions.getState().sessions[s.id]?.messages).toHaveLength(0);
+  });
+
+  it("appendAssistantChunk is a silent no-op for unknown session ids", () => {
+    // session removed (user deleted) — drop silently, no throw.
+    expect(() => useChatSessions.getState().appendAssistantChunk("missing", "hi")).not.toThrow();
+  });
+
+  it("appendAssistantChunk creates a new assistant message when none is trailing", () => {
+    const s = useChatSessions.getState().createSession("ws1");
+    useChatSessions.getState().appendMessage(s.id, { role: "user", content: "ask" });
+    useChatSessions.getState().appendAssistantChunk(s.id, "Hel");
+    const msgs = useChatSessions.getState().sessions[s.id]?.messages;
+    expect(msgs).toHaveLength(2);
+    expect(msgs?.[1]?.role).toBe("assistant");
+    expect(msgs?.[1]?.content).toBe("Hel");
+  });
+
+  it("appendAssistantChunk appends to the trailing assistant message", () => {
+    const s = useChatSessions.getState().createSession("ws1");
+    useChatSessions.getState().appendAssistantChunk(s.id, "Hel");
+    useChatSessions.getState().appendAssistantChunk(s.id, "lo");
+    const msgs = useChatSessions.getState().sessions[s.id]?.messages;
+    expect(msgs).toHaveLength(1);
+    expect(msgs?.[0]?.role).toBe("assistant");
+    expect(msgs?.[0]?.content).toBe("Hello");
+  });
+
+  it("appendAssistantChunk schedules a debounced flush", async () => {
+    vi.useFakeTimers();
+    try {
+      const s = useChatSessions.getState().createSession("ws1");
+      invokeMock.mockClear();
+      useChatSessions.getState().appendAssistantChunk(s.id, "chunk");
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      expect(invokeMock).toHaveBeenCalledWith("chat_session_save", expect.any(Object));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("renameSession updates title + is a no-op for unknown ids", () => {
     const s = useChatSessions.getState().createSession("ws1");
     useChatSessions.getState().renameSession(s.id, "Renamed");
@@ -100,6 +145,16 @@ describe("chat-sessions store", () => {
     expect(useChatSessions.getState().activeSessionId).toBeNull();
     expect(useChatSessions.getState().byWorkspace.ws1).not.toContain(s.id);
     expect(invokeMock).toHaveBeenCalledWith("chat_session_delete", { sessionId: s.id });
+  });
+
+  it("deleteSession tolerates a session missing from the byWorkspace index", () => {
+    const s = useChatSessions.getState().createSession("ws1");
+    // Simulate an index desync: session present, but no byWorkspace entry for
+    // its workspace → delete must fall back to an empty list (?? []).
+    useChatSessions.setState({ byWorkspace: {} });
+    expect(() => useChatSessions.getState().deleteSession(s.id)).not.toThrow();
+    expect(useChatSessions.getState().sessions[s.id]).toBeUndefined();
+    expect(useChatSessions.getState().byWorkspace.ws1).toEqual([]);
   });
 
   it("deleteSession is a no-op for unknown ids", () => {

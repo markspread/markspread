@@ -19,8 +19,27 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invoke(...args),
 }));
 
+let lastEditorProps: {
+  initialDoc: string;
+  language?: string;
+  onChange?: (doc: string) => void;
+  tabId?: string;
+} | null = null;
+vi.mock("../components/Editor", () => ({
+  Editor: (props: {
+    initialDoc: string;
+    language?: string;
+    onChange?: (doc: string) => void;
+    tabId?: string;
+  }) => {
+    lastEditorProps = props;
+    return <div data-testid="editor-mock">{props.initialDoc}</div>;
+  },
+}));
+
 import { SingleFile } from "../screens/SingleFile";
 import { useSingleFile } from "../store/single-file";
+import { useToasts } from "../store/toasts";
 import { useWorkspace } from "../store/workspace";
 
 afterEach(cleanup);
@@ -31,6 +50,8 @@ describe("screens/SingleFile", () => {
     invoke.mockImplementation(() => Promise.resolve(undefined));
     useSingleFile.setState({ path: null, content: "", dirty: false });
     useWorkspace.setState({ current: null } as never);
+    useToasts.setState({ toasts: [] });
+    lastEditorProps = null;
   });
 
   it("renders nothing without an open file", () => {
@@ -75,6 +96,21 @@ describe("screens/SingleFile", () => {
     expect(useSingleFile.getState().dirty).toBe(false);
   });
 
+  it("pushes an error toast when the save invoke rejects", async () => {
+    invoke.mockImplementation((cmd: unknown) =>
+      cmd === "fs_write" ? Promise.reject("EPERM") : Promise.resolve(undefined),
+    );
+    useSingleFile.setState({ path: "/docs/note.md", content: "hello", dirty: true });
+    render(<SingleFile />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("single-file-save"));
+    });
+    const toasts = useToasts.getState().toasts;
+    expect(toasts.some((t) => t.kind === "error")).toBe(true);
+    // dirty stays true because save failed
+    expect(useSingleFile.getState().dirty).toBe(true);
+  });
+
   it("Cmd+S triggers save", async () => {
     useSingleFile.setState({ path: "/docs/note.md", content: "x", dirty: true });
     render(<SingleFile />);
@@ -86,6 +122,45 @@ describe("screens/SingleFile", () => {
       "fs_write",
       expect.objectContaining({ path: "/docs/note.md" }),
     );
+  });
+
+  it("Ctrl+S triggers save", async () => {
+    useSingleFile.setState({ path: "/docs/note.md", content: "x", dirty: true });
+    render(<SingleFile />);
+    await act(async () => {
+      const evt = new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true });
+      window.dispatchEvent(evt);
+    });
+    expect(invoke).toHaveBeenCalledWith(
+      "fs_write",
+      expect.objectContaining({ path: "/docs/note.md" }),
+    );
+  });
+
+  it("uses the plain language for a non-markdown single file", () => {
+    useSingleFile.setState({ path: "/docs/script.txt", content: "x", dirty: false });
+    render(<SingleFile />);
+    // Editor mounts; the non-md path drives the `isMd ? "markdown" : "plain"` else arm.
+    expect(screen.getByTestId("single-file-editor")).toBeTruthy();
+    expect(lastEditorProps?.language).toBe("plain");
+  });
+
+  it("forwards Editor onChange edits into the single-file store", () => {
+    useSingleFile.setState({ path: "/docs/note.md", content: "old", dirty: false });
+    render(<SingleFile />);
+    act(() => lastEditorProps?.onChange?.("edited"));
+    expect(useSingleFile.getState().content).toBe("edited");
+  });
+
+  it("ignores Cmd+S when no file is open (save early-returns)", async () => {
+    useSingleFile.setState({ path: null, content: "", dirty: false });
+    render(<SingleFile />);
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "s", metaKey: true, bubbles: true }),
+      );
+    });
+    expect(invoke).not.toHaveBeenCalledWith("fs_write", expect.anything());
   });
 
   it("closes the single file", () => {

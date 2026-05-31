@@ -9,10 +9,16 @@ vi.mock("@tauri-apps/api/core", () => ({
   convertFileSrc: (p: string) => p,
 }));
 
+interface SelectionRange {
+  fromOffset: number;
+  toOffset: number;
+  fullText: string;
+}
 let lastEditorProps: {
   initialDoc: string;
   onChange?: (n: string) => void;
   onPositionChange?: (p: EditorPosition) => void;
+  onSelectionRange?: (range: SelectionRange) => void;
   remoteDoc?: string;
   language?: string;
   initialPosition?: EditorPosition;
@@ -23,6 +29,7 @@ vi.mock("./Editor", () => ({
     initialDoc: string;
     onChange?: (n: string) => void;
     onPositionChange?: (p: EditorPosition) => void;
+    onSelectionRange?: (range: SelectionRange) => void;
     remoteDoc?: string;
     language?: string;
     initialPosition?: EditorPosition;
@@ -53,6 +60,7 @@ vi.mock("../lib/external-change", () => ({
 }));
 
 import { useDocCache } from "../store/doc-cache";
+import { useDragChatSelection } from "../store/drag-chat-selection";
 import { useEditorLayout } from "../store/editor-layout";
 import { useTabs } from "../store/tabs";
 import { useToasts } from "../store/toasts";
@@ -398,6 +406,44 @@ describe("PaneEditor", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("captures a drag-chat selection range for markdown files", () => {
+    const capture = vi.spyOn(useDragChatSelection.getState(), "capture");
+    useDocCache.getState().setBaseline("/ws", "/ws/a.md", {
+      content: "hello world",
+      encoding: "utf-8",
+      mtime: 0,
+      sha256: "",
+    });
+    render(<PaneEditor workspace="/ws" pane={paneWith("/ws/a.md")} />);
+    act(() =>
+      lastEditorProps?.onSelectionRange?.({
+        fromOffset: 0,
+        toOffset: 5,
+        fullText: "hello world",
+      }),
+    );
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filePath: "/ws/a.md",
+        fullText: "hello world",
+        fromOffset: 0,
+        toOffset: 5,
+      }),
+    );
+    capture.mockRestore();
+  });
+
+  it("does not pass onSelectionRange for non-markdown files", () => {
+    useDocCache.getState().setBaseline("/ws", "/ws/notes.txt", {
+      content: "log",
+      encoding: "utf-8",
+      mtime: 0,
+      sha256: "",
+    });
+    render(<PaneEditor workspace="/ws" pane={paneWith("/ws/notes.txt")} />);
+    expect(lastEditorProps?.onSelectionRange).toBeUndefined();
   });
 
   it("uses the cached live content as the remote-doc when one pane edits", () => {

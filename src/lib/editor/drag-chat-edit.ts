@@ -184,10 +184,13 @@ function lcsLines(a: readonly string[], b: readonly string[]): string[] {
     for (let j = 1; j <= m; j += 1) {
       const row = dp[i];
       const prev = dp[i - 1];
+      /* v8 ignore next -- dp is fully allocated as [n+1][m+1] with i,j in range, so dp[i]/dp[i-1] are always defined; the falsy guard is a noUncheckedIndexedAccess type-guard */
       if (!row || !prev) continue;
       if (a[i - 1] === b[j - 1]) {
+        /* v8 ignore next -- dp cells are number-filled, so prev[j-1] is never nullish; the `?? 0` is a noUncheckedIndexedAccess type-guard */
         row[j] = (prev[j - 1] ?? 0) + 1;
       } else {
+        /* v8 ignore next -- dp cells are number-filled, so prev[j]/row[j-1] are never nullish; the `?? 0` fallbacks are noUncheckedIndexedAccess type-guards */
         row[j] = Math.max(prev[j] ?? 0, row[j - 1] ?? 0);
       }
     }
@@ -197,12 +200,14 @@ function lcsLines(a: readonly string[], b: readonly string[]): string[] {
   let j = m;
   while (i > 0 && j > 0) {
     if (a[i - 1] === b[j - 1]) {
+      /* v8 ignore next -- i is in (0, n], so a[i-1] is always a defined string; the `?? ""` is a noUncheckedIndexedAccess type-guard */
       lcs.unshift(a[i - 1] ?? "");
       i -= 1;
       j -= 1;
     } else {
       const prev = dp[i - 1];
       const row = dp[i];
+      /* v8 ignore next -- prev=dp[i-1]/row=dp[i] with i>0 are always defined number rows, so the `?.` and `?? 0` fallbacks are noUncheckedIndexedAccess type-guards */
       if ((prev?.[j] ?? 0) >= (row?.[j - 1] ?? 0)) i -= 1;
       else j -= 1;
     }

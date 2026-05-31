@@ -53,6 +53,14 @@ describe("MultiLayerIgnore — basic patterns", () => {
     expect(m.isIgnored(`${ROOT}/file1.txt`)).toBe(true);
     expect(m.isIgnored(`${ROOT}/file12.txt`)).toBe(false);
   });
+
+  it("non-leading ** expands to deep wildcard within the pattern", () => {
+    // `**` not at the start is consumed by the per-char loop (ch === '*' && next === '*'),
+    // producing `.*` mid-pattern: `build/<anything>/out`.
+    const m = mk("build/**/out\n");
+    expect(m.isIgnored(`${ROOT}/build/a/b/out`, true)).toBe(true);
+    expect(m.isIgnored(`${ROOT}/build/x`, true)).toBe(false);
+  });
 });
 
 describe("MultiLayerIgnore — negation", () => {
@@ -106,6 +114,28 @@ describe("MultiLayerIgnore — explain", () => {
     const matches = m.explain(`${ROOT}/private`, true);
     const sources = matches.map((mm) => mm.layer);
     expect(sources).toContain(".markspreadignore");
+  });
+
+  it("skips layers whose root does not contain the path", () => {
+    const m = mk("*.log\n");
+    expect(m.explain("/elsewhere/foo.log")).toEqual([]);
+  });
+
+  it("skips directory-only rules when explaining a file", () => {
+    const m = mk("logs/\n");
+    // file (isDirectory=false) — dirOnly rule is skipped in explain.
+    expect(m.explain(`${ROOT}/logs`, false)).toEqual([]);
+    // directory — rule applies.
+    expect(m.explain(`${ROOT}/logs`, true).map((mm) => mm.rule)).toContain("logs/");
+  });
+});
+
+describe("MultiLayerIgnore — root path edge case", () => {
+  it("the workspace root itself is relative empty string and not ignored", () => {
+    const m = mk("*.log\n");
+    // absolutePath === rootDir → toRelative returns "" → no rule matches root.
+    expect(m.isIgnored(ROOT, true)).toBe(false);
+    expect(m.explain(ROOT, true)).toEqual([]);
   });
 });
 

@@ -1,6 +1,6 @@
 // ADR-0016 (T5.D): BudgetGuard 단위 테스트.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BUDGETS, describeOutcome, measureAsync, measureSync } from "../budget-guard";
 
 describe("BUDGETS", () => {
@@ -68,6 +68,46 @@ describe("measureSync — error thrown", () => {
     expect(outcome.code).toBe("error_thrown");
     expect(outcome.message).toBe("boom");
     expect(outcome.shouldSuspend).toBe(false);
+  });
+});
+
+describe("now() fallback when performance.now is unavailable", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back to Date.now when performance is undefined", () => {
+    vi.stubGlobal("performance", undefined);
+    const { result, outcome } = measureSync(BUDGETS.local, () => 7);
+    expect(result).toBe(7);
+    expect(outcome.code).toBe("ok");
+    expect(outcome.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("falls back to Date.now when performance.now is not a function", () => {
+    vi.stubGlobal("performance", {});
+    const { outcome } = measureSync(BUDGETS.local, () => 1);
+    expect(outcome.code).toBe("ok");
+  });
+});
+
+describe("measureAsync — memory check", () => {
+  it("ok when async memory reading passes the cap", async () => {
+    const { result, outcome } = await measureAsync(BUDGETS.local, async () => "fast", {
+      readMemory: () => 5 * 1024 * 1024,
+    });
+    expect(result).toBe("fast");
+    expect(outcome.code).toBe("ok");
+  });
+
+  it("reports memory_over when async memory reading exceeds cap", async () => {
+    const { result, outcome } = await measureAsync(BUDGETS.local, async () => "fast", {
+      readMemory: () => 200 * 1024 * 1024,
+    });
+    expect(result).toBe("fast");
+    expect(outcome.code).toBe("memory_over");
+    expect(outcome.shouldSuspend).toBe(true);
+    expect(outcome.memoryBytes).toBe(200 * 1024 * 1024);
   });
 });
 
@@ -141,11 +181,21 @@ describe("describeOutcome — user-facing strings", () => {
     expect(msg).toContain("50.0MB");
   });
 
+  it("memory_over shows '?' when memoryBytes is absent", () => {
+    const msg = describeOutcome({ code: "memory_over", shouldSuspend: true }, "p");
+    expect(msg).toContain("?MB");
+  });
+
   it("error_thrown shows message", () => {
     const msg = describeOutcome(
       { code: "error_thrown", message: "bad input", shouldSuspend: false },
       "p",
     );
     expect(msg).toContain("bad input");
+  });
+
+  it("error_thrown falls back to 'unknown' when message is absent", () => {
+    const msg = describeOutcome({ code: "error_thrown", shouldSuspend: false }, "p");
+    expect(msg).toContain("unknown");
   });
 });

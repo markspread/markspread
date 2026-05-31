@@ -1153,6 +1153,38 @@ describe("FileTree", () => {
       await waitFor(() => expect(screen.queryByText("readme.md")).toBeNull());
     });
 
+    it("toggles md-only mode via the header button", async () => {
+      await renderRoot();
+      expect(useLayout.getState().isMdOnly("/ws")).toBe(false);
+      fireEvent.click(screen.getByLabelText("md-only mode toggle"));
+      expect(useLayout.getState().isMdOnly("/ws")).toBe(true);
+    });
+
+    it("hides non-markdown files in md-only mode, both unfiltered and while filtering", async () => {
+      const mixed: DirEntry[] = [
+        { name: "readme.md", path: "/ws/readme.md", is_dir: false, modified_ms: 1 },
+        { name: "data.json", path: "/ws/data.json", is_dir: false, modified_ms: 2 },
+      ];
+      invokeMock.mockImplementation((cmd: string, args: { path?: string } = {}) => {
+        if (cmd === "fs_list_dir")
+          return Promise.resolve({ entries: mixed, page: 0, has_more: false });
+        if (cmd === "fs_check_locked") return Promise.resolve(false);
+        if (cmd === "fs_stat") return Promise.reject("not found");
+        return defaultInvoke(cmd, args);
+      });
+      useLayout.setState({ mdOnly: { "/ws": true } } as never);
+      render(<FileTree workspace="/ws" />);
+      // Unfiltered md-only: the .json is hidden (line 248 arm).
+      await waitFor(() => expect(screen.getByText("readme.md")).toBeTruthy());
+      expect(screen.queryByText("data.json")).toBeNull();
+      // Now filter — the filtered visitor must also drop the .json (line 271 arm).
+      fireEvent.change(screen.getByLabelText("Filter files"), {
+        target: { value: "a" },
+      });
+      await waitFor(() => expect(screen.getByText("readme.md")).toBeTruthy());
+      expect(screen.queryByText("data.json")).toBeNull();
+    });
+
     it("renaming a file with no extension selects the whole name", async () => {
       const noExt: DirEntry[] = [{ name: "Makefile", path: "/ws/Makefile", is_dir: false }];
       invokeMock.mockImplementation((cmd: string, args: { path?: string } = {}) => {

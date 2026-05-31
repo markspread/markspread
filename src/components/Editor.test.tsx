@@ -149,6 +149,48 @@ describe("Editor", () => {
     );
   });
 
+  it("emits onSelectionRange for a non-empty selection", () => {
+    const onSelectionRange = vi.fn();
+    render(<Editor initialDoc="" onSelectionRange={onSelectionRange} />);
+    act(() =>
+      lastUpdateListener?.({
+        docChanged: false,
+        selectionSet: true,
+        state: {
+          doc: {
+            toString: () => "hello world",
+            lineAt: (head: number) => ({ number: 1, from: head }),
+          },
+          selection: { main: { head: 5, from: 0, to: 5 } } as never,
+        },
+      }),
+    );
+    expect(onSelectionRange).toHaveBeenCalledWith({
+      fromOffset: 0,
+      toOffset: 5,
+      fullText: "hello world",
+    });
+  });
+
+  it("skips onSelectionRange when the selection is empty (caret only)", () => {
+    const onSelectionRange = vi.fn();
+    render(<Editor initialDoc="" onSelectionRange={onSelectionRange} />);
+    act(() =>
+      lastUpdateListener?.({
+        docChanged: false,
+        selectionSet: true,
+        state: {
+          doc: {
+            toString: () => "hello",
+            lineAt: (head: number) => ({ number: 1, from: head }),
+          },
+          selection: { main: { head: 3, from: 3, to: 3 } } as never,
+        },
+      }),
+    );
+    expect(onSelectionRange).not.toHaveBeenCalled();
+  });
+
   it("skips onChange callbacks when no listener was registered", () => {
     render(<Editor initialDoc="" />);
     expect(() => lastUpdateListener?.(makeUpdate({ docChanged: true, doc: "x" }))).not.toThrow();

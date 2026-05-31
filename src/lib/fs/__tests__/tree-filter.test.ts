@@ -113,6 +113,13 @@ describe("filterTree — recursive", () => {
     expect(filterTree(node, { mode: "all", ignore })).toBeNull();
   });
 
+  it("directory without children property yields empty children array", () => {
+    const node: TreeNode = { path: `${ROOT}/lazy`, name: "lazy", isDirectory: true };
+    const filtered = filterTree(node, { mode: "md-only" });
+    expect(filtered).not.toBeNull();
+    expect(filtered?.children).toEqual([]);
+  });
+
   it("deep nesting filtered", () => {
     const tree = dir("a", [
       dir("b", [file("README.md", `${ROOT}/a/b`), file("c.ts", `${ROOT}/a/b`)]),

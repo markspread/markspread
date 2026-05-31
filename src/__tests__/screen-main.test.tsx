@@ -139,6 +139,14 @@ describe("screens/Main", () => {
     expect(container.querySelectorAll("[data-ws-tabs-id]").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("switches to the chat shell via the header button", () => {
+    const setPreferredShell = vi.spyOn(useWorkspace.getState(), "setPreferredShell");
+    render(<Main />);
+    fireEvent.click(screen.getByTestId("editor-switch-chat"));
+    expect(setPreferredShell).toHaveBeenCalledWith("chat");
+    setPreferredShell.mockRestore();
+  });
+
   it("renders the WorkspaceShell when the shell layout root is split", () => {
     useWorkspaceLayout.getState().ensure("/tmp/ws");
     useWorkspaceLayout.getState().splitVertical();

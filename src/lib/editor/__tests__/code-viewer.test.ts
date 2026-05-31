@@ -5,7 +5,28 @@
 // language 통합은 e2e (Playwright) 회차에서 검증.
 
 import { describe, expect, it } from "vitest";
-import { createCodeViewerSetup, isSupportedCodeExt, readOnlyExtension } from "../code-viewer";
+import {
+  createCodeViewerSetup,
+  getLanguageFor,
+  isSupportedCodeExt,
+  readOnlyExtension,
+} from "../code-viewer";
+
+const ALL_EXTS = [
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".json",
+  ".css",
+  ".html",
+  ".rs",
+  ".py",
+  ".go",
+  ".sql",
+  ".yaml",
+  ".yml",
+];
 
 describe("isSupportedCodeExt", () => {
   it("returns true for supported extensions", () => {
@@ -65,5 +86,23 @@ describe("createCodeViewerSetup", () => {
     const setupTsx = createCodeViewerSetup("component.tsx");
     // promise 가 throw 없이 resolve 또는 reject 정상 처리되는지만 확인.
     await expect(setupTsx.pendingLanguageLoad).resolves.toBeDefined();
+  });
+});
+
+describe("getLanguageFor — lazy-load failure path", () => {
+  // The optional @codemirror/lang-* packages are not installed in the test
+  // (or default) environment, so every loader's dynamic import rejects and
+  // each loader falls through its catch to return null. This exercises the
+  // try→catch→null branch of all 13 loaders. The success branch is covered
+  // in code-viewer.langmock.test.ts where each module is mocked.
+  for (const ext of ALL_EXTS) {
+    it(`returns null (not a throw) when the ${ext} language module is absent`, async () => {
+      await expect(getLanguageFor(`file${ext}`)).resolves.toBeNull();
+    });
+  }
+
+  it("returns null for an unmapped extension without invoking any loader", async () => {
+    await expect(getLanguageFor("notes.unknownext")).resolves.toBeNull();
+    await expect(getLanguageFor("Makefile")).resolves.toBeNull();
   });
 });

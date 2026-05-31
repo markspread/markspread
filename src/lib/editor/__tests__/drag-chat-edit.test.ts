@@ -89,6 +89,49 @@ describe("computeInlineDiff", () => {
     expect(d.original).toBe("o");
     expect(d.proposed).toBe("p");
   });
+
+  it("insertion before a common trailing line (in-loop add arm)", () => {
+    // LCS = [a, c]; proposed inserts `b` between them → the main-loop `add`
+    // branch fires (o[i] === lcs[k] but p[j] !== lcs[k]).
+    const d = computeInlineDiff("a\nc", "a\nb\nc");
+    const seq = d.chunks.map((c) => c.kind);
+    expect(seq).toContain("equal");
+    expect(seq).toContain("add");
+    expect(d.chunks.some((c) => c.kind === "add" && c.text.includes("b"))).toBe(true);
+    // No removals — only an insertion.
+    expect(seq).not.toContain("remove");
+  });
+
+  it("trailing removal loop (original longer, common prefix only)", () => {
+    // LCS = [a]; main loop exits when proposed is exhausted, leaving the
+    // `while (i < o.length)` remove drain to run.
+    const d = computeInlineDiff("a\nb\nc", "a");
+    const removed = d.chunks.filter((c) => c.kind === "remove");
+    expect(removed.length).toBeGreaterThan(0);
+    const removedText = removed.map((c) => c.text).join("");
+    expect(removedText).toContain("b");
+    expect(removedText).toContain("c");
+  });
+
+  it("multi-line replacement exercises full LCS backtrack", () => {
+    // Forces both the equal/non-equal dp fill arms and both backtrack arms.
+    const original = "alpha\nbeta\ngamma\ndelta";
+    const proposed = "alpha\nBETA\ngamma\nDELTA\nepsilon";
+    const d = computeInlineDiff(original, proposed);
+    const kinds = new Set(d.chunks.map((c) => c.kind));
+    expect(kinds.has("equal")).toBe(true);
+    expect(kinds.has("add")).toBe(true);
+    expect(kinds.has("remove")).toBe(true);
+    // equal lines preserved
+    expect(d.chunks.some((c) => c.kind === "equal" && c.text.includes("alpha"))).toBe(true);
+    expect(d.chunks.some((c) => c.kind === "equal" && c.text.includes("gamma"))).toBe(true);
+  });
+
+  it("strips the trailing newline when neither side ends with one (multi-line)", () => {
+    const d = computeInlineDiff("x\ny", "x\nz");
+    const last = d.chunks[d.chunks.length - 1];
+    expect(last?.text.endsWith("\n")).toBe(false);
+  });
 });
 
 describe("applyDecision", () => {

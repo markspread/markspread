@@ -334,6 +334,79 @@ describe("render — in-process custom parser (register-from-source path, no san
   });
 });
 
+describe("render — handleInProcessAst defensive branches → builtin fallback", () => {
+  function registerFactory(id: string, ext: string, factory: () => unknown) {
+    getParserRegistry().registerParser(
+      {
+        id,
+        version: "0.0.1",
+        displayName: id,
+        fileMatch: { extensions: [ext] },
+        capabilities: "preview-only",
+        entry: "inline:test",
+      },
+      factory as never,
+    );
+  }
+
+  it("factory output without an `ast` key → null → builtin fallback (line 180)", async () => {
+    registerFactory("noast", ".noast", () => ({ notAst: true }));
+    const out = await render("# fallback-a", { path: "/x.noast" });
+    expect(out).toContain("<h1>fallback-a</h1>");
+  });
+
+  it("factory output whose ast lacks a `kind` → null → builtin fallback (line 182)", async () => {
+    registerFactory("nokind", ".nokind", () => ({ ast: { foo: 1 } }));
+    const out = await render("# fallback-b", { path: "/x.nokind" });
+    expect(out).toContain("<h1>fallback-b</h1>");
+  });
+
+  it("kind:html with a non-string html → null → builtin fallback (line 186)", async () => {
+    registerFactory("htmlnum", ".htmlnum", () => ({ ast: { kind: "html", html: 123 } }));
+    const out = await render("# fallback-c", { path: "/x.htmlnum" });
+    expect(out).toContain("<h1>fallback-c</h1>");
+  });
+
+  it("kind:markdown with a non-string source falls back to the original md (line 191)", async () => {
+    registerFactory("mdnosrc", ".mdnosrc", () => ({ ast: { kind: "markdown" } }));
+    const out = await render("# original-md", { path: "/x.mdnosrc" });
+    expect(out).toContain("<h1>original-md</h1>");
+  });
+
+  it("kind:markdown applies highlightCode to the re-rendered pipeline (lines 194-196)", async () => {
+    registerFactory("mdhl", ".mdhl", (...args: unknown[]) => {
+      const input = args[0] as { content: string };
+      return { ast: { kind: "markdown", source: input.content } };
+    });
+    const highlight = vi.fn(
+      (code: string, lang: string) => `<pre data-mdhl="${lang}">${code}</pre>`,
+    );
+    const out = await render("```js\nfromMarkdownAst\n```", {
+      path: "/x.mdhl",
+      highlightCode: highlight,
+    });
+    expect(highlight).toHaveBeenCalled();
+    expect(out).toContain("fromMarkdownAst");
+  });
+
+  it("kind:raw with a non-string value is JSON-stringified inside <pre> (line 201)", async () => {
+    registerFactory("rawobj", ".rawobj", () => ({
+      ast: { kind: "raw", value: { a: 1, b: [2, 3] } },
+    }));
+    const out = await render("ignored", { path: "/x.rawobj" });
+    expect(out).toContain("<pre>");
+    // value is JSON.stringify'd (non-string branch of line 201).
+    expect(out).toContain('"a": 1');
+    expect(out).toContain('"b"');
+  });
+
+  it("unrecognised ast kind → null → builtin fallback", async () => {
+    registerFactory("unkkind", ".unkkind", () => ({ ast: { kind: "totally-unknown" } }));
+    const out = await render("# unk", { path: "/x.unkkind" });
+    expect(out).toContain("<h1>unk</h1>");
+  });
+});
+
 describe("render fallback when remark imports fail", () => {
   it("uses the escape-and-paragraph renderer when unified is missing", async () => {
     vi.resetModules();

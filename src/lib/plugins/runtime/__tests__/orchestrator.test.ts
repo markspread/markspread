@@ -21,6 +21,100 @@ function manifest(name: string, fence = "alert"): PluginManifest {
   };
 }
 
+function codeblockManifest(name: string, lang = "wireweave"): PluginManifest {
+  return {
+    schemaVersion: 1,
+    name,
+    version: "0.1.0",
+    entry: "./index.js",
+    permissions: [],
+    allowedHosts: [],
+    contributes: { codeblocks: { [lang]: { render: "html" as const } } },
+    render: "html",
+    engines: { markspread: ">=1.3.0" },
+  };
+}
+
+/** Worker that registers a codeblock and echoes html. */
+function codeblockWorkerFactory(lang: string): WorkerFactory {
+  return () => {
+    const { hostSide, pluginSide } = createFakeWorkerPair();
+    pluginSide.addEventListener("message", (ev) => {
+      const m = ev.data as Message;
+      if (m.type === "host:init") {
+        pluginSide.postMessage({
+          type: "plugin:ready",
+          registered: [{ kind: "codeblock", key: lang }],
+        });
+      } else if (m.type === "hook:invoke") {
+        pluginSide.postMessage({
+          type: "hook:result",
+          requestId: m.requestId,
+          result: { kind: "html", html: `CB:${m.payload.source}` },
+        });
+      }
+    });
+    return hostSide;
+  };
+}
+
+/** Worker whose hook returns a plugin-side error result. */
+function errorResultWorkerFactory(fence: string): WorkerFactory {
+  return () => {
+    const { hostSide, pluginSide } = createFakeWorkerPair();
+    pluginSide.addEventListener("message", (ev) => {
+      const m = ev.data as Message;
+      if (m.type === "host:init") {
+        pluginSide.postMessage({
+          type: "plugin:ready",
+          registered: [{ kind: "fence", key: fence }],
+        });
+      } else if (m.type === "hook:invoke") {
+        pluginSide.postMessage({
+          type: "hook:result",
+          requestId: m.requestId,
+          result: { kind: "error", message: "render blew up" },
+        });
+      }
+    });
+    return hostSide;
+  };
+}
+
+/** Worker that delays its hook result past the budget cap → time_over. */
+function slowWorkerFactory(fence: string, delayMs: number): WorkerFactory {
+  return () => {
+    const { hostSide, pluginSide } = createFakeWorkerPair();
+    pluginSide.addEventListener("message", (ev) => {
+      const m = ev.data as Message;
+      if (m.type === "host:init") {
+        pluginSide.postMessage({
+          type: "plugin:ready",
+          registered: [{ kind: "fence", key: fence }],
+        });
+      } else if (m.type === "hook:invoke") {
+        setTimeout(() => {
+          pluginSide.postMessage({
+            type: "hook:result",
+            requestId: m.requestId,
+            result: { kind: "html", html: "late" },
+          });
+        }, delayMs);
+      }
+    });
+    return hostSide;
+  };
+}
+
+function makeOrchestratorWith(factory: WorkerFactory): {
+  orch: PluginOrchestrator;
+  host: PluginHost;
+} {
+  const host = new PluginHost({ workerFactory: factory, handshakeTimeoutMs: 100 });
+  const orch = new PluginOrchestrator(host);
+  return { orch, host };
+}
+
 function echoWorkerFactory(fence: string, htmlPrefix = "OK:"): WorkerFactory {
   return () => {
     const { hostSide, pluginSide } = createFakeWorkerPair();
@@ -119,6 +213,7 @@ describe("PluginOrchestrator — install with llm-generated requires consent", (
         source: "export default (s) => s",
         oneLinerSummary: "passthrough",
         authoredBy: "claude-sonnet-4-6",
+        origin: "https://example.com/p3.js",
       },
       0,
     );
@@ -241,6 +336,86 @@ describe("PluginOrchestrator — render with budget + sanitize", () => {
     });
     expect(out.html).toBeNull();
     expect(out.errorMessage).toBe("no result");
+    host.disposeAll();
+  });
+
+  it("dispatches codeblock kind via host.renderCodeblock", async () => {
+    const { orch, host } = makeOrchestratorWith(codeblockWorkerFactory("wireweave"));
+    await orch.install(
+      {
+        manifest: codeblockManifest("cb1", "wireweave"),
+        pluginDir: "/tmp/cb1",
+        scope: "user",
+        trustLevel: "local",
+        source: "x",
+      },
+      0,
+    );
+    const out = await orch.render({
+      pluginName: "cb1",
+      kind: "codeblock",
+      key: "wireweave",
+      source: "graph",
+      context: { documentPath: "/doc.md" },
+      readMemory: () => 1024, // exercises measureOpts.readMemory wiring
+    });
+    expect(out.errorMessage).toBeNull();
+    expect(out.html).toBe("CB:graph");
+    expect(out.budget.suspended).toBe(false);
+    host.disposeAll();
+  });
+
+  it("propagates plugin error result as errorMessage", async () => {
+    const { orch, host } = makeOrchestratorWith(errorResultWorkerFactory("alert"));
+    await orch.install(
+      {
+        manifest: manifest("perr", "alert"),
+        pluginDir: "/tmp/perr",
+        scope: "user",
+        trustLevel: "local",
+        source: "x",
+      },
+      0,
+    );
+    const out = await orch.render({
+      pluginName: "perr",
+      kind: "fence",
+      key: "alert",
+      source: "hi",
+      context: { documentPath: "/doc.md" },
+    });
+    expect(out.html).toBeNull();
+    expect(out.errorMessage).toBe("render blew up");
+    expect(out.budget.suspended).toBe(false);
+    host.disposeAll();
+  });
+
+  it("suspends when the hook exceeds the time budget", async () => {
+    // publishStrict cap = 50ms; worker replies after 120ms → time_over.
+    const { orch, host } = makeOrchestratorWith(slowWorkerFactory("alert", 120));
+    await orch.install(
+      {
+        manifest: manifest("pslow", "alert"),
+        pluginDir: "/tmp/pslow",
+        scope: "user",
+        trustLevel: "local",
+        source: "x",
+      },
+      0,
+    );
+    const out = await orch.render({
+      pluginName: "pslow",
+      kind: "fence",
+      key: "alert",
+      source: "hi",
+      context: { documentPath: "/doc.md" },
+      publishStrict: true,
+    });
+    expect(out.html).toBeNull();
+    expect(out.budget.suspended).toBe(true);
+    expect(out.budget.code).toBe("time_over");
+    expect(out.errorMessage).toContain("pslow");
+    expect(out.errorMessage).toContain("time_over");
     host.disposeAll();
   });
 });

@@ -151,6 +151,22 @@ describe("ParserRegistry — lifecycle", () => {
     expect(() => reg.setFallback("nope")).toThrow(/unknown parser/);
   });
 
+  it("markSystem throws for unknown parser ids", () => {
+    const reg = new ParserRegistry();
+    expect(() => reg.markSystem("ghost")).toThrow(/Cannot mark unknown parser 'ghost' as system/);
+  });
+
+  it("markSystem locks a parser so it is reported as system and cannot be unregistered", () => {
+    const reg = new ParserRegistry();
+    reg.registerParser(mf({ id: "md", fileMatch: { extensions: [".md"] } }), noopFactory);
+    expect(reg.isSystem("md")).toBe(false);
+    reg.markSystem("md");
+    expect(reg.isSystem("md")).toBe(true);
+    expect(reg.unregisterParser("md")).toBe(false);
+    // still present
+    expect(reg.list().map((p) => p.manifest.id)).toEqual(["md"]);
+  });
+
   it("list() returns every registered parser in insertion order", () => {
     const reg = new ParserRegistry();
     reg.registerParser(mf({ id: "a" }), noopFactory);

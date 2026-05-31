@@ -1,6 +1,6 @@
 // ADR-0016 (T5.F): 활성 동의 로직 단위 테스트.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   applyConsentDecision,
   evaluateConsent,
@@ -79,6 +79,18 @@ describe("evaluateConsent — prompt content", () => {
     const result = evaluateConsent("p", r, payload({ oneLinerSummary: "" }));
     expect(result.prompt?.oneLinerSummary).toBe("(요약 없음)");
   });
+
+  it("defaults violations to [] when omitted from payload", () => {
+    const r = new TrustRegistry();
+    r.register("p", "llm-generated", { now: 0 });
+    // payload without a `violations` key → nullish-coalesce to [].
+    const result = evaluateConsent("p", r, {
+      fullSource: "export function md(s){return s}",
+      oneLinerSummary: "x",
+    });
+    expect(result.action).toBe("show");
+    expect(result.prompt?.violations).toEqual([]);
+  });
 });
 
 describe("applyConsentDecision", () => {
@@ -141,5 +153,22 @@ describe("recommendationFor", () => {
 
   it("imported recommendation mentions origin verification", () => {
     expect(recommendationFor("imported")).toMatch(/origin|외부/);
+  });
+});
+
+// `policyFor("imported").sanitizerStrict` is always true in production, so the
+// non-strict imported arm (consent.ts:118) is unreachable through the public
+// API. We isolate-import with `policyFor` stubbed to return a non-strict policy
+// to exercise that fallback branch without touching production source.
+describe("recommendationFor — imported with non-strict policy (injected)", () => {
+  it("returns the bare external-source fallback when sanitizerStrict is false", async () => {
+    vi.resetModules();
+    vi.doMock("../trust-registry", () => ({
+      policyFor: () => ({ sanitizerStrict: false }),
+    }));
+    const { recommendationFor: rec } = await import("../consent");
+    expect(rec("imported")).toBe("외부 출처입니다.");
+    vi.doUnmock("../trust-registry");
+    vi.resetModules();
   });
 });

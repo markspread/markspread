@@ -1,6 +1,6 @@
 // ADR-0016 (T5.C): Sanitizer 단위 테스트. DOMPurify 는 mock 으로 대체.
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetSanitizer, sanitize, sanitizeSync, setSanitizer } from "../sanitizer";
 
 interface SanitizeConfig {
@@ -144,5 +144,79 @@ describe("setSanitizer / resetSanitizer", () => {
     await sanitize("<p>a</p>");
     expect(calls).toHaveLength(1);
     resetSanitizer();
+  });
+});
+
+describe("getDOMPurify — module-shape handling (node env, no window)", () => {
+  afterEach(() => {
+    vi.doUnmock("dompurify");
+    vi.resetModules();
+  });
+
+  it("calls a function default export with `undefined` window (no global window)", async () => {
+    // node env → `typeof window === "undefined"` is true (line 129 undefined
+    // branch). default IS a function → factory invocation path (127-130).
+    vi.resetModules();
+    let receivedWindow: unknown = "unset";
+    vi.doMock("dompurify", () => ({
+      default: (win?: unknown) => {
+        receivedWindow = win;
+        return {
+          sanitize: (input: string) => input.replace(/<script[^>]*>.*?<\/script>/gi, ""),
+        };
+      },
+    }));
+    const mod = await import("../sanitizer");
+    mod.resetSanitizer();
+    const r = await mod.sanitize("<p>x</p><script>bad()</script>");
+    expect(receivedWindow).toBeUndefined();
+    expect(r.html).toBe("<p>x</p>");
+  });
+
+  it("uses the module itself as the instance when there is no default + not a function (line 132)", async () => {
+    // No `default` → `(mod).default ?? mod` takes the `?? mod` branch (line 125).
+    // The module value is a non-function object exposing `sanitize` → factory is
+    // returned as-is (line 132), not invoked.
+    vi.resetModules();
+    vi.doMock("dompurify", () => ({
+      default: undefined,
+      sanitize: (input: string) => `clean:${input}`,
+      removed: [],
+    }));
+    const mod = await import("../sanitizer");
+    mod.resetSanitizer();
+    const r = await mod.sanitize("<p>z</p>");
+    expect(r.html).toBe("clean:<p>z</p>");
+  });
+});
+
+describe("removed-name mapping", () => {
+  afterEach(() => resetSanitizer());
+
+  it("falls back to attribute.name when element.tagName is absent", async () => {
+    // dom.removed entries can be attribute removals (no element) — exercise
+    // the `r.element?.tagName ?? r.attribute?.name` fallback (line 172).
+    setSanitizer({
+      sanitize: () => "<p></p>",
+      removed: [{ attribute: { name: "onclick" } }],
+    });
+    const r = await sanitize("<p onclick='x'>y</p>");
+    expect(r.removed).toEqual(["onclick"]);
+  });
+
+  it("treats a missing `removed` array as empty (line 171 branch)", async () => {
+    // No `removed` property at all → `dom.removed ?? []` takes the [] branch.
+    setSanitizer({ sanitize: () => "<p>clean</p>" });
+    const r = await sanitize("<p>clean</p>");
+    expect(r.removed).toEqual([]);
+  });
+
+  it("drops entries that have neither tagName nor attribute name", async () => {
+    setSanitizer({
+      sanitize: () => "<p></p>",
+      removed: [{}, { element: {} }, { attribute: {} }],
+    });
+    const r = await sanitize("<p>y</p>");
+    expect(r.removed).toEqual([]);
   });
 });

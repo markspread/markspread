@@ -100,4 +100,33 @@ describe("sanitizeHtml", () => {
     expect(out).toContain("<img");
     expect(out).not.toMatch(/src=/);
   });
+
+  it("keeps a GFM task-list checkbox and force-disables it", () => {
+    // tag === "input" branch (line 223), type === "checkbox" path → setAttribute
+    // disabled (line 233). `checked` is whitelisted for input so it survives.
+    const out = sanitizeHtml('<li><input type="checkbox" checked>task</li>');
+    expect(out).toContain("<input");
+    expect(out).toMatch(/disabled/);
+    expect(out).toContain("task");
+  });
+
+  it("disables a checkbox that was not already disabled", () => {
+    const out = sanitizeHtml('<input type="checkbox">');
+    expect(out).toMatch(/disabled/);
+  });
+
+  it("unwraps a non-checkbox input (text/submit/file form controls)", () => {
+    // type !== "checkbox" → element unwrapped, children promoted (lines 229-232).
+    const out = sanitizeHtml('<p>before<input type="text" value="x">after</p>');
+    expect(out).not.toMatch(/<input/);
+    expect(out).toContain("before");
+    expect(out).toContain("after");
+  });
+
+  it("unwraps an input with no type attribute (defaults to non-checkbox)", () => {
+    // getAttribute("type") ?? "" → "" → not checkbox → unwrap path.
+    const out = sanitizeHtml("<div><input>kept text</div>");
+    expect(out).not.toMatch(/<input/);
+    expect(out).toContain("kept text");
+  });
 });

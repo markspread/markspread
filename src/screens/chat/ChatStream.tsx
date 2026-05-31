@@ -4,8 +4,8 @@
 // to send. No LLM client.
 
 import { type KeyboardEvent, type ReactNode, useCallback, useMemo, useRef, useState } from "react";
-import type { ChatMessage } from "../../store/chat-sessions";
 import { Icon } from "../../components/Icon";
+import type { ChatMessage } from "../../store/chat-sessions";
 
 export interface ChatStreamProps {
   messages: ChatMessage[];
@@ -61,11 +61,7 @@ export function ChatStream({ messages, onSend, onRegisterParser }: ChatStreamPro
             <div className="mb-1 text-[var(--color-muted)] text-xs uppercase tracking-wide">
               {m.role}
             </div>
-            <MessageBody
-              content={m.content}
-              role={m.role}
-              onRegisterParser={onRegisterParser}
-            />
+            <MessageBody content={m.content} role={m.role} onRegisterParser={onRegisterParser} />
           </li>
         ))}
       </ol>
@@ -129,10 +125,17 @@ function MessageBody({
             </div>
           );
         }
-        const isJs = seg.lang === "js" || seg.lang === "javascript" || seg.lang === "ts" || seg.lang === "typescript";
+        const isJs =
+          seg.lang === "js" ||
+          seg.lang === "javascript" ||
+          seg.lang === "ts" ||
+          seg.lang === "typescript";
         const showRegister = isJs && role === "assistant" && onRegisterParser;
         return (
-          <div key={i} className="my-2 rounded border border-[var(--color-border)] bg-[var(--color-surface-subtle)]">
+          <div
+            key={i}
+            className="my-2 rounded border border-[var(--color-border)] bg-[var(--color-surface-subtle)]"
+          >
             <div className="flex items-center justify-between border-[var(--color-border)] border-b px-2 py-1">
               <span className="text-[var(--color-muted)] text-xs font-mono">
                 {seg.lang || "code"}
@@ -175,6 +178,7 @@ function parseMessageSegments(content: string): Segment[] {
     if (m.index > lastIdx) {
       out.push({ kind: "text", text: content.slice(lastIdx, m.index) });
     }
+    /* v8 ignore next -- regex group 2 ([\s\S]*?) always participates in a successful match, so m[2] is never undefined; the `?? ""` is a noUncheckedIndexedAccess type-guard */
     out.push({ kind: "code", lang: (m[1] || "").trim().toLowerCase(), code: m[2] ?? "" });
     lastIdx = m.index + m[0].length;
     m = re.exec(content);
@@ -182,5 +186,6 @@ function parseMessageSegments(content: string): Segment[] {
   if (lastIdx < content.length) {
     out.push({ kind: "text", text: content.slice(lastIdx) });
   }
+  /* v8 ignore next -- content is non-empty here (empty content returns at the top), so the fence loop or the trailing-slice push always yields ≥1 segment; the empty-out fallback is defensive */
   return out.length === 0 ? [{ kind: "text", text: content }] : out;
 }

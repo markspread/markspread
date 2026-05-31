@@ -73,6 +73,7 @@ export function ContextPanel({ workspaceId, activeFilePath, onPickFile }: Contex
         <div data-testid="chat-active-preview" className="text-sm">
           {effectiveActivePath ? (
             <span className="truncate font-medium" title={effectiveActivePath}>
+              {/* v8 ignore next -- split() on a non-empty string always yields at least one element, so .pop() is never undefined and the `?? effectiveActivePath` fallback is unreachable */}
               {effectiveActivePath.split(/[/\\]/).pop() ?? effectiveActivePath}
             </span>
           ) : (

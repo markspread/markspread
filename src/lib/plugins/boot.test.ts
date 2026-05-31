@@ -10,6 +10,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import { bootInstalledPlugins } from "./boot";
+import { getOrchestrator, resetOrchestrator } from "./runtime/orchestrator-singleton";
 
 function manifest(id: string, activationEvents: string[]): PluginManifest {
   return {
@@ -25,6 +26,7 @@ function manifest(id: string, activationEvents: string[]): PluginManifest {
 
 beforeEach(() => {
   invoke.mockReset();
+  resetOrchestrator();
 });
 
 describe("bootInstalledPlugins", () => {
@@ -72,5 +74,55 @@ describe("bootInstalledPlugins", () => {
     invoke.mockResolvedValueOnce([]);
     await bootInstalledPlugins();
     expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("infers imported trust from an http origin and records consent", async () => {
+    invoke.mockResolvedValueOnce([
+      {
+        manifest: manifest("ext", ["onCommand:x"]),
+        enabled: false,
+        origin: "https://example.com/ext.js",
+      },
+    ]);
+    await bootInstalledPlugins();
+    const orch = getOrchestrator();
+    expect(orch.trust.level("ext")).toBe("imported");
+    // imported → recordConsent fired at boot.
+    expect(orch.trust.hasConsent("ext")).toBe(true);
+  });
+
+  it("infers imported trust from a github: origin", async () => {
+    invoke.mockResolvedValueOnce([
+      {
+        manifest: manifest("gh", ["onCommand:x"]),
+        enabled: false,
+        origin: "github:owner/repo",
+      },
+    ]);
+    await bootInstalledPlugins();
+    expect(getOrchestrator().trust.level("gh")).toBe("imported");
+  });
+
+  it("treats a non-http/github origin as local (no consent step)", async () => {
+    invoke.mockResolvedValueOnce([
+      {
+        manifest: manifest("loc", ["onCommand:x"]),
+        enabled: false,
+        origin: "file:///local/path",
+      },
+    ]);
+    await bootInstalledPlugins();
+    expect(getOrchestrator().trust.level("loc")).toBe("local");
+  });
+
+  it("swallows trust registration failures (downgrade attempt)", async () => {
+    // Pre-register at the stricter `imported` level so a subsequent local
+    // registration attempts a downgrade → TrustRegistry throws → caught + warned.
+    const orch = getOrchestrator();
+    orch.trust.register("dgr", "imported", { now: 0 });
+    invoke.mockResolvedValueOnce([{ manifest: manifest("dgr", ["onCommand:x"]), enabled: false }]);
+    await expect(bootInstalledPlugins()).resolves.toBeUndefined();
+    // level stays at the stricter imported (downgrade rejected).
+    expect(orch.trust.level("dgr")).toBe("imported");
   });
 });
