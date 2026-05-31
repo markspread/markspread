@@ -35,6 +35,8 @@ type Props = {
   tabId?: string;
   /** "markdown" enables md-specific extensions; "plain" keeps it text-only. */
   language?: EditorLanguage;
+  /** ADR-0014: 코드/설정 파일은 read-only — caller decides per-file. */
+  readOnly?: boolean;
   className?: string;
   /**
    * S-ESP-006: cursor + scroll snapshot to restore on mount. Same path
@@ -44,6 +46,12 @@ type Props = {
   initialPosition?: EditorViewPosition;
   /** Throttled callback fired when selection/scroll change. */
   onPositionChange?: (position: EditorViewPosition) => void;
+  /**
+   * ADR-0014 H13: 드래그-채팅 편집 — non-empty selection 발생 시 호출.
+   * 본 callback 은 selection range + full doc 을 함께 받아 caller (ChatPanel) 가
+   * SelectionContext 를 buildSelectionContext() 로 변환 가능.
+   */
+  onSelectionRange?: (range: { fromOffset: number; toOffset: number; fullText: string }) => void;
   /**
    * S-ESP-007: external doc snapshot for buffer share. When this changes
    * and differs from the EditorView's current doc, the view reconciles via
@@ -59,9 +67,11 @@ export function Editor({
   onChange,
   tabId,
   language = "markdown",
+  readOnly = false,
   className,
   initialPosition,
   onPositionChange,
+  onSelectionRange,
   remoteDoc,
 }: Props) {
   const { t } = useTranslation();
@@ -71,6 +81,8 @@ export function Editor({
   onChangeRef.current = onChange;
   const onPositionChangeRef = useRef(onPositionChange);
   onPositionChangeRef.current = onPositionChange;
+  const onSelectionRangeRef = useRef(onSelectionRange);
+  onSelectionRangeRef.current = onSelectionRange;
   const initialPositionRef = useRef(initialPosition);
   initialPositionRef.current = initialPosition;
 
@@ -103,6 +115,17 @@ export function Editor({
           scrollTop: view.scrollDOM.scrollTop,
         });
       }
+      // ADR-0014 H13: emit non-empty selection range for drag-chat-edit.
+      if (u.selectionSet && onSelectionRangeRef.current) {
+        const sel = u.state.selection.main;
+        if (sel.from !== sel.to) {
+          onSelectionRangeRef.current({
+            fromOffset: sel.from,
+            toOffset: sel.to,
+            fullText: u.state.doc.toString(),
+          });
+        }
+      }
     });
     const view = mountEditor(
       hostRef.current,
@@ -110,6 +133,7 @@ export function Editor({
       [updateExt, placeholderExt(placeholderText), ...(extensions ?? [])],
       undefined,
       language,
+      readOnly,
     );
     viewRef.current = view;
     // Restore cursor + scroll if a position was supplied. The line/column
@@ -147,7 +171,7 @@ export function Editor({
     // lose the user's cursor. `language` joins so a same-tab swap from
     // markdown to plain (rare) re-mounts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId, language]);
+  }, [tabId, language, readOnly]);
 
   // If extensions ever change without a tabId swap, reconfigure in
   // place rather than recreate. This is the common case for toggling

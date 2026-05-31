@@ -1,3 +1,4 @@
+import { openWorkspaceFromDialog } from "../open-workspace";
 import { closeWorkspaceCommand } from "./close-workspace";
 import {
   closeActiveTabCommand,
@@ -54,6 +55,19 @@ export const commands: CommandDescriptor[] = [
     category: "Workspace",
     run: async () => {
       await closeWorkspaceCommand();
+    },
+  },
+  {
+    id: "workspace.open",
+    title: "Open Workspace…",
+    category: "Workspace",
+    // VSCode parity: Mod+K Mod+O opens the workspace picker. The
+    // underlying flow (`openWorkspaceFromDialog`) already handles
+    // scaffold + inspection + recent-list update, so the command
+    // is a thin wrapper.
+    defaultBinding: "Mod+K Mod+O",
+    run: async () => {
+      await openWorkspaceFromDialog();
     },
   },
   {

@@ -193,8 +193,28 @@ pub struct McpServerSpec {
 #[serde(rename_all = "camelCase")]
 pub struct SessionNewParams {
     pub cwd: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// ACP 어댑터 v0.39+ 는 `mcpServers` 를 *required array* 로 검증한다.
+    /// None / 누락 / null 모두 -32602 Invalid params 응답을 받는다.
+    /// 따라서 None 일 때도 직렬화에 포함시켜야 하며, serialize_with 로
+    /// `null` 대신 `[]` 를 내보낸다.
+    #[serde(default, serialize_with = "serialize_mcp_servers")]
     pub mcp_servers: Option<Vec<McpServerSpec>>,
+}
+
+fn serialize_mcp_servers<S>(
+    value: &Option<Vec<McpServerSpec>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::ser::SerializeSeq;
+    let slice: &[McpServerSpec] = value.as_deref().unwrap_or(&[]);
+    let mut seq = serializer.serialize_seq(Some(slice.len()))?;
+    for item in slice {
+        seq.serialize_element(item)?;
+    }
+    seq.end()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -526,14 +546,29 @@ mod tests {
     }
 
     #[test]
-    fn session_new_params_serialise_camel_case() {
+    fn session_new_params_serialise_camel_case_none_emits_empty_array() {
+        // ACP 어댑터 v0.39+ schema 가 mcpServers 를 required array 로 검증
+        // → None 이라도 `[]` 로 직렬화해서 spawn 직후 session/new 가 reject
+        //   되지 않도록 함.
         let p = SessionNewParams {
             cwd: "/tmp/workspace".into(),
             mcp_servers: None,
         };
         let v = serde_json::to_value(&p).unwrap();
         assert_eq!(v["cwd"], "/tmp/workspace");
-        assert!(v.get("mcpServers").is_none());
+        assert!(v["mcpServers"].is_array());
+        assert_eq!(v["mcpServers"].as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn session_new_params_serialise_some_vec() {
+        let p = SessionNewParams {
+            cwd: "/tmp/ws".into(),
+            mcp_servers: Some(vec![]),
+        };
+        let v = serde_json::to_value(&p).unwrap();
+        assert!(v["mcpServers"].is_array());
+        assert_eq!(v["mcpServers"].as_array().unwrap().len(), 0);
     }
 
     #[test]

@@ -1,27 +1,31 @@
-// MAR-1021: VSCode markdown contributes → Markspread manifest translator (PoC).
+// MAR-1021 (legacy import direction) + MAR-1031 (refactor per ADR-0013):
 //
-// Scope (ADR-0012 U5): the three PoC fields under
-// `package.json#contributes.markdown`:
+// ⚠️ ADR-0013 decision: VSCode/Cursor 호환 = *export only*. *Import* 방향 (이 파일)
+// 은 **dev-only spec 이해 헬퍼** 로 격리. v1 사용자 흐름 (Markspread 안에서 VSCode
+// 플러그인 *설치*) ❌. 본 모듈은 spec 회귀·테스트·역방향 round-trip 검증 용도.
+//
+// Scope (PoC 한정): `package.json#contributes.markdown` 의 세 필드:
 //   - previewStyles: CSS files injected into the preview.
 //   - previewScripts: JS files run inside the preview frame.
 //   - markdownItPlugins: when `true`, the extension's `main` exports a
 //     factory `(md, ...) => md` that registers markdown-it rules.
 //
-// The translator emits a Markspread `PluginManifest` (see runtime/types.ts)
-// plus a side-channel `assets` record carrying the VSCode-specific
-// preview style/script paths so the renderer's preview pipeline can
-// inject them. Markspread's manifest schema allows unknown top-level
-// keys (forward-compat passthrough), so the assets ride on the manifest
-// as `vscodeAssets` for the host wiring to pick up.
+// 공통 검증 로직 (name normalize, path safety) 은 `vscode-spec-validator.ts` 로
+// 분리됨 — `vscode-export.ts` 와 양방향 공유.
 //
-// What this PoC does NOT do:
+// What this does NOT do:
 //   - Translate non-markdown VSCode contribution points.
 //   - Sandbox or signature-check the VSCode bundle.
-//   - Resolve activation events — Markspread plugins activate on document
-//     open today; events stay best-effort metadata.
+//   - Activate plugins as part of v1 runtime flow (= scope 밖).
 
 import { type ManifestParseError, parseManifest } from "./runtime/loader";
 import type { PluginManifest } from "./runtime/types";
+import {
+  isRelativeAsset,
+  isValidName,
+  normaliseName,
+  stripLeadingDot,
+} from "./vscode-spec-validator";
 
 export interface VSCodeMarkdownContributes {
   previewStyles?: string[];
@@ -58,29 +62,8 @@ export type VSCodeTranslateResult =
     }
   | { ok: false; errors: ManifestParseError[] };
 
-const NAME_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
-
-function normaliseName(raw: string): string {
-  const slug = raw
-    .toLowerCase()
-    .replace(/^@[^/]+\//, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 32);
-  return slug;
-}
-
-function isRelativeAsset(p: unknown): p is string {
-  if (typeof p !== "string" || p.length === 0) return false;
-  if (p.startsWith("/")) return false;
-  if (/^[a-zA-Z]:[\\/]/.test(p)) return false;
-  if (p.includes("\0")) return false;
-  const normalised = p.replace(/\\/g, "/");
-  for (const seg of normalised.split("/")) {
-    if (seg === "..") return false;
-  }
-  return true;
-}
+// 공통 검증 로직은 vscode-spec-validator.ts 로 분리됨 (ADR-0013 refactor).
+// normaliseName / isValidName / isRelativeAsset / stripLeadingDot 은 그 모듈에서 import.
 
 /**
  * Translate a VSCode-style `package.json` object into a Markspread
@@ -101,7 +84,7 @@ export function translateVSCodePackage(input: unknown): VSCodeTranslateResult {
   if (errors.length > 0) return { ok: false, errors };
 
   const normalised = normaliseName(name);
-  if (!NAME_RE.test(normalised)) {
+  if (!isValidName(normalised)) {
     return {
       ok: false,
       errors: [{ path: "name", message: `cannot normalise "${name}" to Markspread plugin name` }],
@@ -146,7 +129,7 @@ export function translateVSCodePackage(input: unknown): VSCodeTranslateResult {
     schemaVersion: 1 as const,
     name: normalised,
     version,
-    entry: main.replace(/^\.\//, ""),
+    entry: stripLeadingDot(main),
     displayName: typeof pkg.displayName === "string" ? pkg.displayName : undefined,
     description: typeof pkg.description === "string" ? pkg.description : undefined,
     permissions: [],
@@ -185,7 +168,7 @@ function collectAssets(raw: unknown, field: string, warnings: VSCodeTranslateWar
   for (let i = 0; i < raw.length; i += 1) {
     const v = raw[i];
     if (isRelativeAsset(v)) {
-      out.push(v.replace(/^\.\//, ""));
+      out.push(stripLeadingDot(v));
     } else {
       warnings.push({
         path: `contributes.markdown.${field}[${i}]`,

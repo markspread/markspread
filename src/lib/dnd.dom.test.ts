@@ -100,7 +100,7 @@ describe("registerDragDrop", () => {
   it("routes a dropped file into single-file mode", async () => {
     invokeMock
       .mockResolvedValueOnce({ kind: "file" }) // fs_stat
-      .mockResolvedValueOnce({ text: "body" }); // fs_read
+      .mockResolvedValueOnce({ content: "body", encoding: "utf-8" }); // fs_read_file
     const { registerDragDrop } = await import("./dnd");
     registerDragDrop();
     await flush();

@@ -91,11 +91,13 @@ describe("ParserRegistry — conflicts and candidates", () => {
     reg = new ParserRegistry();
   });
 
-  it("returns same-score candidates in registration order", () => {
+  it("returns same-score candidates with the most recently registered first", () => {
+    // FIX: tie-break 정책 — 최근 등록된 파서 우선. 사용자가 chat 으로 만든
+    // custom 파서가 시스템 builtin (먼저 등록됨) 을 항상 override 하도록.
     reg.registerParser(mf({ id: "first", fileMatch: { extensions: [".csv"] } }), noopFactory);
     reg.registerParser(mf({ id: "second", fileMatch: { extensions: [".csv"] } }), noopFactory);
     const cs = reg.candidates({ path: "/a.csv" });
-    expect(cs.map((c) => c.parser.manifest.id)).toEqual(["first", "second"]);
+    expect(cs.map((c) => c.parser.manifest.id)).toEqual(["second", "first"]);
   });
 
   it("candidates() returns all compatible parsers ranked", () => {

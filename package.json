@@ -44,6 +44,7 @@
     "@tauri-apps/plugin-dialog": "^2.0.1",
     "@tauri-apps/plugin-fs": "^2.0.3",
     "@tauri-apps/plugin-shell": "^2.0.1",
+    "dompurify": "^3.4.7",
     "i18next": "^23.16.0",
     "katex": "^0.16.46",
     "mermaid": "^11.15.0",
@@ -88,6 +89,9 @@
     "node": ">=20"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@biomejs/biome", "esbuild"]
+    "onlyBuiltDependencies": [
+      "@biomejs/biome",
+      "esbuild"
+    ]
   }
 }

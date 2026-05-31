@@ -7,11 +7,21 @@ import { BUILTIN_MARKDOWN_ID, __resetParserRegistryForTests, getParserRegistry }
 afterEach(() => __resetParserRegistryForTests());
 
 describe("host parser registry bootstrap", () => {
-  it("registers builtin markdown as a fallback parser", () => {
+  it("matches builtin markdown by extension for .md", () => {
+    // builtin manifest 가 .md 등록. tie-break 가 최근 등록 우선이므로
+    // 사용자가 custom .md 파서 등록하면 거기로 라우팅. 미등록 시 builtin
+    // 매칭 (extension reason).
     const reg = getParserRegistry();
     const m = reg.match({ path: "/notes.md" });
     expect(m?.parser.manifest.id).toBe(BUILTIN_MARKDOWN_ID);
     expect(m?.reason).toBe("extension");
+  });
+
+  it("marks builtin markdown as a system parser (delete blocked)", () => {
+    const reg = getParserRegistry();
+    expect(reg.isSystem(BUILTIN_MARKDOWN_ID)).toBe(true);
+    expect(reg.unregisterParser(BUILTIN_MARKDOWN_ID)).toBe(false);
+    expect(reg.match({ path: "/x.md" })?.parser.manifest.id).toBe(BUILTIN_MARKDOWN_ID);
   });
 
   it("falls back to markdown for unknown extensions", () => {

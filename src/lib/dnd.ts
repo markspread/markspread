@@ -6,6 +6,7 @@ import { useRecentWorkspaces } from "../store/recent-workspaces";
 import { useSingleFile } from "../store/single-file";
 import { useToasts } from "../store/toasts";
 import { useWorkspace } from "../store/workspace";
+import { parentDir } from "./open-md-file";
 
 // S-FT-011: track Meta/Ctrl during OS drag — `onDragDropEvent` doesn't expose
 // modifier state, so we shadow it from window keydown/keyup. Released-by-blur
@@ -23,8 +24,10 @@ interface FsStat {
   kind: "dir" | "file" | "symlink";
 }
 
-interface FsReadResult {
-  text: string;
+// FIX: Rust fs_read_file 의 실제 반환 shape.
+interface FsReadFileResult {
+  content: string;
+  encoding: string;
 }
 
 interface WorkspaceLayout {
@@ -256,9 +259,15 @@ async function dropFile(path: string): Promise<void> {
   // we currently are. The single-file screen has its own "convert to
   // workspace" CTA for users who want the full surface.
   try {
-    const result = await invoke<FsReadResult>("fs_read", { path });
+    // FIX: fs_read 는 workspace 인자 필요 + 반환은 String 이 아니라 FsReadFileResult.
+    //      이전 코드는 invoke 단계에서 실패 → drag-drop 으로 파일 못 열림.
+    const workspace = parentDir(path);
+    const result = await invoke<FsReadFileResult>("fs_read_file", {
+      workspace,
+      path,
+    });
     useWorkspace.getState().close();
-    useSingleFile.getState().open(path, result.text);
+    useSingleFile.getState().open(path, result.content);
   } catch (e) {
     useToasts.getState().push({
       kind: "error",

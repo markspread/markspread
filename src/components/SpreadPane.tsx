@@ -42,6 +42,12 @@ interface SpreadPaneProps {
 export function SpreadPane({ workspace, pane, documentPath, content }: SpreadPaneProps) {
   const { t } = useTranslation();
   const [html, setHtml] = useState<string>("");
+  const [activeParser, setActiveParser] = useState<{
+    id: string;
+    displayName: string;
+    reason: string;
+    isSystem: boolean;
+  } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const renderRef = useRef(createDebouncedRenderer(300));
 
@@ -50,8 +56,19 @@ export function SpreadPane({ workspace, pane, documentPath, content }: SpreadPan
     // T-U10-002-FIX: if a third-party parser claims this file and has a
     // registered SandboxTransport, route the render through the sandbox.
     // Otherwise renderRef falls back to the builtin markdown pipeline.
-    const matched = getParserRegistry().match({ path: documentPath });
+    const registry = getParserRegistry();
+    const matched = registry.match({ path: documentPath });
     const parserId = matched?.parser.manifest.id;
+    if (matched && parserId) {
+      setActiveParser({
+        id: parserId,
+        displayName: matched.parser.manifest.displayName ?? parserId,
+        reason: matched.reason,
+        isSystem: registry.isSystem(parserId),
+      });
+    } else {
+      setActiveParser(null);
+    }
     const transport =
       parserId && parserId !== BUILTIN_MARKDOWN_ID
         ? (getParserTransport(parserId) ?? undefined)
@@ -167,6 +184,25 @@ export function SpreadPane({ workspace, pane, documentPath, content }: SpreadPan
       className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 prose dark:prose-invert"
       ref={rootRef}
     >
+      {activeParser && (
+        <div
+          data-testid="active-parser-badge"
+          className="not-prose mb-2 inline-flex w-fit items-center gap-1 self-end rounded border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-2 py-0.5 text-[var(--color-muted)] text-xs"
+          title={`Parser id: ${activeParser.id} (matched by ${activeParser.reason})`}
+        >
+          <span className="font-medium text-[var(--color-fg)]">
+            {activeParser.displayName}
+          </span>
+          <span className="opacity-60">·</span>
+          <span className="opacity-60">{activeParser.reason}</span>
+          {activeParser.isSystem && (
+            <>
+              <span className="opacity-60">·</span>
+              <span className="opacity-60">{t("preview.parser.system", "system")}</span>
+            </>
+          )}
+        </div>
+      )}
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: html is sanitized markdown render output for preview */}
       <div dangerouslySetInnerHTML={{ __html: html }} />
     </section>

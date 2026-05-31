@@ -49,13 +49,24 @@ pub type AuthResult<T> = Result<T, AuthError>;
 /// Resolves the configured `AuthMode` into env vars suitable for
 /// `Command::env`. Returned values are plaintext — drop immediately after
 /// spawn.
+///
+/// `ClaudeSubscription` 의 경우 Markspread keychain 에 구독 토큰이 없어도
+/// 에러로 spawn 을 막지 않는다 (ADR-0004). ACP 어댑터 (Claude Agent SDK)
+/// 가 자체적으로 `~/.claude/` 의 사용자 토큰 또는 OAuth 플로우로 인증
+/// 처리하므로, 단순히 ANTHROPIC_API_KEY 를 inject 하지 않고 spawn 만 진행
+/// 한다. ApiKey 모드는 키 부재 시 진짜 에러 (그쪽은 어댑터가 fallback
+/// 없음).
 pub async fn resolve_env(mode: &AuthMode) -> AuthResult<Vec<(String, String)>> {
     match mode {
         AuthMode::None => Ok(vec![]),
-        AuthMode::ClaudeSubscription => {
-            let token = resolve_subscription_token().await?;
-            Ok(vec![("ANTHROPIC_API_KEY".to_string(), token)])
-        }
+        AuthMode::ClaudeSubscription => match resolve_subscription_token().await {
+            Ok(token) => Ok(vec![("ANTHROPIC_API_KEY".to_string(), token)]),
+            Err(AuthError::NoSubscription) => {
+                // 어댑터의 자체 인증 (~/.claude/ 토큰 또는 OAuth) 에 맡김.
+                Ok(vec![])
+            }
+            Err(other) => Err(other),
+        },
         AuthMode::ApiKey {
             keychain_service,
             account,
@@ -173,12 +184,25 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn claude_subscription_propagates_missing_credential() {
+    async fn claude_subscription_no_credential_yields_empty_env_not_error() {
+        // ADR-0004: Markspread keychain 에 토큰이 없어도 spawn 을 막지 않음.
+        // ACP 어댑터가 자체 ~/.claude/ 또는 OAuth 로 처리.
         set_subscription_resolver_for_test(Err(AuthError::NoSubscription));
+        let env = resolve_env(&AuthMode::ClaudeSubscription).await.unwrap();
+        assert!(env.is_empty(), "expected empty env to delegate to adapter");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn claude_subscription_propagates_non_missing_keychain_error() {
+        set_subscription_resolver_for_test(Err(AuthError::Keychain("perm denied".into())));
         let err = resolve_env(&AuthMode::ClaudeSubscription)
             .await
             .unwrap_err();
-        matches!(err, AuthError::NoSubscription);
+        match err {
+            AuthError::Keychain(s) => assert!(s.contains("perm denied")),
+            other => panic!("expected Keychain, got {other:?}"),
+        }
     }
 
     #[tokio::test]

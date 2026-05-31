@@ -27,6 +27,11 @@ pub struct AgentEntry {
     /// Argv to spawn — index 0 is the program, the rest are arguments.
     pub command: Vec<String>,
     pub auth: AuthMode,
+    /// Optional extra environment variables (e.g. `ANTHROPIC_MODEL`) injected
+    /// before spawn. Merged after `resolve_env(auth)` — entry-level overrides
+    /// auth-derived keys, so per-agent model routing wins over default.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extra_env: Vec<(String, String)>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,17 +49,59 @@ pub struct AgentRegistry {
 impl Default for AgentRegistry {
     fn default() -> Self {
         let mut entries = BTreeMap::new();
-        // Builtin: Claude Code via the Zed-maintained ACP adapter shim.
-        // Users with the official `claude` binary on PATH can override
-        // `command` at runtime; we choose the npx form by default since
-        // the spec acknowledges it as the canonical install path.
-        let claude = AgentEntry {
+        // ADR-0015 §3 + Claude Agent SDK subscription auth (ADR-0004):
+        // 본 도구는 Claude Code 구독 = ACP 어댑터 + Claude SDK in-process 둘 다 지원.
+        // BUILTIN_AGENTS (TS lib/agents/types.ts) 와 ID 일치 — 이전엔 Rust 가 "claude" 하나만
+        // 등록해서 TS "claude-subscription" 호출 시 "unknown agent" 에러 발생.
+
+        // claude CLI 자체는 ACP 를 노출하지 않음 (`claude --acp` 미존재).
+        // 따라서 모든 Claude entry 는 `@agentclientprotocol/claude-agent-acp` 어댑터
+        // (구 `@zed-industries/claude-agent-acp`) 를 npx 로 spawn 한다. 어댑터가
+        // 내부적으로 Claude 구독 인증(@anthropic-ai/claude-code SDK) 을 위임한다.
+
+        // claude-subscription: 기본 Sonnet 모델 (어댑터 default)
+        let claude_sub = AgentEntry {
+            id: AgentId("claude-subscription".into()),
+            name: "Claude (Sonnet) — Subscription".into(),
+            command: vec![
+                "npx".into(),
+                "--yes".into(),
+                "@agentclientprotocol/claude-agent-acp".into(),
+            ],
+            auth: AuthMode::ClaudeSubscription,
+            extra_env: vec![],
+        };
+        entries.insert(claude_sub.id.0.clone(), claude_sub);
+
+        // claude-haiku: 동일 어댑터, ANTHROPIC_MODEL 환경변수로 Haiku 선택.
+        // (어댑터 CLI 가 model flag 를 제공하지 않으므로 env 로 라우팅.)
+        let claude_haiku = AgentEntry {
+            id: AgentId("claude-haiku".into()),
+            name: "Claude (Haiku) — Subscription".into(),
+            command: vec![
+                "npx".into(),
+                "--yes".into(),
+                "@agentclientprotocol/claude-agent-acp".into(),
+            ],
+            auth: AuthMode::ClaudeSubscription,
+            extra_env: vec![("ANTHROPIC_MODEL".to_string(), "claude-haiku-4-5".to_string())],
+        };
+        entries.insert(claude_haiku.id.0.clone(), claude_haiku);
+
+        // 호환 별칭: 기존 "claude" id 도 유지 (legacy + Zed deprecated shim fallback).
+        let claude_legacy = AgentEntry {
             id: AgentId("claude".into()),
             name: "Claude Code".into(),
-            command: vec!["npx".into(), "@zed-industries/claude-agent-acp".into()],
+            command: vec![
+                "npx".into(),
+                "--yes".into(),
+                "@zed-industries/claude-agent-acp".into(),
+            ],
             auth: AuthMode::ClaudeSubscription,
+            extra_env: vec![],
         };
-        entries.insert(claude.id.0.clone(), claude);
+        entries.insert(claude_legacy.id.0.clone(), claude_legacy);
+
         AgentRegistry { entries }
     }
 }
@@ -116,6 +163,7 @@ mod tests {
     #[test]
     fn registry_round_trips_through_serde() {
         let mut r = AgentRegistry::default();
+        let default_count = r.len();
         r.insert(AgentEntry {
             id: AgentId("codex".into()),
             name: "Codex CLI".into(),
@@ -125,10 +173,12 @@ mod tests {
                 account: "ai-keys/byo/openai-default".into(),
                 env_var: "OPENAI_API_KEY".into(),
             },
+            extra_env: vec![],
         });
         let json = serde_json::to_string(&r).unwrap();
         let back: AgentRegistry = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.len(), 2);
+        // default_count builtin agents + 1 codex (default 는 claude-subscription / claude-haiku / claude 셋)
+        assert_eq!(back.len(), default_count + 1);
         let codex = back.get(&AgentId("codex".into())).unwrap();
         assert_eq!(codex.name, "Codex CLI");
         match &codex.auth {
@@ -145,12 +195,14 @@ mod tests {
             name: "Zeta".into(),
             command: vec!["z".into()],
             auth: AuthMode::None,
+            extra_env: vec![],
         });
         r.insert(AgentEntry {
             id: AgentId("alpha".into()),
             name: "Alpha".into(),
             command: vec!["a".into()],
             auth: AuthMode::None,
+            extra_env: vec![],
         });
         let listed: Vec<String> = r.list().into_iter().map(|d| d.id.0).collect();
         assert_eq!(listed, vec!["alpha".to_string(), "zeta".to_string()]);
@@ -162,7 +214,8 @@ mod tests {
         let id = AgentId("claude".into());
         let removed = r.remove(&id).unwrap();
         assert_eq!(removed.id, id);
-        assert!(r.is_empty());
+        // 다른 builtin (claude-subscription, claude-haiku) 는 남아있음.
         assert!(r.get(&id).is_none());
+        assert!(r.get(&AgentId("claude-subscription".into())).is_some());
     }
 }

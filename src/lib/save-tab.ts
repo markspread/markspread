@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
+import { useEditorLayout } from "../store/editor-layout";
 import { useTabs } from "../store/tabs";
 import { useToasts } from "../store/toasts";
 
@@ -54,6 +55,9 @@ export async function saveTab({ workspace, path, content }: SaveOptions): Promis
   try {
     await invoke("fs_write", { workspace, path, content });
     useTabs.getState().setOrphaned(path, false);
+    // S-FT-018 / S-ESP-003: clear the orphan flag on every PaneTab too, so
+    // the editor surface drops the badge in sync with the legacy tabs store.
+    useEditorLayout.getState().setOrphaned(workspace, path, false);
     useTabs.getState().setDirty(path, false);
     return true;
   } catch (err) {

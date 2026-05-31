@@ -61,16 +61,20 @@ describe("openSingleMdFromDialog", () => {
 
   it("reads the selected file and opens single-file mode", async () => {
     openDialogMock.mockResolvedValueOnce("/notes/a.md");
+    // FIX: 새 invoke 시그니처 — fs_read_file({workspace, path}) → FsReadFileResult
     invokeMock.mockResolvedValueOnce({
-      text: "hello",
+      content: "hello",
       encoding: "utf-8",
-      bytes: 5,
-      truncated: false,
     });
     const { openSingleMdFromDialog } = await import("./open-md-file");
     const result = await openSingleMdFromDialog();
     expect(result).toBe("/notes/a.md");
     expect(useSingleFile.getState().path).toBe("/notes/a.md");
     expect(useSingleFile.getState().content).toBe("hello");
+    // workspace = parentDir(path) 가 전달됨
+    expect(invokeMock).toHaveBeenCalledWith("fs_read_file", {
+      workspace: "/notes",
+      path: "/notes/a.md",
+    });
   });
 });

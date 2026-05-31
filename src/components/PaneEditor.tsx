@@ -25,6 +25,7 @@ import { detectExternalChange } from "../lib/external-change";
 import { classifyFile, isMarkdownPath } from "../lib/file-kind";
 import { saveTab } from "../lib/save-tab";
 import { type DocBaseline, scheduleSave, useDocCache } from "../store/doc-cache";
+import { useDragChatSelection } from "../store/drag-chat-selection";
 import { useEditorLayout } from "../store/editor-layout";
 import { useTabs } from "../store/tabs";
 import { useToasts } from "../store/toasts";
@@ -235,6 +236,8 @@ export const PaneEditor = memo(function PaneEditor({ workspace, pane }: PaneEdit
       tabId={`${pane.id}::${activePath}`}
       initialDoc={baseline.content}
       language={isMarkdown ? "markdown" : "plain"}
+      // ADR-0014 T2 B+D: 비-md = read-only (syntax view only)
+      readOnly={readOnly || !isMarkdown}
       onChange={handleChange(activePath)}
       remoteDoc={previewSource}
       {...(activeTab?.position ? { initialPosition: activeTab.position } : {})}
@@ -243,6 +246,19 @@ export const PaneEditor = memo(function PaneEditor({ workspace, pane }: PaneEdit
         if (!activeTab) return;
         useEditorLayout.getState().setTabPosition(workspace, pane.id, activeTab.id, pos);
       }}
+      // ADR-0014 H13: 드래그-채팅 편집 — md 파일에서만 (read-only 코드는 X)
+      {...(isMarkdown
+        ? {
+            onSelectionRange: (range) => {
+              useDragChatSelection.getState().capture({
+                filePath: activePath,
+                fullText: range.fullText,
+                fromOffset: range.fromOffset,
+                toOffset: range.toOffset,
+              });
+            },
+          }
+        : {})}
     />
   );
 

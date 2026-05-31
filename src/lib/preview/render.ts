@@ -108,34 +108,100 @@ export interface RenderOptions extends SanitizeOptions {
 }
 
 export async function render(md: string, opts: RenderOptions = {}): Promise<string> {
-  if (opts.path && opts.transport) {
+  // Routing matrix (모든 매칭이 동일한 factory→AST 사이클을 거친다 —
+  // builtin 도 예외 아님; "특수 builtin 경로" 제거):
+  //   path 매칭 → factory 호출
+  //     sandbox transport 있음 → renderInSandbox (외부 격리 파서)
+  //     없음 → in-process factory 직접 호출 (register-from-source / builtin)
+  //   AST kind: html | markdown | raw → handleInProcessAst 가 처리
+  //   매칭 자체 없음 (no path 등) → builtin pipeline 직접 호출
+  if (opts.path) {
     const matched = getParserRegistry().match({
       path: opts.path,
       ...(opts.frontmatter ? { frontmatter: opts.frontmatter } : {}),
     });
-    if (matched && matched.parser.manifest.id !== BUILTIN_MARKDOWN_ID) {
-      const result = await renderInSandbox(opts.transport, {
-        type: "parse",
-        requestId: `r-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        parserId: matched.parser.manifest.id,
-        path: opts.path,
-        content: md,
-        encoding: opts.encoding ?? "utf-8",
-      });
-      if (result.kind === "html") return result.html;
-      if (result.kind === "error") {
-        console.warn("[preview/render] sandbox parse failed", result);
-        // fall through to builtin pipeline so the document remains visible.
+    if (matched) {
+      // 1순위: sandbox transport (외부 plugin 격리)
+      if (opts.transport && matched.parser.manifest.id !== BUILTIN_MARKDOWN_ID) {
+        const result = await renderInSandbox(opts.transport, {
+          type: "parse",
+          requestId: `r-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          parserId: matched.parser.manifest.id,
+          path: opts.path,
+          content: md,
+          encoding: opts.encoding ?? "utf-8",
+        });
+        if (result.kind === "html") return sanitizeHtml(result.html, opts);
+        if (result.kind === "error") {
+          console.warn("[preview/render] sandbox parse failed", result);
+          // factory 직접 호출로 fall through
+        }
       }
-      // 'ast' result has no host renderer yet; fall through too.
+      // 2순위: in-process factory (register-from-source + builtin 모두)
+      try {
+        const out = matched.parser.factory({
+          path: opts.path,
+          content: md,
+          encoding: opts.encoding ?? "utf-8",
+        });
+        const handled = await handleInProcessAst(out, md, opts);
+        if (handled !== null) return handled;
+        // null = AST kind 못 알아봤음 → 최후 fallback (raw md → builtin pipeline)
+      } catch (e) {
+        console.warn(
+          `[preview/render] in-process parser '${matched.parser.manifest.id}' threw — falling back to builtin`,
+          e,
+        );
+      }
     }
   }
+  // 최후의 fallback: path 자체 없거나 모든 매칭 실패 → host markdown pipeline.
   const pipeline = await loadPipeline();
   let html = await pipeline(md);
   if (opts.highlightCode) {
     html = await applyCodeHighlight(html, opts.highlightCode);
   }
   return sanitizeHtml(html, opts);
+}
+
+/**
+ * Custom parser 가 반환한 AST 를 host 가 render 가능한 HTML 로 변환.
+ *   - kind: "html" → 직접 sanitize
+ *   - kind: "markdown" → builtin pipeline 으로 다시 처리 (LLM 파서가 markdown
+ *     중간 form 만 변환하는 케이스, 예: wikilink → standard md link 변환)
+ *   - kind: "raw" → <pre> 로 escape
+ *   - 알 수 없음 → null (caller 가 builtin fallback 진행)
+ */
+async function handleInProcessAst(
+  out: unknown,
+  originalMd: string,
+  opts: RenderOptions,
+): Promise<string | null> {
+  if (!out || typeof out !== "object" || !("ast" in out)) return null;
+  const ast = (out as { ast: unknown }).ast;
+  if (!ast || typeof ast !== "object" || !("kind" in ast)) return null;
+  const kind = (ast as { kind: unknown }).kind;
+  if (kind === "html") {
+    const html = (ast as { html?: unknown }).html;
+    if (typeof html !== "string") return null;
+    return sanitizeHtml(html, opts);
+  }
+  if (kind === "markdown") {
+    const source = (ast as { source?: unknown }).source;
+    const mdText = typeof source === "string" ? source : originalMd;
+    const pipeline = await loadPipeline();
+    let html = await pipeline(mdText);
+    if (opts.highlightCode) {
+      html = await applyCodeHighlight(html, opts.highlightCode);
+    }
+    return sanitizeHtml(html, opts);
+  }
+  if (kind === "raw") {
+    const value = (ast as { value?: unknown }).value;
+    const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+    return sanitizeHtml(`<pre>${escapeHtml(text)}</pre>`, opts);
+  }
+  return null;
 }
 
 const CODE_BLOCK_RE = /<pre><code(?:\s+class="language-([\w+-]+)")?>([\s\S]*?)<\/code><\/pre>/g;

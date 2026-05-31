@@ -35,7 +35,10 @@ export const useWorkspace = create<WorkspaceState>()(
           readOnly: opts?.readOnly ?? false,
           preferredShell: opts?.preferredShell ?? "chat",
         }),
-      close: () => set({ current: null, readOnly: false }),
+      // Reset preferredShell back to the initial default ('chat') so a
+      // subsequent workspace open without an explicit override does not
+      // inherit the previous workspace's shell selection.
+      close: () => set({ current: null, readOnly: false, preferredShell: "chat" }),
       setReadOnly: (v) => set({ readOnly: v }),
       setPreferredShell: (shell) => set({ preferredShell: shell }),
     }),

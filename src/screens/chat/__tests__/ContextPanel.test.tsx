@@ -1,16 +1,44 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+if (typeof globalThis.ResizeObserver === "undefined") {
+  class FakeRO {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  (globalThis as unknown as { ResizeObserver: typeof FakeRO }).ResizeObserver = FakeRO;
+}
+
+// FileTree 가 Tauri invoke 를 호출하므로 mock 필요.
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(async (cmd: string) => {
+    if (cmd === "fs_list_dir") return { entries: [], page: 0, has_more: false };
+    if (cmd === "fs_check_locked") return false;
+    return undefined;
+  }),
+}));
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: () => Promise.resolve(() => {}),
+}));
+
 import { ContextPanel } from "../ContextPanel";
 
 afterEach(cleanup);
 
 describe("ContextPanel", () => {
-  it("renders the placeholder file-tree caption when a workspace is set", () => {
+  it("renders the FileTree component when a workspace is set", () => {
     const { getByTestId } = render(
       <ContextPanel workspaceId="/ws" activeFilePath={null} onPickFile={() => {}} />,
     );
-    expect(getByTestId("chat-file-tree").textContent).toContain("U2");
+    // ContextPanel 의 chat-file-tree section 이 존재
+    expect(getByTestId("chat-file-tree")).toBeTruthy();
+    // Files 헤더 + FileTree 내부 toolbar 가 렌더됨 (md-only 토글 버튼 포함)
+    expect(getByTestId("chat-file-tree").textContent).toContain("Files");
   });
 
   it("renders the no-workspace caption when workspaceId is empty", () => {

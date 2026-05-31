@@ -169,3 +169,34 @@ describe("layout store - collapsed mode", () => {
     expect(useLayout.getState().sidebarCollapsedMode).toBe(before);
   });
 });
+
+// ADR-0014 T2.g: md-only mode
+describe("layout store - md-only mode", () => {
+  it("defaults to ON (정체성 = 문서 워크벤치)", () => {
+    expect(useLayout.getState().isMdOnly("/fresh-ws")).toBe(true);
+  });
+
+  it("toggleMdOnly flips ON → OFF → ON", () => {
+    const ws = "/toggle-ws";
+    expect(useLayout.getState().isMdOnly(ws)).toBe(true);
+    useLayout.getState().toggleMdOnly(ws);
+    expect(useLayout.getState().isMdOnly(ws)).toBe(false);
+    useLayout.getState().toggleMdOnly(ws);
+    expect(useLayout.getState().isMdOnly(ws)).toBe(true);
+  });
+
+  it("setMdOnly is a no-op when unchanged", () => {
+    const ws = "/noop-ws";
+    useLayout.getState().setMdOnly(ws, true);
+    const before = useLayout.getState().mdOnly;
+    useLayout.getState().setMdOnly(ws, true);
+    expect(useLayout.getState().mdOnly).toBe(before);
+  });
+
+  it("persists per workspace independently", () => {
+    useLayout.getState().setMdOnly("/a", false);
+    useLayout.getState().setMdOnly("/b", true);
+    expect(useLayout.getState().isMdOnly("/a")).toBe(false);
+    expect(useLayout.getState().isMdOnly("/b")).toBe(true);
+  });
+});

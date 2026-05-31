@@ -42,4 +42,30 @@ describe("preset registry", () => {
     const entries = m.getPresetEntries("sublime");
     expect(entries?.[0]?.source).toBe("plugin");
   });
+
+  // M16 invariant: every preset entry must resolve to either a
+  // registered host command or an explicitly whitelisted CodeMirror
+  // passthrough. Otherwise the binding silently fails because the
+  // dispatcher skips unknown command ids (see dispatch.ts L62).
+  it("every built-in preset entry has a registered command or is a CodeMirror passthrough", async () => {
+    const m = await freshModule();
+    const { commands } = await import("@/lib/commands/registry");
+    const { codemirrorPassthroughCommandIds } = await import("../codemirror-passthrough");
+
+    const registered = new Set(commands.map((c) => c.id));
+    const builtIns: ("vscode" | "none")[] = ["vscode", "none"];
+
+    for (const name of builtIns) {
+      const entries = m.getPresetEntries(name) ?? [];
+      for (const entry of entries) {
+        const ok =
+          registered.has(entry.commandId) ||
+          codemirrorPassthroughCommandIds.has(entry.commandId);
+        expect(
+          ok,
+          `preset '${name}' binds '${entry.binding}' to unknown command '${entry.commandId}'; register it in src/lib/commands/registry.ts, add it to codemirror-passthrough.ts, or remove the binding`,
+        ).toBe(true);
+      }
+    }
+  });
 });

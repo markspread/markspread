@@ -6,6 +6,13 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(async () => undefined),
 }));
 
+// FileTree + ChatShell 양쪽이 `acp:notification` / file watch event 를
+// listen 함. jsdom 환경에는 window.__TAURI_INTERNALS__ 가 없어
+// transformCallback undefined → 마운트 시 throw. 빈 unlisten 만 반환.
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async () => () => {}),
+}));
+
 import { type AcpAdapter, resetAcpAdapter, setAcpAdapter } from "../../lib/agents/acp-adapter";
 import { useAgentRegistry } from "../../store/agent-registry";
 import { _cancelChatFlush, useChatSessions } from "../../store/chat-sessions";
@@ -93,7 +100,17 @@ describe("ChatShell", () => {
     fireEvent.change(getByTestId("chat-input"), { target: { value: "hi" } });
     fireEvent.click(getByTestId("chat-send"));
     await waitFor(() => expect(adapter.startSession).toHaveBeenCalled());
-    expect(adapter.sendMessage).toHaveBeenCalledWith("fake-sess", "hi");
+    // FIX (in-editor context): ChatShell 가 raw "hi" 가 아니라 context
+    // preamble + workspace/active-file 메타 + user message 로 합성한 문자열을
+    // 보낸다. agent 가 "어디서 실행되는지" 인지하려면 필수.
+    await waitFor(() => expect(adapter.sendMessage).toHaveBeenCalled());
+    const callArgs = (adapter.sendMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(callArgs?.[0]).toBe("fake-sess");
+    const composed = String(callArgs?.[1] ?? "");
+    expect(composed).toContain("[Markspread environment]");
+    expect(composed).toContain("[Workspace] /ws-1");
+    expect(composed).toContain("[User message]");
+    expect(composed).toContain("hi");
     expect(getByTestId("chat-msg-user").textContent).toContain("hi");
   });
 

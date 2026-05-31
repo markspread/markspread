@@ -3,6 +3,7 @@ mod acp;
 mod ai_auth;
 mod ai_keys;
 mod backup;
+mod chat;
 mod cli;
 mod crash;
 mod drive;
@@ -152,6 +153,7 @@ pub fn run() {
             acp::acp_list_agents,
             acp::acp_start_session,
             acp::acp_send_message,
+            acp::acp_close_session,
             acp::acp_approve_tool,
             acp::acp_cancel,
             acp::acp_set_workspace_default,
@@ -161,6 +163,9 @@ pub fn run() {
             acp::agents_remove_custom,
             acp::tool_queue_save,
             acp::tool_queue_load,
+            chat::chat_session_save,
+            chat::chat_session_delete,
+            chat::chat_session_list,
             ai_keys::ai_key_list,
             ai_keys::ai_key_save,
             ai_keys::ai_key_remove,

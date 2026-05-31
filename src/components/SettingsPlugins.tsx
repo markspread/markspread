@@ -6,7 +6,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PluginManifest } from "../lib/plugins/manifest";
+import { snapshot as pluginSnapshot } from "../lib/plugins/runtime/diagnostics";
+import { getOrchestrator } from "../lib/plugins/runtime/orchestrator-singleton";
 import { PluginMarketplace } from "./PluginMarketplace";
+import { PluginTrustDiagnostics } from "./PluginTrustDiagnostics";
 
 interface InstalledPlugin {
   manifest: PluginManifest;
@@ -114,6 +117,9 @@ export function SettingsPlugins() {
           ))}
         </ul>
       )}
+      {/* ADR-0013 T1.b + ADR-0016 T5.G: plugin trust 시각화 (default 접힘) */}
+      {/* boot.ts 가 PluginOrchestrator 에 trust 등록 → 실제 snapshot 전달 */}
+      <PluginTrustDiagnostics snapshot={pluginSnapshot(getOrchestrator(), true)} />
     </section>
   );
 }

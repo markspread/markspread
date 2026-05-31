@@ -3,7 +3,9 @@ import { type UnlistenFn, listen } from "@tauri-apps/api/event";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { newFileCommand, newFolderCommand } from "../lib/commands/new-file";
+import { useEditorLayout } from "../store/editor-layout";
 import { DEFAULT_SPLIT_ID, splitKeyForWorkspace, useFileTree } from "../store/file-tree";
+import { isMarkdownPath } from "../lib/file-kind";
 import { SORT_LABEL, SORT_MODES, useLayout } from "../store/layout";
 import { useSettings } from "../store/settings";
 import { useTabs } from "../store/tabs";
@@ -122,6 +124,8 @@ export const FileTree = memo(function FileTree({
   const setFoldersFirst = useLayout((s) => s.setFoldersFirst);
   const showHidden = useLayout((s) => s.isShowHidden(workspace));
   const setShowHidden = useLayout((s) => s.setShowHidden);
+  const mdOnly = useLayout((s) => s.isMdOnly(workspace));
+  const toggleMdOnly = useLayout((s) => s.toggleMdOnly);
 
   const isHidden = useCallback((entry: DirEntry): boolean => entry.name.startsWith("."), []);
 
@@ -240,6 +244,8 @@ export const FileTree = memo(function FileTree({
         if (!entries) return;
         for (const e of entries) {
           if (!showHidden && isHidden(e)) continue;
+          // ADR-0014 T2.g: md-only 모드면 비-md 파일 숨김. 폴더는 항상 노출.
+          if (mdOnly && !e.is_dir && !isMarkdownPath(e.name)) continue;
           const isExpanded = e.is_dir && expandedSet.includes(e.path);
           out.push({
             kind: "node",
@@ -262,6 +268,7 @@ export const FileTree = memo(function FileTree({
       let anyMatched = false;
       for (const e of entries) {
         if (!showHidden && isHidden(e)) continue;
+        if (mdOnly && !e.is_dir && !isMarkdownPath(e.name)) continue;
         const selfMatch = fuzzyMatch(q, e.name);
         if (e.is_dir) {
           const placeholder = out.length;
@@ -295,7 +302,7 @@ export const FileTree = memo(function FileTree({
     };
     visitFiltered(workspace, 0);
     return out;
-  }, [children, expandedSet, filter, isHidden, showHidden, workspace]);
+  }, [children, expandedSet, filter, isHidden, mdOnly, showHidden, workspace]);
 
   const [creating, setCreating] = useState<{
     parentPath: string;
@@ -794,6 +801,10 @@ export const FileTree = memo(function FileTree({
           });
           setExpanded(workspace, p, false);
           useTabs.getState().setOrphaned(p, true);
+          // S-FT-018 / S-ESP-003: same path may also live in PaneTabs across
+          // the workspace's split-pane layout — keep both stores in sync so
+          // the editor surface shows the orphan badge too.
+          useEditorLayout.getState().setOrphaned(workspace, p, true);
         }
         for (const parent of parents) {
           void refreshParent(parent);
@@ -1394,6 +1405,22 @@ export const FileTree = memo(function FileTree({
           {showHidden
             ? t("filetree.label.show_hidden_on", ".•")
             : t("filetree.label.show_hidden_off", "·")}
+        </button>
+        {/* ADR-0014 T2.g: md-only ↔ all toggle (default md-only). */}
+        <button
+          type="button"
+          className={`rounded px-1.5 py-0.5 hover:bg-[var(--color-border)]/40 ${
+            mdOnly ? "text-[var(--color-fg)]" : "text-[var(--color-muted)]"
+          }`}
+          title={t(
+            "filetree.tooltip.md_only",
+            mdOnly ? "현재 md-only 모드. 클릭 시 전체 보기" : "현재 전체 보기. 클릭 시 md-only",
+          )}
+          aria-pressed={mdOnly}
+          aria-label={t("filetree.aria.md_only", "md-only mode toggle")}
+          onClick={() => toggleMdOnly(workspace)}
+        >
+          <Icon name={mdOnly ? "file" : "folder"} size={12} />
         </button>
       </div>
       <div

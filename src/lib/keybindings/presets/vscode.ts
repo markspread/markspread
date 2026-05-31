@@ -9,6 +9,14 @@
 // Adding a row here: keep it sorted by command id. If a command does
 // not have a binding, omit it — empty string would imply "explicitly
 // unbound" which the user-override layer treats as a real assignment.
+//
+// IMPORTANT — invariant (M16): every entry MUST reference a command id
+// that is either:
+//   1. Registered in `src/lib/commands/registry.ts`, OR
+//   2. Listed in `./codemirror-passthrough.ts` as a CodeMirror-handled
+//      shortcut surfaced only for keybinding-sheet discoverability.
+// The preset-coverage test in `__tests__/index.test.ts` enforces this.
+// Anything else silently fails when the user presses the key.
 
 import type { BindingEntry } from "../types";
 
@@ -23,15 +31,17 @@ export const vscodePreset: BindingEntry[] = [
   { commandId: "workspace.locate", binding: "Mod+K Mod+L", source: "preset" },
   { commandId: "window.new", binding: "Mod+Shift+W", source: "preset" },
 
-  // Edit basics (CodeMirror handles Mod+Z/Y/X/C/V natively; listed for
-  // discoverability in the keybinding sheet)
+  // Edit basics — CodeMirror provides these via defaultKeymap /
+  // historyKeymap / searchKeymap inside the editor. They live in the
+  // preset purely so the keybinding sheet (S-KB-003) can advertise
+  // them; the global dispatcher skips them because no host command is
+  // registered, and CodeMirror's own keymap fires while the editor is
+  // focused.
   { commandId: "edit.save", binding: "Mod+S", source: "preset" },
-  { commandId: "edit.save_all", binding: "Mod+K S", source: "preset" },
   { commandId: "edit.undo", binding: "Mod+Z", source: "preset" },
   { commandId: "edit.redo", binding: "Mod+Shift+Z", source: "preset" },
   { commandId: "edit.find", binding: "Mod+F", source: "preset" },
   { commandId: "edit.find_replace", binding: "Mod+Alt+F", source: "preset" },
-  { commandId: "edit.find_in_workspace", binding: "Mod+Shift+F", source: "preset" },
   { commandId: "edit.go_to_line", binding: "Mod+G", source: "preset" },
   { commandId: "edit.duplicate_line", binding: "Mod+Shift+D", source: "preset" },
   { commandId: "edit.delete_line", binding: "Mod+Shift+K", source: "preset" },
@@ -40,17 +50,6 @@ export const vscodePreset: BindingEntry[] = [
   { commandId: "edit.copy_line_up", binding: "Shift+Alt+ArrowUp", source: "preset" },
   { commandId: "edit.copy_line_down", binding: "Shift+Alt+ArrowDown", source: "preset" },
   { commandId: "edit.toggle_comment", binding: "Mod+/", source: "preset" },
-
-  // Navigation
-  { commandId: "nav.go_to_file", binding: "Mod+P", source: "preset" },
-  { commandId: "nav.go_to_symbol", binding: "Mod+Shift+O", source: "preset" },
-  { commandId: "nav.go_back", binding: "Mod+Alt+ArrowLeft", source: "preset" },
-  { commandId: "nav.go_forward", binding: "Mod+Alt+ArrowRight", source: "preset" },
-
-  // Command palette
-  { commandId: "palette.show", binding: "Mod+Shift+P", source: "preset" },
-  { commandId: "palette.show_alt", binding: "F1", source: "preset" },
-  { commandId: "palette.show_recent", binding: "Mod+R", source: "preset" },
 
   // View / panels
   { commandId: "tabs.close_active", binding: "Mod+W", source: "preset" },
@@ -61,33 +60,16 @@ export const vscodePreset: BindingEntry[] = [
   { commandId: "view.focus_pane_1", binding: "Mod+1", source: "preset" },
   { commandId: "view.focus_pane_2", binding: "Mod+2", source: "preset" },
   { commandId: "view.focus_pane_3", binding: "Mod+3", source: "preset" },
-  { commandId: "view.toggle_spread_pane", binding: "Mod+Shift+V", source: "preset" },
-  { commandId: "view.toggle_zen", binding: "Mod+K Z", source: "preset" },
-  { commandId: "view.toggle_terminal", binding: "Ctrl+`", source: "preset" },
-  { commandId: "view.zoom_in", binding: "Mod+=", source: "preset" },
-  { commandId: "view.zoom_out", binding: "Mod+-", source: "preset" },
-  { commandId: "view.zoom_reset", binding: "Mod+0", source: "preset" },
-
-  // Markdown-specific
-  { commandId: "md.bold", binding: "Mod+B", source: "preset" },
-  { commandId: "md.italic", binding: "Mod+I", source: "preset" },
-  { commandId: "md.heading_cycle", binding: "Mod+Shift+H", source: "preset" },
-  { commandId: "md.toggle_checkbox", binding: "Mod+Enter", source: "preset" },
-  { commandId: "md.preview_focus", binding: "Mod+K V", source: "preset" },
 
   // AI
-  { commandId: "ai.improve_selection", binding: "Mod+K I", source: "preset" },
-  { commandId: "ai.continue_writing", binding: "Mod+K C", source: "preset" },
-  { commandId: "ai.summarise", binding: "Mod+K U", source: "preset" },
-
-  // Help / keybinding sheet
-  { commandId: "help.shortcuts", binding: "Mod+/", source: "preset" },
-  { commandId: "help.about", binding: "Mod+K A", source: "preset" },
+  { commandId: "ai.palette.open", binding: "Mod+.", source: "preset" },
 ];
 
-// Note: Mod+B appears twice (view.toggle_sidebar, md.bold) and Mod+/
-// appears twice (edit.toggle_comment, help.shortcuts). The conflict
-// resolver in S-KB-005 handles these contextually — sidebar / shortcut
-// sheet apply outside the editor, bold/comment inside it. The
-// resolver consults the `when` clause that lives on the command
-// descriptor (added by the CP unit).
+// Note: Mod+B (view.toggle_sidebar) and Mod+/ (edit.toggle_comment)
+// are also pressed inside the editor for md.bold / md.comment-like
+// gestures, but those are CodeMirror-side bindings layered on the
+// editor's own keymap — not host commands. The dispatcher's
+// specific-wins-over-always rule routes Mod+B to the sidebar
+// outside the editor; inside the editor CodeMirror sees the event
+// first because the editor's keymap binds at higher precedence than
+// the global window listener (S-KB-005, S-KB-010).

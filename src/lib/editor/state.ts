@@ -130,6 +130,7 @@ export function buildEditorState(
   extra: readonly Extension[] = [],
   prefs: EditorPrefs = DEFAULT_EDITOR_PREFS,
   language: EditorLanguage = "markdown",
+  readOnly = false,
 ): EditorState {
   return EditorState.create({
     doc,
@@ -137,6 +138,8 @@ export function buildEditorState(
       ...coreExtensions(),
       ...(language === "markdown" ? markdownLanguageExtensions() : []),
       settingsExtensions(prefs),
+      // ADR-0014: 문서/코드 비대칭 — caller (EditorPane) 가 비-md 파일에 true.
+      ...(readOnly ? [EditorState.readOnly.of(true)] : []),
       ...extra,
     ],
   });
@@ -148,9 +151,10 @@ export function mountEditor(
   extra: readonly Extension[] = [],
   prefs: EditorPrefs = DEFAULT_EDITOR_PREFS,
   language: EditorLanguage = "markdown",
+  readOnly = false,
 ): EditorView {
   return new EditorView({
     parent,
-    state: buildEditorState(doc, extra, prefs, language),
+    state: buildEditorState(doc, extra, prefs, language, readOnly),
   });
 }

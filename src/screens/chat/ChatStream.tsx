@@ -3,15 +3,22 @@
 // The input box is the lightest possible skeleton — text input + Enter
 // to send. No LLM client.
 
-import { type KeyboardEvent, useCallback, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import type { ChatMessage } from "../../store/chat-sessions";
+import { Icon } from "../../components/Icon";
 
 export interface ChatStreamProps {
   messages: ChatMessage[];
   onSend: (text: string) => void;
+  /**
+   * 사용자가 assistant 응답의 `\`\`\`js/javascript` 코드 블록 옆 "+ Parser"
+   * 버튼을 눌렀을 때 호출. 호출자가 CreateParserDialog 를 prefilledSource
+   * 로 연다. 미제공 시 버튼이 안 보임.
+   */
+  onRegisterParser?: (source: string) => void;
 }
 
-export function ChatStream({ messages, onSend }: ChatStreamProps) {
+export function ChatStream({ messages, onSend, onRegisterParser }: ChatStreamProps) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -54,7 +61,11 @@ export function ChatStream({ messages, onSend }: ChatStreamProps) {
             <div className="mb-1 text-[var(--color-muted)] text-xs uppercase tracking-wide">
               {m.role}
             </div>
-            <div>{m.content}</div>
+            <MessageBody
+              content={m.content}
+              role={m.role}
+              onRegisterParser={onRegisterParser}
+            />
           </li>
         ))}
       </ol>
@@ -84,4 +95,92 @@ export function ChatStream({ messages, onSend }: ChatStreamProps) {
       </div>
     </div>
   );
+}
+
+/**
+ * Assistant 메시지에 포함된 ```js / ```javascript / ```ts 코드 블록을 인식해서
+ * 각 블록 뒤에 "+ Parser" 액션 버튼을 노출. 버튼 클릭 → onRegisterParser(소스)
+ * → 상위가 CreateParserDialog 를 prefilledSource 로 연다.
+ *
+ * 현재 ACP tool flow 가 미구현이므로 (Phase B), assistant 가 만든 파서 코드를
+ * 즉시 등록까지 가는 가장 짧은 동선. plain text/diff/다른 언어 코드 블록은
+ * 그대로 표시.
+ */
+function MessageBody({
+  content,
+  role,
+  onRegisterParser,
+}: {
+  content: string;
+  role: ChatMessage["role"];
+  onRegisterParser: ((source: string) => void) | undefined;
+}): ReactNode {
+  const segments = useMemo(() => parseMessageSegments(content), [content]);
+  if (segments.length === 1 && segments[0]?.kind === "text") {
+    return <div>{content}</div>;
+  }
+  return (
+    <div>
+      {segments.map((seg, i) => {
+        if (seg.kind === "text") {
+          return (
+            <div key={i} className="whitespace-pre-wrap">
+              {seg.text}
+            </div>
+          );
+        }
+        const isJs = seg.lang === "js" || seg.lang === "javascript" || seg.lang === "ts" || seg.lang === "typescript";
+        const showRegister = isJs && role === "assistant" && onRegisterParser;
+        return (
+          <div key={i} className="my-2 rounded border border-[var(--color-border)] bg-[var(--color-surface-subtle)]">
+            <div className="flex items-center justify-between border-[var(--color-border)] border-b px-2 py-1">
+              <span className="text-[var(--color-muted)] text-xs font-mono">
+                {seg.lang || "code"}
+              </span>
+              {showRegister && (
+                <button
+                  type="button"
+                  data-testid="chat-codeblock-register-parser"
+                  onClick={() => onRegisterParser(seg.code)}
+                  className="inline-flex items-center gap-1 rounded border border-[var(--color-border)] px-2 py-0.5 text-xs hover:bg-[var(--color-border)]/40"
+                  title="이 코드로 런타임 파서 등록 (모달이 prefilled 로 열림)"
+                >
+                  <Icon name="sparkle" size={12} />
+                  <Icon name="plus" size={12} />
+                  <span>Parser</span>
+                </button>
+              )}
+            </div>
+            <pre className="overflow-auto p-2 font-mono text-xs leading-snug">
+              <code>{seg.code}</code>
+            </pre>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+type Segment = { kind: "text"; text: string } | { kind: "code"; lang: string; code: string };
+
+const FENCE_RE = /```([a-zA-Z0-9_+-]*)\n([\s\S]*?)```/g;
+
+function parseMessageSegments(content: string): Segment[] {
+  if (!content) return [{ kind: "text", text: "" }];
+  const out: Segment[] = [];
+  let lastIdx = 0;
+  const re = new RegExp(FENCE_RE.source, FENCE_RE.flags);
+  let m: RegExpExecArray | null = re.exec(content);
+  while (m !== null) {
+    if (m.index > lastIdx) {
+      out.push({ kind: "text", text: content.slice(lastIdx, m.index) });
+    }
+    out.push({ kind: "code", lang: (m[1] || "").trim().toLowerCase(), code: m[2] ?? "" });
+    lastIdx = m.index + m[0].length;
+    m = re.exec(content);
+  }
+  if (lastIdx < content.length) {
+    out.push({ kind: "text", text: content.slice(lastIdx) });
+  }
+  return out.length === 0 ? [{ kind: "text", text: content }] : out;
 }

@@ -20,16 +20,18 @@ const MARKDOWN_MANIFEST: ParserManifest = {
   version: "1.0.0",
   displayName: "Markdown",
   fileMatch: {
-    // 기본 노출 확장자. fallback 등록으로 인해 매칭되지 않는 경로도 이 파서로 떨어진다.
+    // 기본 노출 확장자. tie-break (registry.ts 의 sort) 가 *최근 등록 우선*
+    // 이므로 사용자가 동일 확장자에 custom 파서를 등록하면 그 파서가 이긴다.
     extensions: [".md", ".markdown", ".mdown", ".mkd"],
   },
   capabilities: "preview-plus-edit",
   entry: "builtin:markdown",
 };
 
-// 기본 파서는 raw 마크다운 문자열을 AST 로 변환하지 않고 그대로 통과시킨다.
-// 실제 렌더 파이프라인(`src/lib/preview/render.ts`)이 markdown-it 기반으로
-// 직접 처리하므로 SDK 추상은 "어떤 파서가 책임지는가" 만 표현한다.
+// 기본 파서도 다른 모든 런타임 파서와 동일한 흐름을 거친다 — render.ts 의
+// handleInProcessAst 가 `kind: "markdown"` 을 보면 host 의 markdown-it
+// 파이프라인으로 다시 전달한다 (사용자 일관성 요구). 즉 "특수 builtin 경로"
+// 가 사라지고 모든 매칭이 동일한 factory→AST→render 사이클을 거친다.
 function markdownFactory({ content }: ParseInput): ParseOutput {
   return { ast: { kind: "markdown", source: content } };
 }
@@ -40,6 +42,10 @@ export function getParserRegistry(): ParserRegistry {
   if (!singleton) {
     singleton = new ParserRegistry();
     singleton.registerParser(MARKDOWN_MANIFEST, markdownFactory);
+    // 시스템 lock — 사용자가 UI/SDK 어디서든 unregister 호출해도 거부됨.
+    // markdown 은 마지막 안전망 (fallback) 이라 삭제되면 일반 텍스트 파일
+    // 열기가 깨진다.
+    singleton.markSystem(BUILTIN_MARKDOWN_ID);
     singleton.setFallback(BUILTIN_MARKDOWN_ID);
     setRegistryHost(singleton);
   }

@@ -43,6 +43,12 @@ export class ParserRegistry implements RegistryHost {
   private renderers = new Map<string, RendererSpec>();
   private fallback: RegisteredParser | null = null;
   private nextOrder = 0;
+  /**
+   * 시스템 파서 — 삭제 차단 대상. host (host registry) 가 builtin markdown
+   * 등을 등록 직후 `markSystem(id)` 호출해 lock 한다. 사용자가 UI / SDK
+   * 양쪽 어느 경로로 unregister 호출해도 거부된다.
+   */
+  private systemIds = new Set<string>();
 
   registerParser(manifest: ParserManifest, factory: ParserFactory): void {
     if (this.parsers.has(manifest.id)) {
@@ -55,7 +61,25 @@ export class ParserRegistry implements RegistryHost {
     });
   }
 
+  /** 시스템 파서로 lock — unregister 차단. */
+  markSystem(id: string): void {
+    if (!this.parsers.has(id)) {
+      throw new Error(`Cannot mark unknown parser '${id}' as system`);
+    }
+    this.systemIds.add(id);
+  }
+
+  isSystem(id: string): boolean {
+    return this.systemIds.has(id);
+  }
+
   unregisterParser(id: string): boolean {
+    if (this.systemIds.has(id)) {
+      // 시스템 파서는 호출자에게 "지워지지 않았다" 명시 — 무음 무시는
+      // 디버깅을 어렵게 함. caller (CreateParserDialog UI 등) 는 false 를
+      // 보고 "이 파서는 시스템 — 삭제 불가" UX 를 표시해야 한다.
+      return false;
+    }
     if (this.fallback?.manifest.id === id) this.fallback = null;
     this.renderers.delete(id);
     return this.parsers.delete(id);
@@ -95,7 +119,10 @@ export class ParserRegistry implements RegistryHost {
     }
     results.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      return a.parser.registrationOrder - b.parser.registrationOrder;
+      // tie-break: 더 최근에 등록된 파서가 이긴다. host 가 부트스트랩한
+      // 시스템 파서 (builtin markdown, order=0) 보다 사용자가 chat 으로
+      // 만든 custom 파서 (order=N) 가 항상 우선되도록.
+      return b.parser.registrationOrder - a.parser.registrationOrder;
     });
     if (results.length === 0 && this.fallback) {
       results.push({ parser: this.fallback, score: FALLBACK_SCORE, reason: "fallback" });

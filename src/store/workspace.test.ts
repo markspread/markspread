@@ -28,4 +28,17 @@ describe("useWorkspace preferredShell", () => {
     useWorkspace.getState().setPreferredShell("chat");
     expect(useWorkspace.getState().preferredShell).toBe("chat");
   });
+
+  // Regression: previously close() only reset `current` and `readOnly`,
+  // leaving `preferredShell` from the prior workspace to leak into the
+  // next open() call that didn't pass an explicit shell.
+  it("close() resets preferredShell back to the default 'chat'", () => {
+    useWorkspace.getState().open("/ws-a", { preferredShell: "editor" });
+    expect(useWorkspace.getState().preferredShell).toBe("editor");
+    useWorkspace.getState().close();
+    expect(useWorkspace.getState().preferredShell).toBe("chat");
+    // And a subsequent open without opts should now see the default.
+    useWorkspace.getState().open("/ws-b");
+    expect(useWorkspace.getState().preferredShell).toBe("chat");
+  });
 });

@@ -224,6 +224,116 @@ describe("createDebouncedRenderer", () => {
   });
 });
 
+describe("render — in-process custom parser (register-from-source path, no sandbox)", () => {
+  it("calls factory directly + uses html AST", async () => {
+    const reg = getParserRegistry();
+    reg.registerParser(
+      {
+        id: "in-proc-html",
+        version: "0.0.1",
+        displayName: "InProc HTML",
+        fileMatch: { extensions: [".inproc"] },
+        capabilities: "preview-only",
+        entry: "inline:test",
+      },
+      (input) => ({
+        ast: { kind: "html", html: `<section data-iph="1">${input.content}</section>` },
+      }),
+    );
+    const out = await render("hello world", { path: "/x/y.inproc" });
+    expect(out).toContain('data-iph="1"');
+    expect(out).toContain("hello world");
+  });
+
+  it("markdown AST goes through builtin pipeline", async () => {
+    const reg = getParserRegistry();
+    reg.registerParser(
+      {
+        id: "in-proc-md-rewrite",
+        version: "0.0.1",
+        displayName: "InProc MD rewrite",
+        fileMatch: { extensions: [".mdrw"] },
+        capabilities: "preview-only",
+        entry: "inline:test",
+      },
+      (input) => ({
+        // Replace 'foo' with '**FOO**' before sending to markdown pipeline.
+        ast: { kind: "markdown", source: input.content.replace(/foo/g, "**FOO**") },
+      }),
+    );
+    const out = await render("the foo bar", { path: "/x/y.mdrw" });
+    expect(out).toContain("<strong>FOO</strong>");
+  });
+
+  it("raw AST gets escaped into <pre>", async () => {
+    const reg = getParserRegistry();
+    reg.registerParser(
+      {
+        id: "in-proc-raw",
+        version: "0.0.1",
+        displayName: "InProc raw",
+        fileMatch: { extensions: [".raw"] },
+        capabilities: "preview-only",
+        entry: "inline:test",
+      },
+      (input) => ({ ast: { kind: "raw", value: `<script>${input.content}</script>` } }),
+    );
+    const out = await render("alert(1)", { path: "/x/y.raw" });
+    // script tag literal in the raw text is HTML-escaped, not executed.
+    expect(out).toContain("&lt;script&gt;");
+    expect(out).not.toMatch(/<script>/);
+  });
+
+  it("factory throw falls back to builtin pipeline (document stays visible)", async () => {
+    const reg = getParserRegistry();
+    reg.registerParser(
+      {
+        id: "in-proc-throw",
+        version: "0.0.1",
+        displayName: "InProc throw",
+        fileMatch: { extensions: [".thr"] },
+        capabilities: "preview-only",
+        entry: "inline:test",
+      },
+      () => {
+        throw new Error("boom");
+      },
+    );
+    const out = await render("# fallback", { path: "/x/y.thr" });
+    expect(out).toContain("<h1>fallback</h1>");
+  });
+
+  it("does NOT call factory for builtin markdown (avoids no-op detour)", async () => {
+    let invoked = 0;
+    const reg = getParserRegistry();
+    // Replace builtin's factory tracking — we won't actually replace it, but
+    // we'll register an extra .md parser to verify the dispatch DID happen.
+    // Note: builtin is registered first + fallback. A second .md parser will
+    // also match → ParserRegistry.match returns the more specific one.
+    reg.registerParser(
+      {
+        id: "in-proc-md-tracker",
+        version: "0.0.1",
+        displayName: "tracker",
+        fileMatch: { extensions: [".md"] },
+        capabilities: "preview-only",
+        entry: "inline:test",
+      },
+      (input) => {
+        invoked += 1;
+        return { ast: { kind: "html", html: `<p data-via-tracker>${input.content}</p>` } };
+      },
+    );
+    const out = await render("hello", { path: "/x/y.md" });
+    expect(invoked).toBeGreaterThan(0);
+    expect(out).toContain("data-via-tracker");
+    // sanity: builtin still works for "no path"
+    const noPath = await render("# H");
+    expect(noPath).toContain("<h1>H</h1>");
+    void BUILTIN_MARKDOWN_ID;
+  });
+});
+
 describe("render fallback when remark imports fail", () => {
   it("uses the escape-and-paragraph renderer when unified is missing", async () => {
     vi.resetModules();

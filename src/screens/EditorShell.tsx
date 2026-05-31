@@ -14,6 +14,7 @@ import { WelcomeBanner } from "../components/WelcomeBanner";
 import { WorkspaceShell } from "../components/WorkspaceShell";
 import { useSidebarPeekHover } from "../hooks/useSidebarPeekHover";
 import { useWorkspaceLayoutSync } from "../hooks/useWorkspaceLayoutSync";
+import { isChatShellEnabled } from "../lib/feature-flags";
 import { syncWindowLabel } from "../lib/window-id";
 import { useEditorLayout } from "../store/editor-layout";
 import { DEFAULT_SPLIT_ID, fileTreeSplitKey, useFileTree } from "../store/file-tree";
@@ -106,6 +107,9 @@ function SingleWorkspaceBody({
 }) {
   const { t } = useTranslation();
   const currentFromStore = useWorkspace((s) => s.current);
+  // FIX: EditorShell 에서 ChatShell 로 전환하는 버튼이 없었음. ChatShell 의 역방향 등록.
+  const setPreferredShell = useWorkspace((s) => s.setPreferredShell);
+  const chatShellEnabledForSwitch = isChatShellEnabled();
   // 멀티-워크스페이스 트리에서 호출된 경우 그 탭의 경로를 사용. 그 외에는 글로벌 store.
   const current = workspaceTab?.workspacePath ?? currentFromStore;
   const close = useWorkspace((s) => s.close);
@@ -181,6 +185,25 @@ function SingleWorkspaceBody({
           {current}
         </span>
         <div className="flex items-center gap-3">
+          {/* FIX: ChatShell 로 전환하는 버튼이 없었음. ChatShell 헤더의 "Switch to Editor Shell" 와 역방향. */}
+          {chatShellEnabledForSwitch && (
+            <button
+              type="button"
+              data-testid="editor-switch-chat"
+              className="text-[var(--color-muted)] text-xs hover:text-[var(--color-fg)]"
+              onClick={() => {
+                setPreferredShell("chat");
+                emitTelemetry({
+                  type: "shell.switched",
+                  from: "editor",
+                  to: "chat",
+                  trigger: "toolbar",
+                });
+              }}
+            >
+              {t("main.action.switch_chat", "Switch to Chat Shell")}
+            </button>
+          )}
           {current && (
             <button
               type="button"

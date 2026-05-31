@@ -84,10 +84,15 @@ vi.mock("../lib/preview/scrollSync", () => ({
   suppressEcho: () => suppressEcho(),
 }));
 
-let registryMatch: { parser: { manifest: { id: string } } } | null = null;
+let registryMatch:
+  | { parser: { manifest: { id: string; displayName?: string } }; reason: string }
+  | null = null;
 vi.mock("../lib/parsers/registry", () => ({
   BUILTIN_MARKDOWN_ID: "builtin",
-  getParserRegistry: () => ({ match: () => registryMatch }),
+  getParserRegistry: () => ({
+    match: () => registryMatch,
+    isSystem: (id: string) => id === "builtin",
+  }),
 }));
 
 let parserTransport: unknown = null;
@@ -128,21 +133,21 @@ describe("SpreadPane", () => {
   });
 
   it("routes through a third-party parser transport when registered", async () => {
-    registryMatch = { parser: { manifest: { id: "acme.parser" } } };
+    registryMatch = { parser: { manifest: { id: "acme.parser" } }, reason: "extension" };
     parserTransport = { send: vi.fn() };
     render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/a.parser" content="x" />);
     await waitFor(() => expect(true).toBe(true));
   });
 
   it("falls back to the builtin pipeline when the matched parser is the builtin", async () => {
-    registryMatch = { parser: { manifest: { id: "builtin" } } };
+    registryMatch = { parser: { manifest: { id: "builtin" } }, reason: "extension" };
     parserTransport = { send: vi.fn() };
     render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/b.md" content="y" />);
     await waitFor(() => expect(true).toBe(true));
   });
 
   it("falls back when a non-builtin parser has no registered transport", async () => {
-    registryMatch = { parser: { manifest: { id: "acme.parser" } } };
+    registryMatch = { parser: { manifest: { id: "acme.parser" } }, reason: "extension" };
     parserTransport = null;
     render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/a.parser" content="z" />);
     await waitFor(() => expect(true).toBe(true));

@@ -1,7 +1,9 @@
 // MAR-1021: regression tests for the VSCode markdown contributes translator.
 
 import { describe, expect, it } from "vitest";
+import { PluginHost, type WorkerFactory } from "./runtime/host";
 import { parseManifest } from "./runtime/loader";
+import { type Message, type WorkerLike, createFakeWorkerPair } from "./runtime/sandbox-rpc";
 import {
   type VSCodePackageJson,
   translateVSCodePackage,
@@ -258,6 +260,62 @@ describe("translateVSCodePackage branch coverage", () => {
     const r = translateVSCodePackage({ ...minimal, version: "not-a-semver" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors.some((e) => e.path === "version")).toBe(true);
+  });
+});
+
+describe("PluginHost interprets translated VSCode manifest via the same hook", () => {
+  function fakeWorkerFactory(
+    behaviour: (host: WorkerLike, plugin: WorkerLike) => void,
+  ): WorkerFactory {
+    return () => {
+      const { hostSide, pluginSide } = createFakeWorkerPair();
+      behaviour(hostSide, pluginSide);
+      return hostSide;
+    };
+  }
+
+  it("registers the synthesised fence and dispatches via renderFence", async () => {
+    const r = translateVSCodePackage(minimal);
+    if (!r.ok) throw new Error("translator rejected fixture");
+    const fenceName = r.manifest.contributes.fences?.[0]?.name;
+    expect(fenceName).toBe("vscode-markdown-mermaid");
+
+    const host = new PluginHost({
+      handshakeTimeoutMs: 100,
+      workerFactory: fakeWorkerFactory((_h, plugin) => {
+        plugin.addEventListener("message", (ev) => {
+          const m = ev.data as Message;
+          if (m.type === "host:init") {
+            plugin.postMessage({
+              type: "plugin:ready",
+              registered: [{ kind: "fence", key: fenceName }],
+            });
+          } else if (m.type === "hook:invoke") {
+            plugin.postMessage({
+              type: "hook:result",
+              requestId: m.requestId,
+              result: { kind: "html", html: `<mermaid>${m.payload.source}</mermaid>` },
+            });
+          }
+        });
+      }),
+    });
+
+    const { vscodeAssets: _drop, ...canonical } = r.manifest;
+    const handle = await host.install({
+      manifest: canonical,
+      pluginDir: "/tmp/vscode-mermaid",
+      scope: "user",
+    });
+    expect(handle.state).toBe("ready");
+    expect(handle.registered).toContain(`fence.${fenceName}`);
+
+    const out = await host.renderFence(fenceName as string, "graph TD; A-->B", {
+      documentPath: "/doc.md",
+    });
+    expect(out?.kind).toBe("html");
+    if (out?.kind === "html") expect(out.html).toBe("<mermaid>graph TD; A-->B</mermaid>");
+    host.disposeAll();
   });
 });
 

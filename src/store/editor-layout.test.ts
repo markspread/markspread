@@ -441,6 +441,133 @@ describe("useEditorLayout — tab state mutators", () => {
   });
 });
 
+describe("useEditorLayout — setOrphaned", () => {
+  function seedSplit(): { leftId: string; rightId: string } {
+    useEditorLayout.getState().ensureLayout(WS);
+    const first = useEditorLayout.getState().getLayout(WS).root as PaneNode;
+    useEditorLayout.getState().setLayout(WS, {
+      schemaVersion: 1,
+      root: {
+        ...first,
+        tabs: [
+          tab("t1", "/ws/a.md"),
+          tab("t2", "/ws/dir/b.md"),
+          tab("t3", "/ws/dir/sub/c.md"),
+        ],
+        activeTabId: "t1",
+      },
+      activePaneId: first.id,
+    });
+    const rightId = useEditorLayout.getState().splitPane(WS, first.id, "horizontal", "after");
+    if (!rightId) throw new Error("split failed");
+    // Drop a duplicate of /ws/dir/b.md into the right pane to cover the
+    // "same path in multiple panes" case — external delete must mark both.
+    const layout = useEditorLayout.getState().getLayout(WS);
+    const split = layout.root as SplitNode;
+    const right = split.children.find((c) => c.id === rightId) as PaneNode;
+    useEditorLayout.getState().setLayout(WS, {
+      ...layout,
+      root: {
+        ...split,
+        children: split.children.map((c) =>
+          c.id === rightId
+            ? { ...right, tabs: [tab("t4", "/ws/dir/b.md")], activeTabId: "t4" }
+            : c,
+        ),
+      },
+    });
+    return { leftId: first.id, rightId };
+  }
+
+  function tabsByPath(): Record<string, boolean | undefined> {
+    const layout = useEditorLayout.getState().getLayout(WS);
+    const out: Record<string, boolean | undefined> = {};
+    const visit = (n: PaneNode | SplitNode) => {
+      if (n.type === "pane") {
+        for (const t of n.tabs) out[`${n.id}:${t.path}`] = t.orphaned;
+        return;
+      }
+      for (const c of n.children) visit(c as PaneNode | SplitNode);
+    };
+    visit(layout.root as PaneNode | SplitNode);
+    return out;
+  }
+
+  it("marks an exact-path tab orphaned across all panes", () => {
+    seedSplit();
+    useEditorLayout.getState().setOrphaned(WS, "/ws/a.md", true);
+    const flags = tabsByPath();
+    // /ws/a.md lives only in the left pane.
+    const aEntry = Object.entries(flags).find(([k]) => k.endsWith(":/ws/a.md"));
+    expect(aEntry?.[1]).toBe(true);
+    // Other tabs untouched.
+    const others = Object.entries(flags)
+      .filter(([k]) => !k.endsWith(":/ws/a.md"))
+      .map(([, v]) => v ?? false);
+    expect(others.every((v) => v === false)).toBe(true);
+  });
+
+  it("marks descendants of a deleted folder orphaned in every pane", () => {
+    seedSplit();
+    useEditorLayout.getState().setOrphaned(WS, "/ws/dir", true);
+    const flags = tabsByPath();
+    // /ws/dir/b.md exists in both panes; /ws/dir/sub/c.md exists once.
+    const flagged = Object.entries(flags).filter(([k]) =>
+      k.includes(":/ws/dir/b.md") || k.includes(":/ws/dir/sub/c.md"),
+    );
+    expect(flagged).toHaveLength(3);
+    for (const [, v] of flagged) expect(v).toBe(true);
+    // /ws/a.md (sibling, not under /ws/dir) is untouched.
+    const aEntry = Object.entries(flags).find(([k]) => k.endsWith(":/ws/a.md"));
+    expect(aEntry?.[1] ?? false).toBe(false);
+  });
+
+  it("clears the orphan flag when called with orphaned=false", () => {
+    seedSplit();
+    useEditorLayout.getState().setOrphaned(WS, "/ws/dir", true);
+    useEditorLayout.getState().setOrphaned(WS, "/ws/dir/b.md", false);
+    const flags = tabsByPath();
+    // b.md cleared in both panes, c.md still flagged.
+    const bEntries = Object.entries(flags).filter(([k]) => k.endsWith(":/ws/dir/b.md"));
+    expect(bEntries.every(([, v]) => v === false)).toBe(true);
+    const cEntry = Object.entries(flags).find(([k]) => k.endsWith(":/ws/dir/sub/c.md"));
+    expect(cEntry?.[1]).toBe(true);
+  });
+
+  it("is a no-op when nothing matches (preserves root identity)", () => {
+    seedSplit();
+    const before = useEditorLayout.getState().getLayout(WS).root;
+    useEditorLayout.getState().setOrphaned(WS, "/ws/nothing", true);
+    expect(useEditorLayout.getState().getLayout(WS).root).toBe(before);
+  });
+
+  it("is a no-op when the flag already matches", () => {
+    seedSplit();
+    // Default is undefined (falsy); calling with false is a no-op for every tab.
+    const before = useEditorLayout.getState().getLayout(WS).root;
+    useEditorLayout.getState().setOrphaned(WS, "/ws/a.md", false);
+    expect(useEditorLayout.getState().getLayout(WS).root).toBe(before);
+  });
+
+  it("is a no-op when the workspace is missing", () => {
+    useEditorLayout.getState().setOrphaned("missing", "/ws/a.md", true);
+    expect(useEditorLayout.getState().layouts["missing"]).toBeUndefined();
+  });
+
+  it("matches Windows-style descendant paths (backslash separator)", () => {
+    useEditorLayout.getState().ensureLayout(WS);
+    const first = useEditorLayout.getState().getLayout(WS).root as PaneNode;
+    useEditorLayout.getState().setLayout(WS, {
+      schemaVersion: 1,
+      root: { ...first, tabs: [tab("t1", "C:\\ws\\dir\\b.md")], activeTabId: "t1" },
+      activePaneId: first.id,
+    });
+    useEditorLayout.getState().setOrphaned(WS, "C:\\ws\\dir", true);
+    const root = useEditorLayout.getState().getLayout(WS).root as PaneNode;
+    expect(root.tabs[0]?.orphaned).toBe(true);
+  });
+});
+
 describe("useEditorLayout — persistence", () => {
   it("only the layouts slice is exposed for persistence", () => {
     useEditorLayout.getState().ensureLayout(WS);

@@ -35,6 +35,7 @@ coverage/
 *.tsbuildinfo
 
 # Tooling scratch
+.claude/worktrees/
 .playwright-mcp/
 playwright-report/
 test-results/

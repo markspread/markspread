@@ -35,6 +35,14 @@ fn manager() -> &'static Mutex<HashMap<String, Arc<AcpClient>>> {
     M.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+/// Remove a session from the global manager. Returns the dropped client,
+/// if any, so the caller can drop it outside the manager lock (avoids
+/// running any Drop side effects while we hold the global mutex).
+fn remove_session(session_id: &SessionId) -> Option<Arc<AcpClient>> {
+    let mut m = manager().lock().unwrap();
+    m.remove(&session_id.0)
+}
+
 fn registry() -> &'static Mutex<AgentRegistry> {
     static R: OnceLock<Mutex<AgentRegistry>> = OnceLock::new();
     R.get_or_init(|| Mutex::new(AgentRegistry::default()))
@@ -94,22 +102,79 @@ async fn spawn_agent_transport(
         .map_err(|e| AppError::Invalid(format!("acp auth: {e}")))?;
     let program = &entry.command[0];
     let args = &entry.command[1..];
-    let mut cmd = tokio::process::Command::new(program);
+    // macOS GUI 런치는 사용자 shell PATH (예: /opt/homebrew/bin, ~/.nvm) 를
+    // 상속하지 않음. `npx` 등 사용자-설치 도구는 절대경로로 해석해야 한다.
+    let program_resolved = resolve_program_path(program);
+    let mut cmd = tokio::process::Command::new(&program_resolved);
     cmd.args(args)
         .current_dir(workspace_root)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
+    // PATH 도 augment — npx 가 spawn 내부에서 node 를 다시 찾을 수 있어야 함.
+    let augmented_path = augmented_user_path();
+    cmd.env("PATH", &augmented_path);
     for (k, v) in &env_vars {
         cmd.env(k, v);
     }
-    let child = cmd
-        .spawn()
-        .map_err(|e| AppError::Invalid(format!("acp spawn: {e}")))?;
+    // entry-level extra env (예: ANTHROPIC_MODEL=claude-haiku-4-5) 가 auth env
+    // 키와 겹치면 entry 가 이긴다.
+    for (k, v) in &entry.extra_env {
+        cmd.env(k, v);
+    }
+    let child = cmd.spawn().map_err(|e| {
+        AppError::Invalid(format!(
+            "acp spawn '{}' (resolved: {}): {e}",
+            program,
+            program_resolved.display()
+        ))
+    })?;
     // env_vars dropped here — secrets gone from our address space.
     drop(env_vars);
     transport::StdioTransport::from_child(child)
         .map_err(|e| AppError::Invalid(format!("acp transport: {e}")))
+}
+
+/// macOS GUI 런치 시 PATH 가 비어있는 경우를 대비해 일반 사용자 도구 경로를
+/// merge. 이미 설정된 PATH 가 있으면 그 앞에 추가만 한다.
+#[cfg(not(test))]
+fn augmented_user_path() -> String {
+    let extra = [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin",
+    ];
+    let mut parts: Vec<String> = extra.iter().map(|s| s.to_string()).collect();
+    if let Ok(home) = std::env::var("HOME") {
+        parts.push(format!("{home}/.local/bin"));
+        parts.push(format!("{home}/.volta/bin"));
+        parts.push(format!("{home}/.asdf/shims"));
+    }
+    if let Ok(current) = std::env::var("PATH") {
+        parts.push(current);
+    }
+    parts.join(":")
+}
+
+/// program 이 절대 경로면 그대로, 아니면 augmented PATH 에서 검색.
+/// 못 찾으면 원본 그대로 반환 (spawn 이 명확한 에러 메시지를 만들도록).
+#[cfg(not(test))]
+fn resolve_program_path(program: &str) -> std::path::PathBuf {
+    let p = std::path::Path::new(program);
+    if p.is_absolute() {
+        return p.to_path_buf();
+    }
+    let path_env = augmented_user_path();
+    for dir in path_env.split(':') {
+        let candidate = std::path::Path::new(dir).join(program);
+        if candidate.is_file() {
+            return candidate;
+        }
+    }
+    p.to_path_buf()
 }
 
 #[cfg(not(test))]
@@ -135,10 +200,14 @@ pub async fn acp_start_session<R: Runtime>(
         })
         .await
         .map_err(|e| AppError::Invalid(format!("acp init: {e}")))?;
+    // FIX: ACP 어댑터 v0.39 (@agentclientprotocol/claude-agent-acp) 의
+    // session/new 는 `mcpServers` 를 *required array* 로 schema-검증함.
+    // None/undefined/null 모두 -32602 Invalid params 응답. 빈 vec! 으로
+    // 명시해야 정상 진행.
     let new_session = client
         .session_new(SessionNewParams {
             cwd: workspace_root.to_string_lossy().into_owned(),
-            mcp_servers: None,
+            mcp_servers: Some(vec![]),
         })
         .await
         .map_err(|e| AppError::Invalid(format!("acp session/new: {e}")))?;
@@ -171,15 +240,30 @@ fn spawn_event_forwarder<R: Runtime>(
         loop {
             match events.recv().await {
                 Ok(ev) => {
+                    // Capture transport-closed before forwarding so we can
+                    // also drop the session from the global manager and
+                    // release the underlying client/transport.
+                    let is_closed = matches!(ev, AcpEvent::Closed(_));
                     let payload = NotificationPayload {
                         session_id: session_id.clone(),
                         agent_id: agent_id.clone(),
                         event: ev,
                     };
                     let _ = app.emit("acp:notification", payload);
+                    if is_closed {
+                        // Drop outside the lock by binding first.
+                        let _dropped = remove_session(&session_id);
+                        return;
+                    }
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => continue,
-                Err(broadcast::error::RecvError::Closed) => return,
+                Err(broadcast::error::RecvError::Closed) => {
+                    // Reader task ended (transport gone) without a Closed
+                    // event reaching us — clean up the manager entry so
+                    // memory doesn't grow unbounded.
+                    let _dropped = remove_session(&session_id);
+                    return;
+                }
             }
         }
     });
@@ -372,6 +456,25 @@ pub async fn acp_cancel(session_id: SessionId) -> Result<(), AppError> {
         .await
         .map_err(|e| AppError::Invalid(format!("acp cancel: {e}")))?;
     Ok(())
+}
+
+/// Close a session: send the `session/close` RPC to the agent, then drop
+/// the client from the global manager so the underlying transport,
+/// reader, and writer tasks can be reclaimed. The manager entry is
+/// removed unconditionally — even if the RPC fails — so a flaky agent
+/// can never leak sessions into our HashMap.
+#[tauri::command]
+pub async fn acp_close_session(session_id: SessionId) -> Result<(), AppError> {
+    let client = lookup_client(&session_id)?;
+    let rpc_result = client
+        .session_close(session_id.clone())
+        .await
+        .map_err(|e| AppError::Invalid(format!("acp close: {e}")));
+    // Always remove from manager regardless of RPC outcome — otherwise a
+    // transport that's already half-closed would leave a dead Arc behind.
+    drop(client);
+    let _dropped = remove_session(&session_id);
+    rpc_result
 }
 
 // Test-only stub so cargo test --all-features can compile a version of
@@ -600,6 +703,79 @@ mod tests {
         // a clean enum result.
         assert!(matches!(res, Ok(()) | Err(AppError::Invalid(_))));
         manager().lock().unwrap().remove("approve-diff-3");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn close_session_removes_entry_from_manager() {
+        // Snapshot baseline len so we don't depend on test ordering.
+        let baseline = manager().lock().unwrap().len();
+
+        // Insert two sessions so we can verify the targeted one is the
+        // only one removed.
+        let (client_t1, _agent_t1) = transport::MemoryTransport::pair(8192);
+        let (client_t2, _agent_t2) = transport::MemoryTransport::pair(8192);
+        let c1 = Arc::new(AcpClient::new(client_t1));
+        let c2 = Arc::new(AcpClient::new(client_t2));
+        {
+            let mut m = manager().lock().unwrap();
+            m.insert("close-test-keep".into(), c1);
+            m.insert("close-test-drop".into(), c2);
+        }
+        assert_eq!(manager().lock().unwrap().len(), baseline + 2);
+
+        // Close the target session. Because the fake agent half was
+        // dropped, the underlying RPC will fail with a transport error —
+        // but cleanup MUST still happen. That's exactly the property
+        // we're guarding against: a flaky agent can never leak entries.
+        let res = acp_close_session(SessionId("close-test-drop".into())).await;
+        assert!(
+            matches!(res, Err(AppError::Invalid(_))) || matches!(res, Ok(())),
+            "expected Ok or Invalid (transport err), got {res:?}"
+        );
+
+        // Manager went from baseline+2 down to baseline+1 — exactly one
+        // session removed, the other untouched.
+        let m = manager().lock().unwrap();
+        assert_eq!(m.len(), baseline + 1);
+        assert!(m.contains_key("close-test-keep"));
+        assert!(!m.contains_key("close-test-drop"));
+        drop(m);
+
+        // Clean up the other one so we leave the global at baseline.
+        let _ = remove_session(&SessionId("close-test-keep".into()));
+        assert_eq!(manager().lock().unwrap().len(), baseline);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn close_session_unknown_returns_not_found() {
+        let baseline = manager().lock().unwrap().len();
+        let err = acp_close_session(SessionId("never-inserted".into()))
+            .await
+            .unwrap_err();
+        match err {
+            AppError::NotFound(_) => {}
+            other => panic!("expected NotFound, got {other:?}"),
+        }
+        assert_eq!(manager().lock().unwrap().len(), baseline);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn remove_session_is_idempotent() {
+        let baseline = manager().lock().unwrap().len();
+        let (client_t, _agent_t) = transport::MemoryTransport::pair(8192);
+        manager()
+            .lock()
+            .unwrap()
+            .insert("idem-1".into(), Arc::new(AcpClient::new(client_t)));
+        assert_eq!(manager().lock().unwrap().len(), baseline + 1);
+        let first = remove_session(&SessionId("idem-1".into()));
+        assert!(first.is_some());
+        let second = remove_session(&SessionId("idem-1".into()));
+        assert!(second.is_none());
+        assert_eq!(manager().lock().unwrap().len(), baseline);
     }
 
     #[tokio::test]

@@ -12,11 +12,13 @@ import { Icon } from "./Icon";
 import { SettingsAi } from "./SettingsAi";
 import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsBackup } from "./SettingsBackup";
+import { SettingsCommercial } from "./SettingsCommercial";
 import { SettingsDiagnostics } from "./SettingsDiagnostics";
 import { SettingsKeybindings } from "./SettingsKeybindings";
 import { SettingsLayout } from "./SettingsLayout";
 import { SettingsPlugins } from "./SettingsPlugins";
 import { SettingsSecurity } from "./SettingsSecurity";
+import { SettingsSync } from "./SettingsSync";
 import { SettingsUpdater } from "./SettingsUpdater";
 
 const THEME_OPTIONS: { value: ThemeMode; labelKey: string; fallback: string }[] = [
@@ -120,6 +122,10 @@ export function SettingsSheet() {
           <SettingsUpdater />
           <SettingsSecurity />
           <SettingsDiagnostics />
+          {/* ADR-0015 §3 Sync: Obsidian 패턴 동기화 */}
+          <SettingsSync />
+          {/* ADR-0015 §3: Commercial License honor system */}
+          <SettingsCommercial />
         </div>
       </div>
     </div>

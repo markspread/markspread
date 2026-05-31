@@ -23,6 +23,7 @@ const {
   peekSidebarCommand,
   toggleHiddenFilesCommand,
   switchWorkspaceCommand,
+  openWorkspaceFromDialog,
   openPalette,
   showExport,
 } = vi.hoisted(() => ({
@@ -44,6 +45,7 @@ const {
   peekSidebarCommand: vi.fn(),
   toggleHiddenFilesCommand: vi.fn(),
   switchWorkspaceCommand: vi.fn(),
+  openWorkspaceFromDialog: vi.fn(async () => null),
   openPalette: vi.fn(),
   showExport: vi.fn(),
 }));
@@ -68,6 +70,7 @@ vi.mock("./sidebar", () => ({
   toggleSidebarCommand,
 }));
 vi.mock("./switch-workspace", () => ({ switchWorkspaceCommand }));
+vi.mock("../open-workspace", () => ({ openWorkspaceFromDialog }));
 vi.mock("../../store/ai-palette", () => ({
   useAiPalette: { getState: () => ({ openPalette }) },
 }));
@@ -113,6 +116,13 @@ describe("runCommand", () => {
   it("dispatches workspace.close", () => {
     runCommand("workspace.close");
     expect(closeWorkspaceCommand).toHaveBeenCalled();
+  });
+
+  it("dispatches workspace.open via the dialog flow", async () => {
+    const cmd = commands.find((c) => c.id === "workspace.open");
+    if (!cmd) throw new Error("expected workspace.open command");
+    await cmd.run();
+    expect(openWorkspaceFromDialog).toHaveBeenCalled();
   });
 
   it("dispatches sidebar commands", () => {

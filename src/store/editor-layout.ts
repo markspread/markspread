@@ -90,6 +90,14 @@ interface EditorLayoutState {
   closeTab: (workspace: string, paneId: PaneId, tabId: TabId) => void;
   /** Toggle a tab's pinned flag. */
   setTabPinned: (workspace: string, paneId: PaneId, tabId: TabId, pinned: boolean) => void;
+  /**
+   * S-FT-018: mark or unmark every PaneTab whose path is `path` (or rooted
+   * under `path/`) as orphaned across every pane in the workspace. Folder
+   * deletes mark every descendant tab; recreating clears just one path.
+   * Mirrors `useTabs.setOrphaned` so the split-pane layout reflects the
+   * same external-delete signals the legacy tabs store handles.
+   */
+  setOrphaned: (workspace: string, path: string, orphaned: boolean) => void;
 }
 
 function emptyLayout(): WorkspaceLayout {
@@ -287,6 +295,28 @@ function applyMoveTab(
   });
   /* v8 ignore next -- afterRemove always reports changed when fromPaneId resolves; the ternary picks afterInsert defensively */
   return afterRemove.changed ? afterRemove : afterInsert;
+}
+
+/**
+ * Apply `transform` to every PaneNode in the tree. When a transform returns
+ * the same reference no structural change is made; otherwise the surrounding
+ * splits are rebuilt with structural sharing so React selectors resubscribe
+ * only on actual change. Returns the same `root` reference when nothing
+ * changed anywhere in the tree.
+ */
+function mapPaneTabs(root: LayoutNode, transform: (pane: PaneNode) => PaneNode): LayoutNode {
+  if (root.type === "pane") {
+    return transform(root);
+  }
+  let changed = false;
+  const nextChildren: LayoutNode[] = [];
+  for (const child of root.children) {
+    const next = mapPaneTabs(child, transform);
+    if (next !== child) changed = true;
+    nextChildren.push(next);
+  }
+  if (!changed) return root;
+  return { ...root, children: nextChildren };
 }
 
 function firstPaneId(node: LayoutNode): PaneId {
@@ -533,6 +563,30 @@ export const useEditorLayout = create<EditorLayoutState>()(
           layouts: {
             ...get().layouts,
             [workspace]: { ...layout, root: res.root },
+          },
+        });
+      },
+      setOrphaned: (workspace, path, orphaned) => {
+        const layout = get().layouts[workspace];
+        if (!layout) return;
+        const matches = (p: string) =>
+          p === path || p.startsWith(`${path}/`) || p.startsWith(`${path}\\`);
+        const nextRoot = mapPaneTabs(layout.root, (pane) => {
+          let touched = false;
+          const nextTabs = pane.tabs.map((tab) => {
+            if (!matches(tab.path)) return tab;
+            if ((tab.orphaned ?? false) === orphaned) return tab;
+            touched = true;
+            return { ...tab, orphaned };
+          });
+          if (!touched) return pane;
+          return { ...pane, tabs: nextTabs };
+        });
+        if (nextRoot === layout.root) return;
+        set({
+          layouts: {
+            ...get().layouts,
+            [workspace]: { ...layout, root: nextRoot },
           },
         });
       },

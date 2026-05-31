@@ -2,7 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: asset:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost" />
+    <!--
+      ADR-0016 (T5.B/C/D/G) 파서 안전 다층 방어 하에서 runtime 파서 실행을
+      허용하기 위해 `script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'` 명시.
+      - `new Function()` 으로 evaluate 한 LLM-generated parser factory 가 필요.
+      - 검증: Validator(text/regex) + TrustRegistry 동의 + Sanitizer(host) +
+        BudgetGuard(time/output) 다층 가드 — risk 흡수.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; img-src 'self' data: blob: asset:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />

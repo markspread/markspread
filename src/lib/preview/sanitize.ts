@@ -10,8 +10,27 @@
 // dependency. The cost is that we re-parse the HTML twice (the
 // preview pipeline does it again on injection), which is fine at
 // preview-render rates (debounced to ~300ms in S-PR-002).
+//
+// ---------------------------------------------------------------------
+// CROSS-REFERENCE — two sanitisers coexist in this repo:
+//   1. THIS file  (`src/lib/preview/sanitize.ts`) — LENIENT.
+//      The full preview pipeline emits mermaid/katex SVG plus
+//      GitHub-style semantic tags (<section>, <time>, <dfn>, <var>,
+//      ruby, etc.), so this allowlist is wider than the strict one.
+//   2. `src/lib/security/markdown-sanitize.ts` — STRICT. Wraps the
+//      output of *plugins* (untrusted third-party code) inside
+//      `src/lib/parsers/renderer-host.ts`; it drops everything not
+//      in core GFM.
+//
+// INVARIANT (enforced by `src/lib/security/sanitiser-convergence.test.ts`):
+//   The strict sanitiser's ALLOWED_TAGS MUST be a subset of THIS
+//   allowlist. BOTH MUST drop <script>/<style>/<iframe>/<object>/
+//   <embed>, on* handlers, and javascript:/data: URLs. Diverging on
+//   dangerous tags is a security regression — add the test, not an
+//   exception.
+// ---------------------------------------------------------------------
 
-const ALLOWED_TAGS = new Set<string>([
+export const ALLOWED_TAGS = new Set<string>([
   "a",
   "abbr",
   "b",
@@ -41,6 +60,9 @@ const ALLOWED_TAGS = new Set<string>([
   "hr",
   "i",
   "img",
+  // input: GFM task list (`<input type="checkbox">`). attribute filter 가
+  // `disabled` 외 모든 dangerous attr 차단 + type=checkbox 외엔 무시.
+  "input",
   "ins",
   "kbd",
   "li",
@@ -107,6 +129,8 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
   picture: new Set([]),
   pre: new Set(["data-language"]),
   code: new Set(["data-language"]),
+  // GFM task list checkbox — disabled 만 의미있음. type/checked 도 허용.
+  input: new Set(["type", "checked", "disabled"]),
   td: new Set(["align", "colspan", "rowspan"]),
   th: new Set(["align", "colspan", "rowspan", "scope"]),
   table: new Set(["align"]),
@@ -175,7 +199,12 @@ function walk(node: Element, opts: SanitizeOptions): void {
     const star = ALLOWED_ATTRS["*"] ?? new Set<string>();
     for (const attr of Array.from(child.attributes)) {
       const n = attr.name.toLowerCase();
-      const allowed = attrSet.has(n) || star.has(n);
+      // data-* 는 wildcard 허용 — custom 런타임 파서 (예: wireweave 의
+      // data-edge, data-node 등) 가 임의 hook attr 을 자유롭게 쓸 수
+      // 있도록. data-* 자체는 코드 실행을 트리거하지 않음. on* 이벤트
+      // 핸들러는 여전히 차단.
+      const isDataAttr = n.startsWith("data-");
+      const allowed = attrSet.has(n) || star.has(n) || isDataAttr;
       if (!allowed || n.startsWith("on")) {
         child.removeAttribute(attr.name);
         continue;
@@ -190,6 +219,18 @@ function walk(node: Element, opts: SanitizeOptions): void {
         child.removeAttribute("src");
         child.setAttribute("data-blocked", "remote");
       }
+    }
+    if (tag === "input") {
+      // 보안: type 이 checkbox 가 아닌 input 은 모두 제거 (text/file/submit
+      // 등 form 흐름 차단). disabled 자동 부여 — task list 는 표시용일 뿐
+      // 토글은 별도 plugin (checkboxToggle.ts) 이 attach 함.
+      const type = (child.getAttribute("type") ?? "").toLowerCase();
+      if (type !== "checkbox") {
+        while (child.firstChild) node.insertBefore(child.firstChild, child);
+        node.removeChild(child);
+        continue;
+      }
+      child.setAttribute("disabled", "");
     }
     if (tag === "a") {
       // Force noopener on every external link (defense in depth).

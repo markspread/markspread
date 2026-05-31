@@ -38,6 +38,12 @@ interface ChatSessionsState {
   createSession: (workspaceId: string, title?: string) => ChatSession;
   selectSession: (id: string) => void;
   appendMessage: (sessionId: string, msg: Omit<ChatMessage, "id" | "createdAt">) => ChatMessage;
+  /**
+   * 마지막 assistant 메시지에 chunk 누적. ACP `agent_message_chunk` notification
+   * 처리용. 마지막 메시지가 assistant 가 아니거나 finalized 되었으면 새 assistant
+   * 메시지를 만들고 그 위에 누적.
+   */
+  appendAssistantChunk: (sessionId: string, chunk: string) => void;
   renameSession: (id: string, title: string) => void;
   deleteSession: (id: string) => void;
   /** Load every session under the given workspace from disk. Idempotent. */
@@ -133,6 +139,33 @@ export const useChatSessions = create<ChatSessionsState>((set, get) => ({
     set((state) => ({ sessions: { ...state.sessions, [sessionId]: updated } }));
     scheduleFlush(sessionId, () => get().sessions[sessionId]);
     return full;
+  },
+  appendAssistantChunk: (sessionId, chunk) => {
+    if (!chunk) return;
+    const s = get().sessions[sessionId];
+    if (!s) {
+      // session 이 사라진 경우 (user 가 삭제). silent drop.
+      return;
+    }
+    const now = Date.now();
+    const lastIdx = s.messages.length - 1;
+    const last = s.messages[lastIdx];
+    let nextMessages: ChatMessage[];
+    if (last && last.role === "assistant") {
+      const merged: ChatMessage = { ...last, content: last.content + chunk };
+      nextMessages = [...s.messages.slice(0, lastIdx), merged];
+    } else {
+      const created: ChatMessage = {
+        id: randomId(),
+        role: "assistant",
+        content: chunk,
+        createdAt: now,
+      };
+      nextMessages = [...s.messages, created];
+    }
+    const updated: ChatSession = { ...s, messages: nextMessages, updatedAt: now };
+    set((state) => ({ sessions: { ...state.sessions, [sessionId]: updated } }));
+    scheduleFlush(sessionId, () => get().sessions[sessionId]);
   },
   renameSession: (id, title) => {
     const s = get().sessions[id];

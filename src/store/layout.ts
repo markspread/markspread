@@ -38,6 +38,9 @@ interface LayoutState {
   foldersFirst: Record<string, boolean>;
   // S-FT-024: show dotfiles. Default OFF — `.markspread/` is internal.
   showHidden: Record<string, boolean>;
+  // ADR-0014 T2.g: md-only mode toggle. Default ON — 본 도구의 정체성 (문서 워크벤치).
+  // OFF = "전체 보기" (코드/설정 파일도 표시, read-only).
+  mdOnly: Record<string, boolean>;
   // S-SBC-003: when sidebarHidden=true, render a slim "rail" by default so
   // the user has a hover/click target to reopen; "hidden" hides completely.
   sidebarCollapsedMode: Record<string, SidebarCollapsedMode>;
@@ -53,6 +56,9 @@ interface LayoutState {
   isShowHidden: (workspace: string) => boolean;
   setShowHidden: (workspace: string, value: boolean) => void;
   toggleShowHidden: (workspace: string) => void;
+  isMdOnly: (workspace: string) => boolean;
+  setMdOnly: (workspace: string, value: boolean) => void;
+  toggleMdOnly: (workspace: string) => void;
   getSidebarCollapsedMode: (workspace: string) => SidebarCollapsedMode;
   setSidebarCollapsedMode: (workspace: string, mode: SidebarCollapsedMode) => void;
 }
@@ -74,6 +80,7 @@ export const useLayout = create<LayoutState>()(
       sortMode: {},
       foldersFirst: {},
       showHidden: {},
+      mdOnly: {},
       sidebarCollapsedMode: {},
       getSidebarWidth: (workspace) => {
         const v = get().sidebarWidth[workspace];
@@ -130,6 +137,23 @@ export const useLayout = create<LayoutState>()(
         const cur = !!get().showHidden[workspace];
         set({
           showHidden: { ...get().showHidden, [workspace]: !cur },
+        });
+      },
+      // md-only default ON (정체성 = 문서 워크벤치). 미지정 = ON.
+      isMdOnly: (workspace) => {
+        const v = get().mdOnly[workspace];
+        return v == null ? true : v;
+      },
+      setMdOnly: (workspace, value) => {
+        if (get().isMdOnly(workspace) === value) return;
+        set({
+          mdOnly: { ...get().mdOnly, [workspace]: value },
+        });
+      },
+      toggleMdOnly: (workspace) => {
+        const cur = get().isMdOnly(workspace);
+        set({
+          mdOnly: { ...get().mdOnly, [workspace]: !cur },
         });
       },
       // Default "rail": collapsed sidebar still shows a 6px handle so users

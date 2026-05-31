@@ -52,7 +52,9 @@ describe("routeCliPathArg", () => {
   });
 
   it("opens a file in single-file mode", async () => {
-    invokeMock.mockResolvedValueOnce({ kind: "file" }).mockResolvedValueOnce({ text: "hello" });
+    invokeMock
+      .mockResolvedValueOnce({ kind: "file" })
+      .mockResolvedValueOnce({ content: "hello", encoding: "utf-8" });
     useWorkspace.setState({ current: "/old" });
     const { routeCliPathArg } = await import("./cli-route");
     await routeCliPathArg("/a.md");

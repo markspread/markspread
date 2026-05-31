@@ -11,8 +11,25 @@
 // This sanitiser is intentionally allow-listed: tags and attributes
 // not on the allow list are dropped (text content kept). It runs as a
 // post-pass on the markdown HTML output, before insertion into the DOM.
+//
+// ---------------------------------------------------------------------
+// CROSS-REFERENCE — two sanitisers coexist in this repo:
+//   1. THIS file  (`src/lib/security/markdown-sanitize.ts`) — STRICT.
+//      Used by `src/lib/parsers/renderer-host.ts` to sandbox the HTML
+//      that *plugins* hand back. Plugins are untrusted code paths, so
+//      no SVG / no <section>/<time>/etc — just GFM core.
+//   2. `src/lib/preview/sanitize.ts` — LENIENT (preview pipeline).
+//      Runs on the full remark/rehype output that includes
+//      mermaid/katex SVG and GitHub-style semantic tags.
+//
+// INVARIANT (enforced by `src/lib/security/sanitiser-convergence.test.ts`):
+//   THIS strict ALLOWED_TAGS MUST be a subset of preview's ALLOWED_TAGS.
+//   BOTH MUST drop <script>/<style>/<iframe>/<object>/<embed>,
+//   on* handlers, and javascript:/data: URLs. Diverging on dangerous
+//   tags is a security regression — add the test, not an exception.
+// ---------------------------------------------------------------------
 
-const ALLOWED_TAGS = new Set([
+export const ALLOWED_TAGS = new Set([
   "h1",
   "h2",
   "h3",

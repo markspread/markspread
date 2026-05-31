@@ -125,6 +125,8 @@ function resetStores() {
     sortMode: {},
     foldersFirst: {},
     showHidden: {},
+    // ADR-0014 T2.g: 기존 테스트는 코드 파일도 보이는 "전체 보기" 가정. md-only OFF 로 reset.
+    mdOnly: { "/ws": false },
   } as never);
 }
 
