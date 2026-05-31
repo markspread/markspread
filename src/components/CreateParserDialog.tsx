@@ -244,7 +244,10 @@ export function CreateParserDialog({
 
           {/* 현재 등록된 파서 목록 — fallback markdown 포함 모두 표시.
               사용자가 어떤 파서가 활성인지 한눈에 보고 즉시 unregister 가능. */}
-          <section className="mt-4 border-[var(--color-border)] border-t pt-3" data-testid="parser-registry-list">
+          <section
+            className="mt-4 border-[var(--color-border)] border-t pt-3"
+            data-testid="parser-registry-list"
+          >
             <h3 className="mb-2 text-[var(--color-muted)] text-xs uppercase tracking-wide">
               {t("parser.dialog.registry_title", "현재 등록된 파서")} ({registeredParsers.length})
             </h3>

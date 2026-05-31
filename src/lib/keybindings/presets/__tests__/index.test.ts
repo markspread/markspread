@@ -59,8 +59,7 @@ describe("preset registry", () => {
       const entries = m.getPresetEntries(name) ?? [];
       for (const entry of entries) {
         const ok =
-          registered.has(entry.commandId) ||
-          codemirrorPassthroughCommandIds.has(entry.commandId);
+          registered.has(entry.commandId) || codemirrorPassthroughCommandIds.has(entry.commandId);
         expect(
           ok,
           `preset '${name}' binds '${entry.binding}' to unknown command '${entry.commandId}'; register it in src/lib/commands/registry.ts, add it to codemirror-passthrough.ts, or remove the binding`,

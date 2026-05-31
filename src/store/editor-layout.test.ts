@@ -449,11 +449,7 @@ describe("useEditorLayout — setOrphaned", () => {
       schemaVersion: 1,
       root: {
         ...first,
-        tabs: [
-          tab("t1", "/ws/a.md"),
-          tab("t2", "/ws/dir/b.md"),
-          tab("t3", "/ws/dir/sub/c.md"),
-        ],
+        tabs: [tab("t1", "/ws/a.md"), tab("t2", "/ws/dir/b.md"), tab("t3", "/ws/dir/sub/c.md")],
         activeTabId: "t1",
       },
       activePaneId: first.id,
@@ -470,9 +466,7 @@ describe("useEditorLayout — setOrphaned", () => {
       root: {
         ...split,
         children: split.children.map((c) =>
-          c.id === rightId
-            ? { ...right, tabs: [tab("t4", "/ws/dir/b.md")], activeTabId: "t4" }
-            : c,
+          c.id === rightId ? { ...right, tabs: [tab("t4", "/ws/dir/b.md")], activeTabId: "t4" } : c,
         ),
       },
     });
@@ -512,8 +506,8 @@ describe("useEditorLayout — setOrphaned", () => {
     useEditorLayout.getState().setOrphaned(WS, "/ws/dir", true);
     const flags = tabsByPath();
     // /ws/dir/b.md exists in both panes; /ws/dir/sub/c.md exists once.
-    const flagged = Object.entries(flags).filter(([k]) =>
-      k.includes(":/ws/dir/b.md") || k.includes(":/ws/dir/sub/c.md"),
+    const flagged = Object.entries(flags).filter(
+      ([k]) => k.includes(":/ws/dir/b.md") || k.includes(":/ws/dir/sub/c.md"),
     );
     expect(flagged).toHaveLength(3);
     for (const [, v] of flagged) expect(v).toBe(true);
@@ -551,7 +545,7 @@ describe("useEditorLayout — setOrphaned", () => {
 
   it("is a no-op when the workspace is missing", () => {
     useEditorLayout.getState().setOrphaned("missing", "/ws/a.md", true);
-    expect(useEditorLayout.getState().layouts["missing"]).toBeUndefined();
+    expect(useEditorLayout.getState().layouts.missing).toBeUndefined();
   });
 
   it("matches Windows-style descendant paths (backslash separator)", () => {

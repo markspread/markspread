@@ -190,9 +190,7 @@ export function SpreadPane({ workspace, pane, documentPath, content }: SpreadPan
           className="not-prose mb-2 inline-flex w-fit items-center gap-1 self-end rounded border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-2 py-0.5 text-[var(--color-muted)] text-xs"
           title={`Parser id: ${activeParser.id} (matched by ${activeParser.reason})`}
         >
-          <span className="font-medium text-[var(--color-fg)]">
-            {activeParser.displayName}
-          </span>
+          <span className="font-medium text-[var(--color-fg)]">{activeParser.displayName}</span>
           <span className="opacity-60">·</span>
           <span className="opacity-60">{activeParser.reason}</span>
           {activeParser.isSystem && (

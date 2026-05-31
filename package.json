@@ -15,7 +15,7 @@
     "lint": "biome check src",
     "lint:fix": "biome check --write src",
     "format": "biome format --write src",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
     "a11y:check-tabindex": "node scripts/check-tabindex.mjs",

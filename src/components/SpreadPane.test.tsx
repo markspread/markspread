@@ -84,9 +84,10 @@ vi.mock("../lib/preview/scrollSync", () => ({
   suppressEcho: () => suppressEcho(),
 }));
 
-let registryMatch:
-  | { parser: { manifest: { id: string; displayName?: string } }; reason: string }
-  | null = null;
+let registryMatch: {
+  parser: { manifest: { id: string; displayName?: string } };
+  reason: string;
+} | null = null;
 vi.mock("../lib/parsers/registry", () => ({
   BUILTIN_MARKDOWN_ID: "builtin",
   getParserRegistry: () => ({

@@ -120,6 +120,7 @@ function MessageBody({
       {segments.map((seg, i) => {
         if (seg.kind === "text") {
           return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: segments are positional, re-parsed wholesale on content change, and never reorder — index is the stable identity
             <div key={i} className="whitespace-pre-wrap">
               {seg.text}
             </div>
@@ -133,6 +134,7 @@ function MessageBody({
         const showRegister = isJs && role === "assistant" && onRegisterParser;
         return (
           <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: segments are positional, re-parsed wholesale on content change, and never reorder — index is the stable identity
             key={i}
             className="my-2 rounded border border-[var(--color-border)] bg-[var(--color-surface-subtle)]"
           >

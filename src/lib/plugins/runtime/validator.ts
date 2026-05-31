@@ -136,9 +136,7 @@ export function analyse(source: string, opts: AnalyseOptions = {}): Violation[] 
       const { line, column } = offsetToLineColumn(source, m.index);
       const lineEnd = source.indexOf("\n", m.index);
       const lineStart = source.lastIndexOf("\n", m.index - 1) + 1;
-      const snippet = source
-        .slice(lineStart, lineEnd === -1 ? source.length : lineEnd)
-        .trim();
+      const snippet = source.slice(lineStart, lineEnd === -1 ? source.length : lineEnd).trim();
       violations.push({
         code: rule.code,
         snippet,
@@ -148,9 +146,7 @@ export function analyse(source: string, opts: AnalyseOptions = {}): Violation[] 
       m = re.exec(source);
     }
   }
-  violations.sort(
-    (a, b) => a.span.line - b.span.line || a.span.column - b.span.column,
-  );
+  violations.sort((a, b) => a.span.line - b.span.line || a.span.column - b.span.column);
   return violations;
 }
 
@@ -161,10 +157,7 @@ export function isClean(source: string, opts: AnalyseOptions = {}): boolean {
   return analyse(source, opts).length === 0;
 }
 
-function offsetToLineColumn(
-  source: string,
-  offset: number,
-): { line: number; column: number } {
+function offsetToLineColumn(source: string, offset: number): { line: number; column: number } {
   let line = 1;
   let lastNewline = -1;
   for (let i = 0; i < offset; i++) {

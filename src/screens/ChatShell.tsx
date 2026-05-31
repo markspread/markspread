@@ -10,7 +10,7 @@
 // placeholder assistant card. The real LLM wiring lands in U2.
 
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { type UnlistenFn, listen } from "@tauri-apps/api/event";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentPicker } from "../components/AgentPicker";
 import { ChatPreview } from "../components/ChatPreview";
@@ -447,10 +447,7 @@ async function composeAgentInput(args: {
 
 const MAX_EXCERPT_CHARS = 4000;
 
-async function readActiveFileExcerpt(
-  workspace: string,
-  path: string,
-): Promise<string | null> {
+async function readActiveFileExcerpt(workspace: string, path: string): Promise<string | null> {
   if (!workspace || !path) return null;
   try {
     const result = await invoke<{ content: string; encoding: string }>("fs_read_file", {
