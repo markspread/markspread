@@ -22,6 +22,7 @@
 //     pending oneshot with `AcpError::Transport`.
 
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -30,7 +31,8 @@ use serde_json::Value;
 use tokio::sync::{broadcast, mpsc, oneshot};
 
 use super::protocol::{
-    AuthenticateParams, ContentBlock, InitializeParams, InitializeResult, Method, Notification,
+    AuthenticateParams, ContentBlock, FsReadTextFileParams, FsReadTextFileResult,
+    FsWriteTextFileParams, InitializeParams, InitializeResult, Method, Notification,
     PermissionDecision, RawMessage, Request, RequestId, RequestPermissionResult, Response,
     RpcError, SessionCancelParams, SessionCloseParams, SessionId, SessionNewParams,
     SessionNewResult, SessionPromptParams, SessionPromptResult, SessionUpdateParams,
@@ -124,6 +126,13 @@ struct Inner {
     tx_out: mpsc::Sender<RawMessage>,
     events: broadcast::Sender<AcpEvent>,
     closed: Mutex<bool>,
+    /// Workspace root that bounds client-side `fs/*` operations. When set,
+    /// `fs/read_text_file` and `fs/write_text_file` agent requests are
+    /// serviced *by us* (real disk IO) and answered on the wire — this is
+    /// the leg that turns an `allow` decision into an actual file change.
+    /// When `None` (e.g. unit tests that don't exercise fs), those requests
+    /// are only surfaced as events for the UI to handle.
+    fs_root: Mutex<Option<PathBuf>>,
 }
 
 impl AcpClient {
@@ -144,10 +153,19 @@ impl AcpClient {
             tx_out,
             events,
             closed: Mutex::new(false),
+            fs_root: Mutex::new(None),
         });
         spawn_writer(rx_out, writer);
         spawn_reader(Arc::clone(&inner), reader);
         AcpClient { inner }
+    }
+
+    /// Bound client-side `fs/*` requests to `root`. Must be called before
+    /// the agent starts issuing tool calls (i.e. right after `session/new`).
+    /// Paths outside `root` are rejected so a misbehaving agent can't write
+    /// arbitrary files on the host.
+    pub fn set_fs_root(&self, root: PathBuf) {
+        *self.inner.fs_root.lock().unwrap() = Some(root);
     }
 
     pub fn subscribe_updates(&self) -> broadcast::Receiver<AcpEvent> {
@@ -335,10 +353,178 @@ fn handle_inbound(inner: &Arc<Inner>, msg: RawMessage) {
             let _ = inner.events.send(event);
         }
         RawMessage::Request(r) => {
-            let event = parse_agent_request(r);
-            let _ = inner.events.send(event);
+            // Client-side filesystem tool calls (`fs/read_text_file`,
+            // `fs/write_text_file`) are *our* responsibility per the ACP
+            // spec: we advertised the capability, so we perform the IO and
+            // answer on the wire. This is the leg that makes an `allow`
+            // decision produce a real disk change. We still emit an event so
+            // the UI can reflect it (editor/preview refresh).
+            if r.method == Method::FsWriteTextFile.as_str()
+                || r.method == Method::FsReadTextFile.as_str()
+            {
+                handle_fs_request(inner, r);
+            } else {
+                let event = parse_agent_request(r);
+                let _ = inner.events.send(event);
+            }
         }
     }
+}
+
+/// Resolve `requested` against `root`, rejecting any path that escapes the
+/// workspace root (absolute paths outside root, or `..` traversal). Returns
+/// the canonical-ish absolute path to operate on.
+fn confine_to_root(root: &Path, requested: &str) -> Result<PathBuf, String> {
+    let req = Path::new(requested);
+    let joined = if req.is_absolute() {
+        req.to_path_buf()
+    } else {
+        root.join(req)
+    };
+    // Reject `..` traversal lexically (we can't canonicalize a not-yet-created
+    // write target, so do it by component analysis).
+    let mut normalized = PathBuf::new();
+    for comp in joined.components() {
+        use std::path::Component;
+        match comp {
+            Component::ParentDir => {
+                if !normalized.pop() {
+                    return Err("path escapes workspace root".into());
+                }
+            }
+            Component::CurDir => {}
+            other => normalized.push(other.as_os_str()),
+        }
+    }
+    if !normalized.starts_with(root) {
+        return Err("path escapes workspace root".into());
+    }
+    Ok(normalized)
+}
+
+/// Service an `fs/*` agent request: perform real disk IO bounded by the
+/// session's workspace root, then answer the agent with a JSON-RPC response.
+/// Also emits an `AgentRequest` event so the UI can refresh editor/preview.
+fn handle_fs_request(inner: &Arc<Inner>, r: Request) {
+    let root = inner.fs_root.lock().unwrap().clone();
+    let inner = Arc::clone(inner);
+    tokio::spawn(async move {
+        // Surface the request to the UI regardless of how we service it.
+        let _ = inner.events.send(AcpEvent::AgentRequest {
+            request_id: r.id.clone(),
+            method: r.method.clone(),
+            params: r.params.clone(),
+        });
+
+        let Some(root) = root else {
+            // No workspace bound — refuse rather than touch arbitrary disk.
+            let _ = send_response(
+                &inner,
+                Response {
+                    jsonrpc: "2.0".into(),
+                    id: r.id,
+                    result: None,
+                    error: Some(RpcError {
+                        code: -32603,
+                        message: "fs root not configured".into(),
+                        data: None,
+                    }),
+                },
+            )
+            .await;
+            return;
+        };
+
+        let resp = if r.method == Method::FsWriteTextFile.as_str() {
+            service_write(&root, &r)
+        } else {
+            service_read(&root, &r)
+        };
+        let _ = send_response(&inner, resp).await;
+    });
+}
+
+fn service_write(root: &Path, r: &Request) -> Response {
+    let parsed: Result<FsWriteTextFileParams, _> = r
+        .params
+        .clone()
+        .ok_or_else(|| "missing params".to_string())
+        .and_then(|v| serde_json::from_value(v).map_err(|e| e.to_string()));
+    match parsed {
+        Ok(p) => match confine_to_root(root, &p.path) {
+            Ok(abs) => {
+                let io = (|| {
+                    if let Some(parent) = abs.parent() {
+                        std::fs::create_dir_all(parent)?;
+                    }
+                    std::fs::write(&abs, p.content.as_bytes())
+                })();
+                match io {
+                    Ok(()) => ok_response(r.id.clone(), Value::Null),
+                    Err(e) => err_response(r.id.clone(), -32603, format!("fs write: {e}")),
+                }
+            }
+            Err(e) => err_response(r.id.clone(), -32602, e),
+        },
+        Err(e) => err_response(r.id.clone(), -32602, format!("invalid params: {e}")),
+    }
+}
+
+fn service_read(root: &Path, r: &Request) -> Response {
+    let parsed: Result<FsReadTextFileParams, _> = r
+        .params
+        .clone()
+        .ok_or_else(|| "missing params".to_string())
+        .and_then(|v| serde_json::from_value(v).map_err(|e| e.to_string()));
+    match parsed {
+        Ok(p) => match confine_to_root(root, &p.path) {
+            Ok(abs) => match std::fs::read_to_string(&abs) {
+                Ok(content) => {
+                    let result = FsReadTextFileResult { content };
+                    match serde_json::to_value(&result) {
+                        Ok(v) => ok_response(r.id.clone(), v),
+                        Err(e) => err_response(r.id.clone(), -32603, e.to_string()),
+                    }
+                }
+                Err(e) => err_response(r.id.clone(), -32603, format!("fs read: {e}")),
+            },
+            Err(e) => err_response(r.id.clone(), -32602, e),
+        },
+        Err(e) => err_response(r.id.clone(), -32602, format!("invalid params: {e}")),
+    }
+}
+
+fn ok_response(id: RequestId, result: Value) -> Response {
+    Response {
+        jsonrpc: "2.0".into(),
+        id,
+        result: Some(result),
+        error: None,
+    }
+}
+
+fn err_response(id: RequestId, code: i64, message: String) -> Response {
+    Response {
+        jsonrpc: "2.0".into(),
+        id,
+        result: None,
+        error: Some(RpcError {
+            code,
+            message,
+            data: None,
+        }),
+    }
+}
+
+async fn send_response(inner: &Arc<Inner>, resp: Response) -> Result<(), AcpError> {
+    if *inner.closed.lock().unwrap() {
+        return Err(AcpError::Closed);
+    }
+    inner
+        .tx_out
+        .send(RawMessage::Response(resp))
+        .await
+        .map_err(|_| AcpError::Closed)
 }
 
 fn parse_notification(n: Notification) -> AcpEvent {
@@ -649,5 +835,337 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(init.protocol_version, 1);
+    }
+
+    // ─── allow → real disk write end-to-end (N2/N11) ────────────────────
+    //
+    // These tests drive the *full* approval-to-disk path with no mocked
+    // responses: a fake agent asks for permission, the host answers
+    // (allow/deny), and on allow the agent re-invokes `fs/write_text_file`,
+    // which our `handle_fs_request` services against a real temp dir. The
+    // assertion is externally observable — we read the file off disk and
+    // compare content + mtime, exactly the contract the task demands.
+
+    /// Fake agent for the fs flow. On `session/prompt`:
+    ///   1. sends `session/request_permission` to the host and waits,
+    ///   2. if the host's decision is `allow`/`allow_once`, sends
+    ///      `fs/write_text_file` with `target_path`/`target_content`,
+    ///   3. completes the prompt with `end_turn`.
+    /// Returns nothing; runs until the transport closes.
+    async fn run_fs_fake_agent(mut t: MemoryTransport, target_path: String, target_content: String) {
+        // pending host responses keyed by our outbound request id.
+        let mut next_id: u64 = 1000;
+        loop {
+            match t.recv().await {
+                Ok(RawMessage::Request(req)) => {
+                    let id = req.id.clone();
+                    match req.method.as_str() {
+                        "initialize" => {
+                            let result = InitializeResult {
+                                protocol_version: 1,
+                                agent_capabilities: json!({}),
+                                agent_info: json!({"name": "fs-fake"}),
+                                auth_methods: vec![],
+                            };
+                            send_ok(&mut t, id, serde_json::to_value(&result).unwrap()).await;
+                        }
+                        "session/new" => {
+                            let result = SessionNewResult {
+                                session_id: SessionId("sess-fs".into()),
+                            };
+                            send_ok(&mut t, id, serde_json::to_value(&result).unwrap()).await;
+                        }
+                        "session/prompt" => {
+                            // 1. ask permission.
+                            let perm_id = next_id;
+                            next_id += 1;
+                            let perm = Request::new(
+                                RequestId::from_u64(perm_id),
+                                "session/request_permission",
+                                &super::super::protocol::RequestPermissionParams {
+                                    session_id: SessionId("sess-fs".into()),
+                                    tool_call_id: "tc-write".into(),
+                                    summary: "write file".into(),
+                                },
+                            )
+                            .unwrap();
+                            t.send(&RawMessage::Request(perm)).await.unwrap();
+
+                            // 2. wait for the host's decision response.
+                            let decision = loop {
+                                match t.recv().await {
+                                    Ok(RawMessage::Response(r))
+                                        if matches!(&r.id, RequestId::Number(n) if *n == perm_id) =>
+                                    {
+                                        break r
+                                            .result
+                                            .and_then(|v| {
+                                                v.get("decision")
+                                                    .and_then(|d| d.as_str())
+                                                    .map(|s| s.to_string())
+                                            })
+                                            .unwrap_or_default();
+                                    }
+                                    Ok(_) => continue,
+                                    Err(_) => return,
+                                }
+                            };
+
+                            // 3. on allow, re-invoke the write tool. The host's
+                            //    fs handler performs the real disk write and
+                            //    answers us.
+                            if decision == "allow" || decision == "allow_once" {
+                                let w_id = next_id;
+                                next_id += 1;
+                                let w = Request::new(
+                                    RequestId::from_u64(w_id),
+                                    "fs/write_text_file",
+                                    &FsWriteTextFileParams {
+                                        path: target_path.clone(),
+                                        content: target_content.clone(),
+                                    },
+                                )
+                                .unwrap();
+                                t.send(&RawMessage::Request(w)).await.unwrap();
+                                // Drain the host's fs response before completing.
+                                loop {
+                                    match t.recv().await {
+                                        Ok(RawMessage::Response(r))
+                                            if matches!(&r.id, RequestId::Number(n) if *n == w_id) =>
+                                        {
+                                            break;
+                                        }
+                                        Ok(_) => continue,
+                                        Err(_) => return,
+                                    }
+                                }
+                            }
+
+                            // 4. complete the prompt.
+                            let result = SessionPromptResult {
+                                stop_reason: StopReason::EndTurn,
+                            };
+                            send_ok(&mut t, id, serde_json::to_value(&result).unwrap()).await;
+                        }
+                        _ => {
+                            let resp = Response {
+                                jsonrpc: "2.0".into(),
+                                id,
+                                result: None,
+                                error: Some(RpcError {
+                                    code: -32601,
+                                    message: "method not found".into(),
+                                    data: None,
+                                }),
+                            };
+                            t.send(&RawMessage::Response(resp)).await.unwrap();
+                        }
+                    }
+                }
+                Ok(_) => {}
+                Err(_) => return,
+            }
+        }
+    }
+
+    async fn send_ok(t: &mut MemoryTransport, id: RequestId, result: Value) {
+        let resp = Response {
+            jsonrpc: "2.0".into(),
+            id,
+            result: Some(result),
+            error: None,
+        };
+        t.send(&RawMessage::Response(resp)).await.unwrap();
+    }
+
+    /// Drive a prompt against the fs fake agent, answering the permission
+    /// request with `decision`. Returns once the prompt completes.
+    async fn drive_fs_flow(client: &AcpClient, decision: PermissionDecision) {
+        let mut events = client.subscribe_updates();
+        // Spawn the prompt; it completes only after the whole tool dance.
+        let prompt = {
+            // SAFETY: client outlives the spawned future via the await below.
+            let fut = client.session_prompt(
+                SessionId("sess-fs".into()),
+                vec![ContentBlock::Text {
+                    text: "write the file".into(),
+                }],
+            );
+            fut
+        };
+        // Run the prompt and the permission-answer concurrently.
+        let answer = async {
+            loop {
+                let ev = tokio::time::timeout(Duration::from_secs(5), events.recv())
+                    .await
+                    .expect("event timeout")
+                    .expect("event recv");
+                if let AcpEvent::PermissionRequest { request_id, .. } = ev {
+                    client
+                        .respond_to_permission_request(request_id, decision)
+                        .await
+                        .unwrap();
+                    return;
+                }
+            }
+        };
+        let joined = async {
+            let (_answered, prompt_res) = tokio::join!(answer, prompt);
+            prompt_res
+        };
+        let prompt_res = tokio::time::timeout(Duration::from_secs(10), joined)
+            .await
+            .expect("fs flow timed out — a leg of the allow→write→complete path hung");
+        prompt_res.expect("prompt result");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn allow_decision_writes_real_file_to_disk() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().to_path_buf();
+        let target = root.join("notes.md");
+        // Pre-seed an existing file so we can observe a content + mtime change.
+        std::fs::write(&target, "OLD CONTENT\n").unwrap();
+        let before_meta = std::fs::metadata(&target).unwrap();
+        let before_mtime = before_meta.modified().unwrap();
+        // Ensure a measurable mtime delta on coarse-grained filesystems.
+        std::thread::sleep(Duration::from_millis(20));
+
+        let (client_t, agent_t) = MemoryTransport::pair(64 * 1024);
+        tokio::spawn(run_fs_fake_agent(
+            agent_t,
+            target.to_string_lossy().into_owned(),
+            "NEW CONTENT FROM AGENT\n".into(),
+        ));
+        let client = AcpClient::new(client_t);
+        client.set_fs_root(root.clone());
+        client
+            .initialize(InitializeParams {
+                protocol_version: 1,
+                client_capabilities: ClientCapabilities::default(),
+                client_info: ClientInfo {
+                    name: "m".into(),
+                    title: None,
+                    version: "0".into(),
+                },
+            })
+            .await
+            .unwrap();
+        client
+            .session_new(SessionNewParams {
+                cwd: root.to_string_lossy().into_owned(),
+                mcp_servers: None,
+            })
+            .await
+            .unwrap();
+
+        drive_fs_flow(&client, PermissionDecision::Allow).await;
+
+        // Externally observable: the file on disk actually changed.
+        let after = std::fs::read_to_string(&target).unwrap();
+        assert_eq!(
+            after, "NEW CONTENT FROM AGENT\n",
+            "allow must produce the agent's new content on disk"
+        );
+        let after_mtime = std::fs::metadata(&target).unwrap().modified().unwrap();
+        assert!(
+            after_mtime > before_mtime,
+            "mtime must advance after a real write (before={before_mtime:?} after={after_mtime:?})"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn deny_decision_leaves_file_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().to_path_buf();
+        let target = root.join("notes.md");
+        std::fs::write(&target, "ORIGINAL\n").unwrap();
+        let before_mtime = std::fs::metadata(&target).unwrap().modified().unwrap();
+        std::thread::sleep(Duration::from_millis(20));
+
+        let (client_t, agent_t) = MemoryTransport::pair(64 * 1024);
+        tokio::spawn(run_fs_fake_agent(
+            agent_t,
+            target.to_string_lossy().into_owned(),
+            "SHOULD NOT BE WRITTEN\n".into(),
+        ));
+        let client = AcpClient::new(client_t);
+        client.set_fs_root(root.clone());
+        client
+            .initialize(InitializeParams {
+                protocol_version: 1,
+                client_capabilities: ClientCapabilities::default(),
+                client_info: ClientInfo {
+                    name: "m".into(),
+                    title: None,
+                    version: "0".into(),
+                },
+            })
+            .await
+            .unwrap();
+        client
+            .session_new(SessionNewParams {
+                cwd: root.to_string_lossy().into_owned(),
+                mcp_servers: None,
+            })
+            .await
+            .unwrap();
+
+        drive_fs_flow(&client, PermissionDecision::Deny).await;
+
+        // Externally observable: deny means no write — content + mtime intact.
+        let after = std::fs::read_to_string(&target).unwrap();
+        assert_eq!(after, "ORIGINAL\n", "deny must leave the file untouched");
+        let after_mtime = std::fs::metadata(&target).unwrap().modified().unwrap();
+        assert_eq!(
+            after_mtime, before_mtime,
+            "deny must not advance mtime — no disk write should occur"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn fs_write_outside_root_is_rejected_and_not_written() {
+        // Path traversal must not let an agent write outside the workspace.
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("workspace");
+        std::fs::create_dir_all(&root).unwrap();
+        let outside = dir.path().join("escaped.md");
+        assert!(!outside.exists());
+
+        let (client_t, agent_t) = MemoryTransport::pair(64 * 1024);
+        // Agent targets `../escaped.md` relative to root.
+        tokio::spawn(run_fs_fake_agent(
+            agent_t,
+            "../escaped.md".into(),
+            "ESCAPED\n".into(),
+        ));
+        let client = AcpClient::new(client_t);
+        client.set_fs_root(root.clone());
+        client
+            .initialize(InitializeParams {
+                protocol_version: 1,
+                client_capabilities: ClientCapabilities::default(),
+                client_info: ClientInfo {
+                    name: "m".into(),
+                    title: None,
+                    version: "0".into(),
+                },
+            })
+            .await
+            .unwrap();
+        client
+            .session_new(SessionNewParams {
+                cwd: root.to_string_lossy().into_owned(),
+                mcp_servers: None,
+            })
+            .await
+            .unwrap();
+
+        drive_fs_flow(&client, PermissionDecision::Allow).await;
+
+        assert!(
+            !outside.exists(),
+            "path traversal must be rejected — no file written outside root"
+        );
     }
 }

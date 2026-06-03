@@ -211,6 +211,11 @@ pub async fn acp_start_session<R: Runtime>(
         })
         .await
         .map_err(|e| AppError::Invalid(format!("acp session/new: {e}")))?;
+    // Bound client-side `fs/*` tool calls to this workspace. Without this,
+    // an `allow` decision would let the agent re-invoke `fs/write_text_file`
+    // but nothing would actually touch disk — the request would hang. See
+    // `AcpClient::set_fs_root` / `handle_fs_request`.
+    client.set_fs_root(workspace_root.clone());
     let arc_client = Arc::new(client);
     let events = arc_client.subscribe_updates();
     spawn_event_forwarder(
