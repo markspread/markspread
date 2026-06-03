@@ -1,0 +1,221 @@
+{
+  "file_corrections": [
+    {
+      "file": "/Users/mzc02-swlee/dev/repository/github/markspread/markspread/docs/adr/0010-agent-chat-first-shell.md",
+      "priority": "critical",
+      "edits": [
+        {
+          "section": "헤더 표 line 9 (Superseded by)",
+          "change": "`| Superseded by | — |` → `| Superseded by | ADR-0019 (부분) — 2-Mode IA + Parser Studio: ChatShell/EditorShell 이중 셸 → 단일 Workspace 셸 통합, preferredShell 토글 폐기 |` 로 변경. ADR-0019 Line 6의 'Supersedes (부분)' 선언에 대응하는 역참조를 ADR-0010 측에 명시.",
+          "reason": "N7-two-mode-decision: '셸 IA는 2모드 + 파서 워크벤치로 한다 ... supersedes ... PLAN 요구#1의 Agent-chat-first 단일 메인 표면'. ADR-0010의 Agent-chat-first/Dual-mode 설계가 turn#10 결정으로 부분 supersede되었으나 역참조 누락 (DOC AUDIT ADR-0010 critical)."
+        },
+        {
+          "section": "헤더 표 line 5 (Status)",
+          "change": "`Status | Proposed` → `Status | Superseded (부분) by ADR-0019` 로 변경하고, 그대로 Proposed로 남길 경우 최소한 'Agent-chat-first 단일 메인 표면 / preferredShell Dual-mode 부분은 ADR-0019에 의해 폐기됨' 주석을 Status 셀 또는 Context 상단에 추가.",
+          "reason": "N7-two-mode-decision supersedes 'PLAN 요구#1의 Agent-chat-first 단일 메인 표면'. 문서 상태가 현행 결정과 어긋나면 안 됨 (N12-fix-wrong-ssot: 틀린 DERIVED 문서는 수정 대상)."
+        },
+        {
+          "section": "Decision 섹션 (Lines 69-87) — 옵션(c) Dual-mode 채택",
+          "change": "Decision 본문 상단에 supersede 박스 추가: '이 결정은 ADR-0019(2026-05-31 turn#10)에 의해 부분 supersede됨. ChatShell/EditorShell 통합 → 단일 Workspace 셸 + Chat 토글, preferredShell 개념 폐기. 파서는 별도 Parser Studio 모드(좌측 활동바 아이콘)로 분리.' 기존 본문은 이력으로 보존.",
+          "reason": "N7-two-mode-decision: '에이전트 모드(채팅UI)+일반 에디트 모드를 메인으로 두고, 파서 개발 모드를 별도로 둔다' (turn#10). N5-parser-is-core-not-modal: 파서를 모달이 아닌 별도 표면으로."
+        },
+        {
+          "section": "D1 라우트 구조 (Lines 73-87) + preferredShell 정의 (Lines 85-86)",
+          "change": "(1) store 기반 chat/editor 분기 라우팅을 rail 기반으로 재서술: App → singleFile(플로팅) / Workspace(default) / ParserStudio(조건부) / Settings. (2) `preferredShell: 'chat'|'editor'` 필드 및 `.markspread/layout.json`의 `shell` 키 폐기 명시, 대신 활동바 현재 모드를 `useActivityMode` store로 관리(ADR-0019 Line 76).",
+          "reason": "N6-sidebar-mode-switch: 'VSCode/Cursor처럼 좌/우측 끝 사이드바 아이콘으로 모드를 전환'. N7-two-mode-decision의 2모드 IA. preferredShell 폐기는 ADR-0019 Line 31 기준."
+        },
+        {
+          "section": "Validation plan M-PIV-001 (Lines 224-231)",
+          "change": "`preferredShell` 값 매트릭스 라우팅 테스트를 `useActivityMode`(현재 모드) + 사용자 권한(P-self 여부) 조합으로 재설계하고, Parser Studio 조건부 노출 로직(ADR-0019 Line 57) 검증을 추가. 폐기된 preferredShell 테스트 제거.",
+          "reason": "N7-two-mode-decision(rail 모드 전환)에 따라 preferredShell 테스트가 무효. N12-fix-wrong-ssot: 낡은 검증 절차도 수정 대상."
+        },
+        {
+          "section": "Consequences 양수/음수 (Lines 150-163)",
+          "change": "양수의 'EditorShell 보존' / 음수의 'R2: 셸 두 개 = 회귀 테스트 매트릭스 두 배, file-tree store 동기화 주의'를 ADR-0019의 통합으로 해소되었음을 주석으로 표기('이 위험은 ADR-0019 단일 Workspace 셸 통합으로 제거됨, 유지보수 표면 1개로 감소' — ADR-0019 Line 68).",
+          "reason": "N7-two-mode-decision(단일 Workspace + Chat 토글). 이중 셸을 전제한 결과 진술이 현행과 모순 — minor지만 DOC AUDIT은 major로 평가."
+        }
+      ]
+    },
+    {
+      "file": "/Users/mzc02-swlee/dev/repository/github/markspread/CONTEXT.md",
+      "priority": "critical",
+      "edits": [
+        {
+          "section": "5.8 채팅 셸 (line 123-125)",
+          "change": "'현재 UI 결함 + 동작 결함 인지. 재설계 별도 디자인 회차. v1 출시 필수' → 'UI/UX 근본 재설계 필요. 2모드 + 파서 워크벤치 IA: 에이전트 모드(채팅UI)+일반 에디트 모드를 메인으로, 파서 개발 모드를 별도 워크벤치로. VSCode/Cursor식 좌/우측 사이드바 아이콘으로 모드 전환. 파서는 주요 기능이므로 모달이 아니어야 하며, 채팅과 파서 개발 간 연결점 필수.'",
+          "reason": "N7-two-mode-decision(turn#10), N8-uiux-must-enable-parser-dev(turn#12: '모달과 채팅이 떨어져있는데 어떻게 파서를 개발하냐'), N9-root-problem-is-ia-not-feature(turn#13)."
+        },
+        {
+          "section": "6.1 정체성 + 안전성 모델 (line 131-136)",
+          "change": "'scope = 런타임 파서만 (입력 → 미리보기 변환). 다른 plugin 카테고리 v1 ❌' → 런타임 파서 개발은 플러그인 시스템의 한 카테고리가 아니라 2모드 IA의 별도 파서 워크벤치 표면(핵심 워크플로)임을 명시. 플러그인 시스템(v1 scope 밖)과 파서 워크벤치를 분리 서술하고, 에이전트 모드와의 연결점 필수 추가.",
+          "reason": "N1-product-purpose, N3-runtime-parser-preview, N4-ai-makes-parser: 파서 개발이 핵심 기능이며 플러그인 카테고리로 격하하면 위치 오류 (DOC AUDIT critical)."
+        },
+        {
+          "section": "4. 페르소나 & 5. 범위 전체 (line 70-127)",
+          "change": "문서 전체 IA 서술을 chat-first 단일 메인 표면 전제에서 2모드 IA로 재작성: (1) 셸은 에이전트+에디트 2모드를 메인 표면으로, (2) 파서 개발은 별도 워크벤치 모드, (3) VSCode/Cursor식 사이드바 아이콘 모드 전환, (4) 파서 워크벤치 내 채팅 UI 공존 또는 에이전트 모드와 명확한 연결점, (5) 드래그-채팅 편집은 에이전트 모드에서 발동.",
+          "reason": "N7-two-mode-decision(PLAN 요구#1 supersede), N5-parser-is-core-not-modal, N6-sidebar-mode-switch, N10-chat-parser-connection."
+        },
+        {
+          "section": "11. 출시 일정 (line 221-226)",
+          "change": "로드맵을 우선순위 재정렬: (1) IA 재설계(2모드 + 파서 워크벤치) (2) 채팅 셸 개선 (3) 파서 워크벤치 구현(파서-채팅 연결점). 이 3가지 완료가 드래그-편집·AI 파서 협업의 전제임을 명시. 기존 '파서 LLM 협업'을 LLM-heavy task로만 나열한 부분을 UI/UX 재설계 의존으로 보정.",
+          "reason": "N8-uiux-must-enable-parser-dev, N9-root-problem-is-ia-not-feature: 'UI/UX 자체가 파서 개발을 불가능하게 함' — 기능만 나열한 로드맵은 무의미."
+        },
+        {
+          "section": "0. Positioning (line 12-20)",
+          "change": "기존 positioning('AI 와 함께 다중 프로젝트의 마크다운 문서를 가볍게 리뷰 ... 마켓플레이스에 export 할 수 있는 데스크톱 에디터')을 SSOT 원문으로 교체: '마크다운 등 AI가 대량 생성한 문서를 리뷰하는 에디터. AI로 즉시 문서 생성·수정이 가능하고, 미리보기 영역은 런타임 파서로 커스터마이징하며, 그 런타임 파서도 AI가 만들 수 있다.'",
+          "reason": "N1-product-purpose / N2-ai-instant-edit / N3-runtime-parser-preview / N4-ai-makes-parser (Q#4, 2026-06-02 사용자 직접 인용). VSCode export는 SSOT 핵심에 없음."
+        },
+        {
+          "section": "5.7 VSCode/Cursor 호환 (line 118-121)",
+          "change": "export-to-VSCode를 v1 핵심으로 서술한 부분을 'v1 핵심은 AI와 함께 런타임 파서를 개발할 수 있는 워크벤치이며, 파서 export to VSCode/Cursor는 차기(v2+) 고려 사항'으로 보정. 파서 개발 자체가 AI 가능해야 하고 채팅-파서 연결점 필수 추가.",
+          "reason": "N4-ai-makes-parser, N2-ai-instant-edit. VSCode 호환은 SSOT에 v1 목표로 없음 (DOC AUDIT PLAN 요구#5와 일치)."
+        },
+        {
+          "section": "12. 메타 — 디스커버리 산물 (line 230-239) + 문서 버전/날짜",
+          "change": "메타 섹션에 추가: (1) 2026-05-31 turn#9-13에서 2모드 IA로 재결정, (2) 2026-06-02 Q#4에서 3축 제품정의 재정의, (3) 본 문서는 그 이전 PLAN 기준 작성이므로 5.7/5.8/6.1/전체 IA 재검증 대상. 문서 상태를 'v1.0'에서 'v0.9 (outdated, 재검증 필요)'로 강등.",
+          "reason": "N12-fix-wrong-ssot(turn#18: '최근 나와의 대화내용이 진짜 SSOT'). CONTEXT.md(2026-05-30)는 turn#9-13/Q#4 미반영."
+        }
+      ]
+    },
+    {
+      "file": "/Users/mzc02-swlee/dev/repository/github/markspread/docs-design/01-architecture.md",
+      "priority": "critical",
+      "edits": [
+        {
+          "section": "섹션 1 다이어그램 + 섹션 3, 14",
+          "change": "FileTree-Editor-SpreadPane 3부분 + Plugin Host 격리 구조를 2모드 설계로 재구성: 에이전트 모드(채팅+보조패널) + 에디트 모드(에디터+미리보기) + 파서 워크벤치(별도 모드). 섹션 1 다이어그램 전체를 ActivityBar/rail 기반 모드 전환 포함으로 재작성.",
+          "reason": "N7-two-mode-decision, N8-uiux-must-enable-parser-dev, N6-sidebar-mode-switch."
+        },
+        {
+          "section": "섹션 14.4 + 섹션 1 Plugin Host",
+          "change": "파서를 격리된 Plugin Host iframe/Worker로만 분리한 서술에, 파서 워크벤치 모드에서는 채팅 UI와 런타임 파서가 같은 뷰에 공존하는 통합 개발 환경임을 명시(보안 격리는 실행 샌드박스 차원으로 유지하되 UI 동선은 통합).",
+          "reason": "N10-chat-parser-connection: '채팅 UI와 런타임 파서 간 연결점이 있어야 한다 — 없다면 런타임 파서 안에 채팅 UI가 함께'."
+        },
+        {
+          "section": "섹션 머리말 라인 5-6",
+          "change": "'상위 SSOT: /CONTEXT.md v1.0 (2026-05-30), 본 문서 갱신: 2026-05-30' → '상위 SSOT: 본 명세의 SSOT JSON (2026-06-02, turn#9~turn#18 사용자 대화)'로 변경.",
+          "reason": "N12-fix-wrong-ssot: '최근 나와의 대화내용이 진짜 SSOT'. CONTEXT.md는 검증 대상이지 권위 SSOT 아님."
+        },
+        {
+          "section": "섹션 14.3 드래그-채팅 편집 파이프라인",
+          "change": "드래그-채팅 편집을 기본 편집 흐름(chat-first 단일 메인 전제)으로 기술한 부분을 '드래그-채팅은 에이전트 모드 내에서만 기본 동작. 에디트 모드는 AI 선택적 호출(컨텍스트 메뉴)'로 보정.",
+          "reason": "N7-two-mode-decision(superseded_decisions: PLAN 요구#1 → turn#10 2모드)."
+        },
+        {
+          "section": "섹션 14.1 멀티워크스페이스",
+          "change": "'워크스페이스 = 워크트리당 1개, 모드별 동작 명시 없음'에, 각 모드(에이전트/에디트/파서 워크벤치)별 멀티워크스페이스(탭/분할) 동작을 명시. 분할별 독립 file tree(ADR-0011 P-self)는 직교 유지로 표기.",
+          "reason": "N7-two-mode-decision의 2모드 맥락에서 범위 재정의 필요 (DOC AUDIT minor)."
+        }
+      ]
+    },
+    {
+      "file": "/Users/mzc02-swlee/dev/repository/github/markspread/docs-design/04-ux-flows.md",
+      "priority": "critical",
+      "edits": [
+        {
+          "section": "2. 레이아웃 (19–38행)",
+          "change": "3패널(FileTree|Editor|Spread Pane) 단독 레이아웃에 VSCode/Cursor 스타일 ActivityBar(좌/우 끝 아이콘) 도입으로 모드 전환을 추가. 메인은 에이전트+에디트 모드(3패널), 파서는 별도 워크벤치 모드로 승격. 다이어그램에 ActivityBar 및 모드 전환 경로 추가.",
+          "reason": "N6-sidebar-mode-switch, N7-two-mode-decision, N8-uiux-must-enable-parser-dev (문서 verdict: wrong)."
+        },
+        {
+          "section": "6. Spread Pane (134–146행) / Preview 탭",
+          "change": "파서를 Spread Pane(보조 패널) 탭으로 둔 배치를 변경: 메인 모드 Spread Pane Preview는 읽기 전용 렌더링만, 파서 개발은 별도 워크벤치 모드에서 에디터·렌더링·채팅이 함께 배치. Spread Pane은 보조 역할로 재정의.",
+          "reason": "N5-parser-is-core-not-modal, N8-uiux-must-enable-parser-dev, N10-chat-parser-connection."
+        },
+        {
+          "section": "6. Spread Pane (142행) / AI 탭",
+          "change": "'AI | 장기 대화 패널(옵션)'을 모드별로 명확화: AI 탭은 에이전트 모드에만 포함, 일반 에디트 모드에는 불필요, 파서 워크벤치는 별도 내장 채팅 UI 보유.",
+          "reason": "N7-two-mode-decision(에이전트/에디트 분리), N10-chat-parser-connection(파서 워크벤치 내 채팅)."
+        },
+        {
+          "section": "8. 명령 팔레트 (178–194행)",
+          "change": "통일된 카테고리(파일/명령/AI/설정/플러그인)를 현재 모드(에이전트/에디트/파서)별로 다르게 작동하도록 재정의: 에이전트=AI 액션 중심, 파서 워크벤치=파서 개발 명령 중심.",
+          "reason": "N7-two-mode-decision(모드별 IA), N8-uiux-must-enable-parser-dev."
+        },
+        {
+          "section": "4. 파일 작업 / FileTree (72–82행)",
+          "change": "FileTree 좌측 사이드바 `⌘B` 토글만 기술한 부분에 ActivityBar 아이콘 기반 모드 전환(파일트리/탐색/플러그인 등) 시각화를 추가. `⌘B` 토글은 유지.",
+          "reason": "N6-sidebar-mode-switch."
+        },
+        {
+          "section": "9. 설정 (198–209행)",
+          "change": "단일 전역 다이얼로그를 전역(theme/language/autosave) + 모드별(에이전트/에디트/파서 워크벤치) 설정으로 분리. 워크스페이스별 vs 전역 토글 유지.",
+          "reason": "N7-two-mode-decision(2모드 IA) — 모드별 설정 분리 (DOC AUDIT minor)."
+        }
+      ]
+    },
+    {
+      "file": "/Users/mzc02-swlee/dev/repository/github/markspread/docs-design/03-ai-integration.md",
+      "priority": "critical",
+      "edits": [
+        {
+          "section": "전체 — 런타임 파서 관점 미포함",
+          "change": "별도 섹션 추가('16. 런타임 파서 / 파서 워크벤치'): 파서 개발 모드에서 사용자/AI가 마크다운 커스텀 파서를 작성·테스트·배포하는 AI 워크벤치. AI로 파서 코드 생성 → 샌드박스 라이브 프리뷰 → 적용 흐름과 ms.parser.invoke() 런타임 실행을 기술.",
+          "reason": "N3-runtime-parser-preview, N4-ai-makes-parser: 런타임 파서가 주요 기능이고 AI가 파서를 생성해야 함 (DOC AUDIT critical)."
+        },
+        {
+          "section": "13. 테스트/모의 섹션",
+          "change": "'MARKSPREAD_AI_MOCK=1 → 미리 정의된 응답 / E2E는 Mock provider 사용'을 수정: mock 데이터 미사용 원칙 명시, 테스트는 실제 프로바이더 또는 통제된 테스트 계정(예: Anthropic sandbox 키)으로 진행으로 변경.",
+          "reason": "N11-no-mock-data(turn#8: 'mock 데이터사용하는건 아니죠?'), process_directive 'mock 데이터 사용 금지 — 실제 데이터로 동작 확인'."
+        },
+        {
+          "section": "요구#2 빌링 모델 정합 (ACP + Claude Agent SDK 관련 서술이 있는 섹션)",
+          "change": "'구독 크레딧' 등 구체 빌링 모델이 단정적으로 적힌 부분이 있으면 'SSOT 단계 미결정'으로 완화하거나 일반화('Claude API 통합'). ACP+SDK 통합 자체는 N2 전제로 유지.",
+          "reason": "N2-ai-instant-edit는 AI 통합을 요구하나 SSOT에 구독 크레딧/토큰/빌링 세부는 없음 (PLAN 요구#2 audit, minor)."
+        }
+      ]
+    },
+    {
+      "file": "/Users/mzc02-swlee/dev/repository/github/markspread/docs-design/02-plugin-system.md",
+      "priority": "major",
+      "edits": [
+        {
+          "section": "섹션 전체 — 파서 워크벤치 모드 부재",
+          "change": "기술 아키텍처는 유지하되 별도 섹션('14. 파서 워크벤치 모드') 추가: (1) 파서 개발이 독립 워크벤치 모드(VSCode/Cursor식 사이드바 아이콘), (2) 파서 개발 UI에 채팅 + 런타임 파서 프리뷰 공존, (3) AI 파서 생성 흐름(요청→AI 파서 코드 생성→샌드박스 실시간 테스트), (4) 일반 에디트 모드와 분리된 이유.",
+          "reason": "N3-runtime-parser-preview, N4-ai-makes-parser, N7-two-mode-decision."
+        },
+        {
+          "section": "섹션 2.1 Parser 타입 설명",
+          "change": "Parser를 기존 마크업 언어(AsciiDoc/rST/Org/Typst/MDX) 파싱으로만 정의한 부분을 확장: '다른 마크업 언어 파싱 + 사용자 정의 렌더링 규칙. 기존 파서 외에 AI로 생성된 커스텀 파서(도메인별 DSL 등)도 포함. 파서 개발은 메인 에디터와 별도 워크벤치 모드에서 수행.'",
+          "reason": "N4-ai-makes-parser: '런타임 파서도 AI가 만들 수 있어야 한다' — 사용자/기존 파서만 가정한 정의가 누락."
+        },
+        {
+          "section": "섹션 12 향후 확장",
+          "change": "WASM/Native/공동작성/모바일만 나열한 향후 확장에 추가: (1) 파서 워크벤치 UX(turn#10 결정), (2) AI 파서 생성 및 인라인 테스트 환경, (3) 파서 개발용 채팅-실시간 미리보기 연계.",
+          "reason": "N4-ai-makes-parser: 핵심 기능이 향후 계획에서도 누락."
+        }
+      ]
+    },
+    {
+      "file": "PLAN [DRAFT] 에디터 아키텍처 재설계 (저장소 내 .md 미존재 — Clawket/외부 아티팩트로 추정. 추적 파일로 발견되면 해당 경로에 적용)",
+      "priority": "critical",
+      "edits": [
+        {
+          "section": "요구#1 (Agent-chat-first 셸 UI — 메인 표면 채팅, 에디터/프리뷰 보조)",
+          "change": "요구#1을 폐기(superseded) 표기하고 2모드 + 파서 워크벤치 IA로 교체: Workspace 모드(FileTree+에디터+프리뷰, 드래그-채팅)와 Parser Studio 모드(파서 개발 전용)를 좌측 활동바로 전환. 채팅은 단일 메인 표면이 아니라 Workspace 모드 내 토글 가능한 패널(Chat 토글). 에디터/프리뷰는 보조가 아니라 Workspace의 핵심 동작 표면.",
+          "reason": "N7-two-mode-decision(supersedes: 'PLAN 요구#1의 Agent-chat-first 단일 메인 표면', turn#10). ADR-0019 §Decision.1과 정합."
+        },
+        {
+          "section": "요구#3 (멀티워크스페이스: 탭+분할, 각 분할 자체 file tree)",
+          "change": "이미 ADR-0011/ADR-0019에 설계된 사항임을 명시하고 '신규 PLAN 요구'에서 제외 또는 '기설계 참조'로 강등. 분할별 독립 트리(P-self)는 ADR-0019에서 직교 유지로 명시됨.",
+          "reason": "ADR-0019 §Decision.4 + ADR-0011. 신규 요구가 아닌 기존 설계 (PLAN audit major)."
+        },
+        {
+          "section": "요구#4 (런타임 JS 플러그인 — 런타임 교체)",
+          "change": "기술용어 '런타임 교체'를 워크벤치 UX 관점으로 재정의: 파서 개발은 Parser Studio 모드에서 수행, AI가 파서를 만들고 라이브 프리뷰에서 즉시 확인.",
+          "reason": "N4-ai-makes-parser, N5-parser-is-core-not-modal."
+        },
+        {
+          "section": "요구#5 ((선택) VSCode/Cursor 플러그인 호환)",
+          "change": "v1 범위 밖으로 명시. ADR-0013은 'Parser SDK 플러그인 export 포맷 표준화(Markspread-native)'로 제한. VSCode 호환은 v2+ 고려.",
+          "reason": "SSOT에 VSCode/Cursor 플러그인 호환 목표 없음. ADR-0013 scope (PLAN audit major)."
+        },
+        {
+          "section": "요구#2 (ACP + Claude Agent SDK 구독 크레딧)",
+          "change": "ACP+SDK 통합은 N2 전제로 유지하되 '구독 크레딧' 빌링 모델은 SSOT 미결정으로 완화('Claude API 통합').",
+          "reason": "N2-ai-instant-edit. SSOT에 빌링 세부 없음 (PLAN audit minor)."
+        }
+      ]
+    }
+  ]
+}

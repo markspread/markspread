@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | **Proposed** (Architecture Pivot · MAR-966) |
-| Date | 2026-05-25 |
+| Status | **Superseded (부분) by ADR-0019** (원안: Proposed · Architecture Pivot · MAR-966) — Agent-chat-first 단일 메인 표면 / `preferredShell` Dual-mode 부분은 ADR-0019(2026-05-31 turn#10)에 의해 폐기됨. 나머지(컨텍스트 주입 파이프라인 D4, 텔레메트리 등)는 유효 |
+| Date | 2026-05-25 (2026-06-02 SSOT(대화) 정합 반영) |
 | Owners | Architecture Pivot cycle |
 | Supersedes | — |
-| Superseded by | — |
+| Superseded by | ADR-0019 (부분) — 2-Mode IA + Parser Studio: ChatShell/EditorShell 이중 셸 → 단일 Workspace 셸 통합, preferredShell 토글 폐기 |
 | Related | ADR-0003 (Editor tab + split-pane model), ADR-0004 (Claude Agent SDK subscription auth), `src/screens/Main.tsx`, `src/screens/SingleFile.tsx`, `src/components/EditorPane.tsx`, `src/components/FileTree.tsx`, `src/components/Editor.tsx`, `src/store/workspace.ts`, `src/store/editor-layout.ts`, [Google Antigravity 2.0 (TNW)](https://thenextweb.com/news/google-antigravity-2-desktop-cli-sdk-io-2026), [Gemini CLI → Antigravity CLI 전환 공지](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/) |
 
 ## Context
@@ -68,6 +68,13 @@ v1.2 까지의 Markspread 셸 (`src/screens/Main.tsx`) 은 전통적 **3-pane �
 
 ## Decision
 
+> **[SUPERSEDE 박스 — 2026-06-02 SSOT(대화) 정합 반영]**
+> 이 결정(옵션 (c) Dual-mode)은 **ADR-0019(2026-05-31 turn#10)에 의해 부분 supersede됨**.
+> - ChatShell/EditorShell 이중 셸 → **단일 Workspace 셸 + Chat 토글**로 통합. `preferredShell` 개념 폐기 (ADR-0019 §1, Line 31).
+> - 파서는 모달이 아닌 별도 **Parser Studio** 모드(좌측 활동바 아이콘, 조건부 노출)로 분리 (ADR-0019 §3·§5).
+> - 근거: **N7-two-mode-decision** ("에이전트 모드(채팅UI)+일반 에디트 모드를 메인으로 두고, 파서 개발 모드를 별도로 둔다" — turn#10); **N5-parser-is-core-not-modal** (파서를 모달이 아닌 별도 표면으로); **N6-sidebar-mode-switch** (VSCode/Cursor식 활동바 모드 전환).
+> - 아래 옵션 (c) 본문과 D1~D6은 **이력 보존**을 위해 원문 그대로 둔다. ChatShell이 "단일 메인 표면"이라는 전제 및 `preferredShell` 분기는 무효이며, 현행 결정은 ADR-0019를 따른다.
+
 **옵션 (c) Dual-mode 를 채택한다.** ChatShell 을 1차 진입으로, 기존 `Main` 스크린을 `EditorShell` 로 명시적으로 재명명·라우트화하여 2차로 유지한다.
 
 ### D1. 라우트 구조
@@ -83,6 +90,19 @@ RealApp
 ```
 
 `shell` 은 워크스페이스 store 의 새 필드 `preferredShell: 'chat' | 'editor'` 로 정해진다. 워크스페이스 단위 설정이며 `.markspread/layout.json` (ADR-0003 D3 의 같은 파일) 에 `shell` 키로 저장한다. 사용자는 셸 상단의 토글 / 명령 팔레트 `View: Switch to Editor Shell` 로 즉시 이동.
+
+> **[SUPERSEDED — 2026-06-02 SSOT(대화) 정합 반영, 근거 N6·N7]**
+> 위 store 기반 chat/editor 분기 라우팅과 `preferredShell` 필드는 ADR-0019에 의해 폐기됨. **현행 라우트 구조 (rail 기반)**:
+> ```
+> App
+>  ├─ singleFile 있음                  → <SingleFile />        (플로팅 1문서, rail 없음 — 기존 유지)
+>  ├─ 활동바(rail) 상시                 → <Workspace />         (default; FileTree 공유 + 문서 + Chat 토글)
+>  │      └─ ▣ Parser Studio (조건부)   → <ParserStudio />      (개발자 모드 ON 또는 local trust 파서 ≥1; ADR-0019 §5/Line 57)
+>  └─ ⚙ Settings                       → <Settings />
+> ```
+> - `preferredShell: 'chat' | 'editor'` 필드 및 `.markspread/layout.json` 의 `shell` 키 **폐기** (ADR-0019 Line 31). "어느 셸인가"의 분기 자체가 사라짐 — Workspace 단일 셸 + Chat 토글.
+> - 현재 활동바 모드는 신규 `useActivityMode` store로 관리한다 (ADR-0019 Line 76).
+> - "Edit"는 독립 모드가 아니라 Workspace에서 Chat 패널을 접은 상태 (ADR-0019 §1/Line 30).
 
 `SingleFile` 은 **항상 EditorShell 의 축약형** 으로 동작한다 — 단일 파일 사용자가 챗을 원하면 워크스페이스로 승격 후 ChatShell 로 들어가는 동선 (Welcome 의 "Convert to Workspace" CTA).
 
@@ -151,15 +171,15 @@ Tauri 멀티윈도우 (S-WS-015) 환경에서 윈도우당 셸이 다를 수 있
 
 - 동종 도구의 셸 디자인과 정렬 — 외부 사용자가 학습 비용 없이 익숙함.
 - 비개발자가 첫 화면에서 즉시 "묻고 받는" 진입을 한다 — 페르소나와 일치.
-- EditorShell 이 보존되어 오프라인 / LLM 미설정 / 순수 리뷰 사용 사례가 손상되지 않음.
+- EditorShell 이 보존되어 오프라인 / LLM 미설정 / 순수 리뷰 사용 사례가 손상되지 않음. <!-- [2026-06-02 SSOT 정합/N7] EditorShell은 ADR-0019에서 단일 Workspace 셸로 통합됨 — 별도 셸로 보존하는 대신 Chat 토글을 접은 상태로 동일 사용 사례를 커버. 오프라인/LLM 미설정 보호는 Workspace 셸 단일 표면에서 유지 (ADR-0019 §1). -->
 - 두 셸이 각각 독립 라우트이므로 텔레메트리·에러 보고가 "어느 셸" 인지 자연히 라벨됨.
 - ChatShell 이 시장 트렌드를 못 따라가도 EditorShell 만으로도 v1 의 제품 가치는 유지.
 
 ### 음
 
-- 셸 두 개 = UI 회귀 테스트 매트릭스 두 배. Playwright 시나리오는 셸 라벨로 분기.
+- 셸 두 개 = UI 회귀 테스트 매트릭스 두 배. Playwright 시나리오는 셸 라벨로 분기. <!-- [R2 — 2026-06-02 SSOT 정합/N7] 이 위험은 ADR-0019의 단일 Workspace 셸 통합으로 제거됨 — 유지보수 표면 1개로 감소, file-tree store 동기화 경합도 단일 표면이라 소멸 (ADR-0019 Line 68). 이중 셸 전제의 본 진술은 더 이상 유효하지 않음. -->
 - 워크스페이스 store 가 `preferredShell` 을 갖게 되면서 `.markspread/layout.json` schemaVersion 증가 (ADR-0003 D3 의 v1 → v2). 마이그레이션 규칙: 기존 워크스페이스는 `preferredShell: 'editor'` 로 채워 무손실. **신규 워크스페이스는 `'chat'`** (D-Migration 참조).
-- ChatShell 의 ContextPanel ↔ EditorShell 의 사이드바가 같은 `file-tree` store 를 본다 → 한쪽에서의 변경이 다른 쪽에 즉시 반영. 디바운싱·로컬 시각 상태 분리에 주의.
+- ChatShell 의 ContextPanel ↔ EditorShell 의 사이드바가 같은 `file-tree` store 를 본다 → 한쪽에서의 변경이 다른 쪽에 즉시 반영. 디바운싱·로컬 시각 상태 분리에 주의. <!-- [2026-06-02 SSOT 정합/N7] 두 셸 간 file-tree 동기화 경합은 ADR-0019 단일 Workspace 셸 통합으로 해소됨 — FileTree는 단일 공유 컴포넌트이며 상태는 워크스페이스 컨텍스트별 persist, 모드 전환에도 리셋 안 됨 (ADR-0019 §4/Line 51). -->
 
 ### 위험
 
@@ -223,7 +243,7 @@ Tauri 멀티윈도우 (S-WS-015) 환경에서 윈도우당 셸이 다를 수 있
 
 ## Validation plan
 
-- M-PIV-001: 셸 선택 라우팅 단위 테스트 (`App.test.tsx` 확장) — `preferredShell` 값과 자격증명 유무 조합 매트릭스.
+- M-PIV-001: ~~셸 선택 라우팅 단위 테스트 (`App.test.tsx` 확장) — `preferredShell` 값과 자격증명 유무 조합 매트릭스.~~ <!-- [2026-06-02 SSOT 정합/N7·N12] preferredShell 폐기로 본 매트릭스 무효, 아래로 재설계 --> **(재설계)** 활동바 모드 라우팅 단위 테스트 (`App.test.tsx` 확장) — `useActivityMode`(현재 모드: Workspace / Parser Studio / Settings) × 사용자 권한(P-self 여부) 조합 매트릭스. 추가로 **Parser Studio 조건부 노출 로직** 검증: `개발자 모드` OFF·local trust 파서 0개면 rail에 ▣ 미노출, 둘 중 하나라도 충족 시 노출 (ADR-0019 §5/Line 57). singleFile 진입은 rail 없는 플로팅 라우트로 분기되는지 확인. (폐기된 `preferredShell` chat/editor 분기 테스트는 제거.)
 - M-PIV-002: `context-pack.ts` 우선순위 + 토큰 예산 트리밍 Vitest.
 - M-PIV-003: ChatShell ↔ EditorShell 전환 시 활성 파일 인계 Playwright 시나리오.
 - M-PIV-004: schemaVersion 1 → 2 마이그레이션 (기존 워크스페이스 무손실) Vitest.
