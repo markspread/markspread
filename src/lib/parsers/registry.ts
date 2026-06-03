@@ -52,6 +52,25 @@ export function getParserRegistry(): ParserRegistry {
   return singleton;
 }
 
+// ADR-0019 §Decision.5 (T5): 자작(local-trust) 파서 개수.
+//
+// rail 노출 게이트가 쓰는 신호. registry 에 등록된 파서 중 *시스템 파서가
+// 아니고* Parser Studio 의 임시 프리뷰 파서도 아닌 것만 센다 — 즉 사용자가
+// 의도적으로 만든 파서만. builtin markdown(시스템 lock)·studio 프리뷰는 제외.
+export const STUDIO_PREVIEW_PARSER_ID = "__studio_preview__";
+
+export function countUserParsers(): number {
+  const reg = getParserRegistry();
+  let count = 0;
+  for (const p of reg.list()) {
+    const id = p.manifest.id;
+    if (reg.isSystem(id)) continue;
+    if (id === STUDIO_PREVIEW_PARSER_ID) continue;
+    count++;
+  }
+  return count;
+}
+
 // 테스트 전용 — 새 격리된 registry 로 재시작.
 export function __resetParserRegistryForTests(): void {
   singleton = null;

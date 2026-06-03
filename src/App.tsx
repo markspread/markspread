@@ -16,7 +16,6 @@ import { ToastStack } from "./components/ToastStack";
 import { useWorkspaceShellShortcuts } from "./hooks/useWorkspaceShellShortcuts";
 import { registerCliForwardedListener } from "./lib/cli-forwarded";
 import { registerDragDrop } from "./lib/dnd";
-import { isChatShellEnabled } from "./lib/feature-flags";
 import { useFontFamilyEffect } from "./lib/font-effect";
 import { currentHarnessMode } from "./lib/harness";
 import { registerKeybindings } from "./lib/keybindings";
@@ -24,12 +23,11 @@ import { openSingleMdFromDialog } from "./lib/open-md-file";
 import { newWorkspaceFromDialog, openWorkspaceFromDialog } from "./lib/open-workspace";
 import { registerPollingNoticeListener } from "./lib/polling-notice";
 import { maybeStartUnmountWatch, registerUnmountListener, stopUnmountWatch } from "./lib/unmount";
-import { ChatShell } from "./screens/ChatShell";
-import { EditorShell } from "./screens/EditorShell";
 import { HarnessRoot } from "./screens/HarnessRoot";
 import { ParserWorkbench } from "./screens/ParserWorkbench";
 import { SingleFile } from "./screens/SingleFile";
 import { Welcome } from "./screens/Welcome";
+import { WorkspaceShell } from "./screens/WorkspaceShell";
 import { useActivityMode } from "./store/activity-mode";
 import { useAiPalette } from "./store/ai-palette";
 import { useDialogs } from "./store/dialogs";
@@ -47,9 +45,7 @@ function App() {
 
 function RealApp() {
   const current = useWorkspace((s) => s.current);
-  const preferredShell = useWorkspace((s) => s.preferredShell);
   const singleFilePath = useSingleFile((s) => s.path);
-  const chatShellEnabled = isChatShellEnabled();
   const activityMode = useActivityMode((s) => s.mode);
   const aiPaletteOpen = useAiPalette((s) => s.open);
   const aiPaletteContext = useAiPalette((s) => s.context);
@@ -80,25 +76,22 @@ function RealApp() {
     useWorkspaceLayout.getState().ensure(current);
   }, [current]);
 
-  // ADR-0010 D1 routing matrix:
-  //   singleFile → SingleFile (always EditorShell-shaped)
-  //   workspace + chat + flag on → ChatShell
-  //   workspace (any other case) → EditorShell
-  //   else → Welcome
+  // ADR-0019 §Decision.1 routing matrix:
+  //   singleFile → SingleFile (rail-less floating 1-doc surface, P-reviewer)
+  //   workspace  → ActivityBar rail + 2-mode router:
+  //                  parser    → ParserWorkbench (조건부 표면)
+  //                  workspace → WorkspaceShell (단일 통합 셸 + Chat 토글)
+  //   else       → Welcome
+  // The chat/editor `preferredShell` branch is gone — there is one shell.
   let body: ReactNode;
   if (singleFilePath) {
     body = <SingleFile />;
   } else if (current) {
-    // ADR-0019: 워크스페이스 진입 시 좌측 활동바 + 2모드 라우터.
-    //   parser    → ParserWorkbench (파서 개발)
-    //   workspace → 기존 리뷰 셸 (chat | editor)
-    const reviewShell =
-      preferredShell === "chat" && chatShellEnabled ? <ChatShell /> : <EditorShell />;
     body = (
       <div className="flex h-full w-full min-h-0">
         <ActivityBar />
         <div className="flex min-w-0 flex-1 flex-col">
-          {activityMode === "parser" ? <ParserWorkbench workspace={current} /> : reviewShell}
+          {activityMode === "parser" ? <ParserWorkbench workspace={current} /> : <WorkspaceShell />}
         </div>
       </div>
     );

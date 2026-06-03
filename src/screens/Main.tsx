@@ -1,6 +1,7 @@
-// ADR-0010 D1/D3: `Main` is the legacy name for what is now `EditorShell`.
-// The file is kept as a thin alias so existing tests / external imports
-// continue to compile during the cut-over wave. New code should import
-// `EditorShell` directly.
+// ADR-0019 §Decision.1: `Main` is the legacy name for the workspace
+// screen, now unified into `WorkspaceShell` (single shell + Chat toggle).
+// The alias is kept so existing tests / external imports continue to
+// compile during the cut-over wave. New code should import
+// `WorkspaceShell` directly.
 
-export { EditorShell as Main } from "./EditorShell";
+export { WorkspaceShell as Main } from "./WorkspaceShell";

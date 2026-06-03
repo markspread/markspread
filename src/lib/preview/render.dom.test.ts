@@ -222,6 +222,26 @@ describe("createDebouncedRenderer", () => {
     });
     expect(html).toContain('data-blocked="remote"');
   });
+
+  it("cancel() clears a pending render and is a no-op when idle", async () => {
+    vi.useFakeTimers();
+    try {
+      const debounced = createDebouncedRenderer(10);
+      // idle branch: no timer scheduled yet — cancel must be a safe no-op.
+      expect(() => debounced.cancel()).not.toThrow();
+      // pending branch: schedule a render, then cancel before the timer fires;
+      // the callback must never run, so the promise stays unsettled.
+      let settled = false;
+      void debounced("# Cancelled").then(() => {
+        settled = true;
+      });
+      debounced.cancel();
+      await vi.advanceTimersByTimeAsync(50);
+      expect(settled).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("render — in-process custom parser (register-from-source path, no sandbox)", () => {
@@ -243,6 +263,45 @@ describe("render — in-process custom parser (register-from-source path, no san
     const out = await render("hello world", { path: "/x/y.inproc" });
     expect(out).toContain('data-iph="1"');
     expect(out).toContain("hello world");
+  });
+
+  it("forceParserId routes through a parser that does NOT match the path", async () => {
+    const reg = getParserRegistry();
+    reg.registerParser(
+      {
+        id: "forced-only",
+        version: "0.0.1",
+        displayName: "Forced Only",
+        // Matches .forcedext, NOT .md — so a plain path match would never pick it.
+        fileMatch: { extensions: [".forcedext"] },
+        capabilities: "preview-only",
+        entry: "inline:test",
+      },
+      (input) => ({ ast: { kind: "html", html: `<u data-forced="1">${input.content}</u>` } }),
+    );
+    // Path is .md (would normally hit builtin) but forceParserId overrides it.
+    const out = await render("OVERRIDDEN", { path: "/x/y.md", forceParserId: "forced-only" });
+    expect(out).toContain('data-forced="1"');
+    expect(out).toContain("OVERRIDDEN");
+  });
+
+  it("unknown forceParserId falls back to the normal path match", async () => {
+    const reg = getParserRegistry();
+    reg.registerParser(
+      {
+        id: "ext-claims-md",
+        version: "0.0.1",
+        displayName: "Ext claims md2",
+        fileMatch: { extensions: [".md2"] },
+        capabilities: "preview-only",
+        entry: "inline:test",
+      },
+      (input) => ({ ast: { kind: "html", html: `<i data-matched="1">${input.content}</i>` } }),
+    );
+    // forceParserId points at a non-existent parser → ignored → path match wins.
+    const out = await render("CONTENT", { path: "/x/y.md2", forceParserId: "does-not-exist" });
+    expect(out).toContain('data-matched="1"');
+    expect(out).toContain("CONTENT");
   });
 
   it("markdown AST goes through builtin pipeline", async () => {

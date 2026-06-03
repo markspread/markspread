@@ -4,19 +4,20 @@ import { persist } from "zustand/middleware";
 export type TelemetryConsent = "enabled" | "disabled" | "unset";
 
 /**
- * ADR-0010 Telemetry: the union of events the chat-shell pivot emits.
- * The renderer never owns transport — these are fire-and-forget calls
- * that the host (or a future sink) listens to via `subscribeTelemetry`.
+ * Telemetry: the union of events the workspace shell emits. The
+ * renderer never owns transport — these are fire-and-forget calls that
+ * the host (or a future sink) listens to via `subscribeTelemetry`.
  * Consent gating happens here so individual call sites stay terse.
+ *
+ * ADR-0019 §Decision.1: the chat/editor dual shell is gone, so the
+ * `shell.switched` / `editor.opened_via_escape_hatch` events (which only
+ * existed to track the toggle between the two shells) are removed.
+ * `shell.mounted` now reports the single `workspace` shell, and the new
+ * `shell.chat_toggled` records the Chat panel collapse/expand.
  */
 export type TelemetryEvent =
-  | { type: "shell.mounted"; shell: "chat" | "editor"; workspaceId: string; firstPaintMs: number }
-  | {
-      type: "shell.switched";
-      from: "chat" | "editor";
-      to: "chat" | "editor";
-      trigger: "toolbar" | "palette" | "banner";
-    }
+  | { type: "shell.mounted"; shell: "workspace"; workspaceId: string; firstPaintMs: number }
+  | { type: "shell.chat_toggled"; open: boolean }
   | {
       type: "chat.message_sent";
       workspaceId: string;
@@ -26,13 +27,7 @@ export type TelemetryEvent =
     }
   | { type: "chat.context_trimmed"; trimmedKinds: string[]; reason: "budget" }
   | { type: "chat.session_created"; workspaceId: string; messageCount: number }
-  | { type: "chat.session_resumed"; workspaceId: string; messageCount: number }
-  | {
-      type: "migration.shell_default_applied";
-      chosen: "chat" | "editor";
-      hadCredentials: boolean;
-    }
-  | { type: "editor.opened_via_escape_hatch"; from: "chat"; reason: string };
+  | { type: "chat.session_resumed"; workspaceId: string; messageCount: number };
 
 interface TelemetryState {
   consent: TelemetryConsent;

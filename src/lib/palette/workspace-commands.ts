@@ -8,7 +8,6 @@
 // circuits.
 
 import { focusSplitInDirection } from "../../hooks/useWorkspaceShellShortcuts";
-import { useWorkspace } from "../../store/workspace";
 import { findTab, useWorkspaceLayout } from "../../store/workspace-layout";
 import { formatBinding, normaliseBinding } from "../keybindings";
 import { type PaletteItem, registerPaletteItem } from "./registry";
@@ -25,8 +24,6 @@ export interface WorkspaceCommandsDeps {
   getActiveWorkspacePath: () => string | null;
   /** Tabs in the active ws-tabs node, in order. */
   getActiveTabsList: () => { id: string }[];
-  /** `editor` | `chat` — shell scope gate (ADR-0010). */
-  getPreferredShell: () => "editor" | "chat" | null;
   focusSplitInDirection: (dir: "up" | "down" | "left" | "right") => boolean;
 }
 
@@ -152,13 +149,9 @@ function makeItem(spec: WorkspaceCommandSpec, deps: WorkspaceCommandsDeps): Pale
     description: spec.description,
     shortcut: formatBinding(normaliseBinding(spec.binding)),
     searchKey: `${spec.label} ${spec.description}`.toLowerCase(),
-    run: () => {
-      // Shell scope gate: only fire on the editor shell. The chat shell
-      // owns its own keymap and shouldn't be reaching into the workspace.
-      const shell = deps.getPreferredShell();
-      if (shell === "chat") return;
-      spec.run(deps);
-    },
+    // ADR-0019: single Workspace shell — no chat/editor scope gate. The
+    // command runs whenever the workspace surface is mounted.
+    run: () => spec.run(deps),
   };
 }
 
@@ -213,10 +206,6 @@ export function bootstrapWorkspacePaletteCommands(): () => void {
       const located = findTab(layout.root, layout.activeTabId);
       if (!located) return [];
       return located.node.tabs.map((t) => ({ id: t.id }));
-    },
-    getPreferredShell: () => {
-      const ws = useWorkspace.getState();
-      return ws.preferredShell ?? null;
     },
     focusSplitInDirection,
   });

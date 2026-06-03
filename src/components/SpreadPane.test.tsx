@@ -1,4 +1,4 @@
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PaneNode } from "../lib/editor/layout-model";
 import { useDocCache } from "../store/doc-cache";
@@ -10,14 +10,20 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args?: unknown) => invoke(cmd, args),
 }));
 vi.mock("../lib/preview/render", () => ({
-  createDebouncedRenderer:
-    () =>
-    (content: string, opts: { highlightCode: (code: string, lang: string) => Promise<string> }) => {
+  createDebouncedRenderer: () => {
+    const debounced = (
+      content: string,
+      opts: { highlightCode: (code: string, lang: string) => Promise<string> },
+    ) => {
       // Exercise the highlightCode lambda passed by SpreadPane so its
       // function coverage isn't lost behind the mocked renderer.
       void opts.highlightCode("fn x", "rust");
       return Promise.resolve(`<p>${content}</p>`);
-    },
+    };
+    // SpreadPane's effect cleanup calls cancel() on unmount.
+    debounced.cancel = () => {};
+    return debounced;
+  },
 }));
 vi.mock("../lib/preview/shiki", () => ({ highlightCode: (c: string) => Promise.resolve(c) }));
 vi.mock("../lib/preview/codeCopyButton", () => ({ attachCodeCopyButtons: () => {} }));
@@ -88,12 +94,34 @@ let registryMatch: {
   parser: { manifest: { id: string; displayName?: string } };
   reason: string;
 } | null = null;
+let matchCalls = 0;
+// Registered parsers visible to the selector (list/candidates). Each test can
+// populate this to exercise the parser-switch UI. candidates() is path-aware in
+// production; for the unit test we treat every registered parser as a candidate
+// unless `matchesPath` is explicitly false.
+let registryParsers: {
+  manifest: { id: string; displayName?: string };
+  matchesPath?: boolean;
+}[] = [];
 vi.mock("../lib/parsers/registry", () => ({
   BUILTIN_MARKDOWN_ID: "builtin",
   getParserRegistry: () => ({
-    match: () => registryMatch,
+    match: () => {
+      matchCalls += 1;
+      return registryMatch;
+    },
+    list: () => registryParsers.map((p) => ({ manifest: p.manifest })),
+    candidates: () =>
+      registryParsers
+        .filter((p) => p.matchesPath !== false)
+        .map((p) => ({ parser: { manifest: p.manifest } })),
     isSystem: (id: string) => id === "builtin",
   }),
+}));
+
+const unregisterParser = vi.fn();
+vi.mock("../lib/parsers/register-from-source", () => ({
+  unregisterParser: (id: string) => unregisterParser(id),
 }));
 
 let parserTransport: unknown = null;
@@ -111,6 +139,9 @@ afterEach(() => {
   scrollHandler = null;
   scrollSyncEnabled = false;
   registryMatch = null;
+  matchCalls = 0;
+  registryParsers = [];
+  unregisterParser.mockClear();
   parserTransport = null;
   lastCheckboxOpts = null;
   lastLinkOpts = null;
@@ -133,6 +164,31 @@ describe("SpreadPane", () => {
     await waitFor(() => expect(container.innerHTML).toContain("<p>hello world</p>"));
   });
 
+  it("re-matches the parser when renderNonce changes (N10 reverse trigger)", async () => {
+    const { rerender } = render(
+      <SpreadPane
+        workspace="/ws"
+        pane={pane}
+        documentPath="/ws/a.md"
+        content="same"
+        renderNonce={0}
+      />,
+    );
+    await waitFor(() => expect(matchCalls).toBe(1));
+    // identical content + path, only the nonce changes → effect must re-run so a
+    // newly-registered parser is picked up.
+    rerender(
+      <SpreadPane
+        workspace="/ws"
+        pane={pane}
+        documentPath="/ws/a.md"
+        content="same"
+        renderNonce={1}
+      />,
+    );
+    await waitFor(() => expect(matchCalls).toBe(2));
+  });
+
   it("routes through a third-party parser transport when registered", async () => {
     registryMatch = { parser: { manifest: { id: "acme.parser" } }, reason: "extension" };
     parserTransport = { send: vi.fn() };
@@ -152,6 +208,140 @@ describe("SpreadPane", () => {
     parserTransport = null;
     render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/a.parser" content="z" />);
     await waitFor(() => expect(true).toBe(true));
+  });
+
+  it("AC1: shows the active parser badge with a selector of registered parsers", async () => {
+    registryMatch = {
+      parser: { manifest: { id: "acme.parser", displayName: "Acme" } },
+      reason: "extension",
+    };
+    registryParsers = [
+      { manifest: { id: "acme.parser", displayName: "Acme" } },
+      { manifest: { id: "builtin", displayName: "Markdown" } },
+      { manifest: { id: "wiki.parser", displayName: "Wiki" }, matchesPath: false },
+    ];
+    render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/a.parser" content="x" />);
+    const badge = await screen.findByTestId("active-parser-badge");
+    expect(badge.textContent).toContain("extension");
+    const selector = (await screen.findByTestId("parser-selector")) as HTMLSelectElement;
+    const optionValues = Array.from(selector.options).map((o) => o.value);
+    expect(optionValues).toContain("__auto__");
+    expect(optionValues).toContain("acme.parser");
+    expect(optionValues).toContain("wiki.parser");
+    // non-matching parser is still offered (force-able) and flagged as such
+    const wikiOpt = Array.from(selector.options).find((o) => o.value === "wiki.parser");
+    expect(wikiOpt?.textContent).toContain("force");
+  });
+
+  it("AC1: selecting a parser forces a re-render through that parser id", async () => {
+    registryMatch = {
+      parser: { manifest: { id: "builtin", displayName: "Markdown" } },
+      reason: "fallback",
+    };
+    registryParsers = [
+      { manifest: { id: "builtin", displayName: "Markdown" } },
+      { manifest: { id: "wiki.parser", displayName: "Wiki" } },
+    ];
+    render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/a.md" content="x" />);
+    const selector = (await screen.findByTestId("parser-selector")) as HTMLSelectElement;
+    act(() => {
+      fireEvent.change(selector, { target: { value: "wiki.parser" } });
+    });
+    // the badge now reflects the forced parser (reason "forced", displayName Wiki)
+    await waitFor(() => {
+      const reason = screen.getByTestId("active-parser-reason");
+      expect(reason.textContent).toBe("forced");
+    });
+    expect((screen.getByTestId("parser-selector") as HTMLSelectElement).value).toBe("wiki.parser");
+    // switching back to "__auto__" clears the override → reason reverts to match.
+    act(() => {
+      fireEvent.change(selector, { target: { value: "__auto__" } });
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("active-parser-reason").textContent).toBe("fallback");
+    });
+    expect((screen.getByTestId("parser-selector") as HTMLSelectElement).value).toBe("__auto__");
+  });
+
+  it("AC1: parser without a displayName falls back to its id, sorted candidates-first", async () => {
+    registryMatch = {
+      parser: { manifest: { id: "builtin", displayName: "Markdown" } },
+      reason: "fallback",
+    };
+    // "zeta" has no displayName (→ id shown). "alpha"/"beta" both match → sorted
+    // alphabetically. "zeta" is a non-candidate → ordered after the matches.
+    // Interleave a non-candidate ("zeta") between two candidates so the sort
+    // comparator exercises both arms of `a.matches ? -1 : 1`.
+    registryParsers = [
+      { manifest: { id: "beta", displayName: "Beta" } },
+      { manifest: { id: "zeta" }, matchesPath: false },
+      { manifest: { id: "alpha", displayName: "Alpha" } },
+    ];
+    render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/a.md" content="x" />);
+    const selector = (await screen.findByTestId("parser-selector")) as HTMLSelectElement;
+    const opts = Array.from(selector.options);
+    // __auto__ first, then candidate matches alpha,beta (alphabetical), then zeta.
+    expect(opts.map((o) => o.value)).toEqual(["__auto__", "alpha", "beta", "zeta"]);
+    // zeta has no displayName → its id is shown as the label.
+    const zeta = opts.find((o) => o.value === "zeta");
+    expect(zeta?.textContent).toContain("zeta");
+  });
+
+  it("AC1: remove button unregisters a non-system parser and reverts to auto", async () => {
+    registryMatch = {
+      parser: { manifest: { id: "wiki.parser", displayName: "Wiki" } },
+      reason: "extension",
+    };
+    registryParsers = [
+      { manifest: { id: "wiki.parser", displayName: "Wiki" } },
+      { manifest: { id: "builtin", displayName: "Markdown" } },
+    ];
+    render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/a.wiki" content="x" />);
+    const removeBtn = await screen.findByTestId("parser-remove");
+    act(() => {
+      fireEvent.click(removeBtn);
+    });
+    expect(unregisterParser).toHaveBeenCalledWith("wiki.parser");
+  });
+
+  it("AC1: removing the currently-forced parser reverts the selector to auto", async () => {
+    registryMatch = {
+      parser: { manifest: { id: "builtin", displayName: "Markdown" } },
+      reason: "fallback",
+    };
+    registryParsers = [
+      { manifest: { id: "builtin", displayName: "Markdown" } },
+      { manifest: { id: "wiki.parser", displayName: "Wiki" } },
+    ];
+    render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/a.md" content="x" />);
+    const selector = (await screen.findByTestId("parser-selector")) as HTMLSelectElement;
+    // force wiki.parser, then remove it → override clears, selector back to auto.
+    act(() => {
+      fireEvent.change(selector, { target: { value: "wiki.parser" } });
+    });
+    await waitFor(() =>
+      expect((screen.getByTestId("parser-selector") as HTMLSelectElement).value).toBe(
+        "wiki.parser",
+      ),
+    );
+    act(() => {
+      fireEvent.click(screen.getByTestId("parser-remove"));
+    });
+    expect(unregisterParser).toHaveBeenCalledWith("wiki.parser");
+    await waitFor(() =>
+      expect((screen.getByTestId("parser-selector") as HTMLSelectElement).value).toBe("__auto__"),
+    );
+  });
+
+  it("AC1: system parser shows no remove button", async () => {
+    registryMatch = {
+      parser: { manifest: { id: "builtin", displayName: "Markdown" } },
+      reason: "extension",
+    };
+    registryParsers = [{ manifest: { id: "builtin", displayName: "Markdown" } }];
+    render(<SpreadPane workspace="/ws" pane={pane} documentPath="/ws/a.md" content="x" />);
+    await screen.findByTestId("active-parser-badge");
+    expect(screen.queryByTestId("parser-remove")).toBeNull();
   });
 
   it("opens external links via the shell IPC", async () => {

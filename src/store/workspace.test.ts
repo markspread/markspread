@@ -1,44 +1,43 @@
-// ADR-0010 D5: workspace store gains `preferredShell`. Verify the
-// default + the open/setter behaviour.
+// ADR-0019 §Decision.1: the chat/editor dual shell is gone, so the
+// workspace store no longer carries `preferredShell`. It now only tracks
+// the open workspace path + read-only flag. Verify open/close/setReadOnly.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useWorkspace } from "./workspace";
 
-describe("useWorkspace preferredShell", () => {
-  beforeEach(() => useWorkspace.setState({ current: null, preferredShell: "chat" }));
-  afterEach(() => useWorkspace.setState({ current: null, preferredShell: "chat" }));
+describe("useWorkspace", () => {
+  beforeEach(() => useWorkspace.setState({ current: null, readOnly: false }));
+  afterEach(() => useWorkspace.setState({ current: null, readOnly: false }));
 
-  it("defaults preferredShell to 'chat'", () => {
-    expect(useWorkspace.getState().preferredShell).toBe("chat");
+  it("defaults current to null and readOnly to false", () => {
+    expect(useWorkspace.getState().current).toBeNull();
+    expect(useWorkspace.getState().readOnly).toBe(false);
   });
 
-  it("open(path) without opts keeps preferredShell as 'chat'", () => {
+  it("open(path) sets current and defaults readOnly to false", () => {
     useWorkspace.getState().open("/ws");
-    expect(useWorkspace.getState().preferredShell).toBe("chat");
+    expect(useWorkspace.getState().current).toBe("/ws");
+    expect(useWorkspace.getState().readOnly).toBe(false);
   });
 
-  it("open(path, { preferredShell }) honours the override", () => {
-    useWorkspace.getState().open("/ws", { preferredShell: "editor" });
-    expect(useWorkspace.getState().preferredShell).toBe("editor");
+  it("open(path, { readOnly }) honours the read-only override", () => {
+    useWorkspace.getState().open("/ws", { readOnly: true });
+    expect(useWorkspace.getState().current).toBe("/ws");
+    expect(useWorkspace.getState().readOnly).toBe(true);
   });
 
-  it("setPreferredShell flips the value", () => {
-    useWorkspace.getState().setPreferredShell("editor");
-    expect(useWorkspace.getState().preferredShell).toBe("editor");
-    useWorkspace.getState().setPreferredShell("chat");
-    expect(useWorkspace.getState().preferredShell).toBe("chat");
+  it("setReadOnly flips the flag", () => {
+    useWorkspace.getState().setReadOnly(true);
+    expect(useWorkspace.getState().readOnly).toBe(true);
+    useWorkspace.getState().setReadOnly(false);
+    expect(useWorkspace.getState().readOnly).toBe(false);
   });
 
-  // Regression: previously close() only reset `current` and `readOnly`,
-  // leaving `preferredShell` from the prior workspace to leak into the
-  // next open() call that didn't pass an explicit shell.
-  it("close() resets preferredShell back to the default 'chat'", () => {
-    useWorkspace.getState().open("/ws-a", { preferredShell: "editor" });
-    expect(useWorkspace.getState().preferredShell).toBe("editor");
+  it("close() clears current and resets readOnly", () => {
+    useWorkspace.getState().open("/ws-a", { readOnly: true });
+    expect(useWorkspace.getState().current).toBe("/ws-a");
     useWorkspace.getState().close();
-    expect(useWorkspace.getState().preferredShell).toBe("chat");
-    // And a subsequent open without opts should now see the default.
-    useWorkspace.getState().open("/ws-b");
-    expect(useWorkspace.getState().preferredShell).toBe("chat");
+    expect(useWorkspace.getState().current).toBeNull();
+    expect(useWorkspace.getState().readOnly).toBe(false);
   });
 });

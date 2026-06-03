@@ -139,12 +139,19 @@ describe("screens/Main", () => {
     expect(container.querySelectorAll("[data-ws-tabs-id]").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("switches to the chat shell via the header button", () => {
-    const setPreferredShell = vi.spyOn(useWorkspace.getState(), "setPreferredShell");
+  // ADR-0019 §Decision.1: Chat is a toggle panel, not a separate shell.
+  // Default is open; the header button collapses and re-shows it.
+  it("toggles the Chat panel via the header button", () => {
     render(<Main />);
-    fireEvent.click(screen.getByTestId("editor-switch-chat"));
-    expect(setPreferredShell).toHaveBeenCalledWith("chat");
-    setPreferredShell.mockRestore();
+    // Default open — the chat panel aside is mounted.
+    expect(screen.getByTestId("workspace-chat-aside")).toBeTruthy();
+    const toggle = screen.getByTestId("workspace-toggle-chat");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId("workspace-chat-aside")).toBeNull();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(toggle);
+    expect(screen.getByTestId("workspace-chat-aside")).toBeTruthy();
   });
 
   it("renders the WorkspaceShell when the shell layout root is split", () => {

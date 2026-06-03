@@ -1,4 +1,20 @@
-import { useEffect, useMemo, useRef } from "react";
+// ADR-0019 §Decision.1: the single **Workspace** shell. The chat/editor
+// dual-shell (`ChatShell` + `EditorShell`, toggled by `preferredShell`)
+// is gone — there is exactly one workspace surface:
+//
+//   FileTree (shared) + document (editor / preview via the tab × split
+//   tree, ADR-0003/0011) + Chat (toggle panel, ADR-0019).
+//
+// "Edit" is not a separate mode: it is this shell with the Chat panel
+// collapsed (ADR-0019 — code is read-only per ADR-0014, md editing is
+// drag-to-chat). The rail (useActivityMode) routes between Workspace /
+// Parser Studio / Settings; this screen *is* the Workspace mode body.
+//
+// The tab × split tree and all sidebar behavior are preserved verbatim
+// from the former `EditorShell` so there is zero regression in the
+// document area; the only addition is the right-hand Chat toggle panel.
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EditorPane } from "../components/EditorPane";
 import { FileTree } from "../components/FileTree";
@@ -11,10 +27,10 @@ import { SidebarPeek } from "../components/SidebarPeek";
 import { SidebarSplitter } from "../components/SidebarSplitter";
 import { TabBar } from "../components/TabBar";
 import { WelcomeBanner } from "../components/WelcomeBanner";
-import { WorkspaceShell } from "../components/WorkspaceShell";
+import { WorkspaceChatPanel } from "../components/WorkspaceChatPanel";
+import { WorkspaceShell as WorkspaceTabShell } from "../components/WorkspaceShell";
 import { useSidebarPeekHover } from "../hooks/useSidebarPeekHover";
 import { useWorkspaceLayoutSync } from "../hooks/useWorkspaceLayoutSync";
-import { isChatShellEnabled } from "../lib/feature-flags";
 import { syncWindowLabel } from "../lib/window-id";
 import { useEditorLayout } from "../store/editor-layout";
 import { DEFAULT_SPLIT_ID, fileTreeSplitKey, useFileTree } from "../store/file-tree";
@@ -29,27 +45,16 @@ import {
   workspaceIdFor,
 } from "../store/workspace-layout";
 
-/**
- * ADR-0010 D1/D3: `EditorShell` is the renamed `Main` screen. The
- * tab × split tree (ADR-0003) and all sidebar behavior are preserved
- * verbatim — only the entry-point name moves so the router can pick
- * between this and `ChatShell` by `preferredShell`.
- *
- * S-MWS-003: 단일 탭/단일 스플릿이면 기존 single-workspace fast path 그대로
- * 렌더. 그 외에는 `WorkspaceShell` 이 트리를 walk 하면서 각 탭마다 본 화면을
- * 재마운트한다.
- */
-export function EditorShell() {
-  // ADR-0010 telemetry: capture first paint of the editor shell so
-  // adoption + R1 (chat shell first-paint vs editor) is monitorable.
+export function WorkspaceShell() {
+  // ADR-0019 telemetry: capture first paint of the workspace shell.
   const mountedAt = useRef<number>(performance.now());
-  /* v8 ignore next -- App routing only mounts EditorShell with a workspace, so the `?? ""` fallback is unreachable in practice */
+  /* v8 ignore next -- App routing only mounts WorkspaceShell with a workspace, so the `?? ""` fallback is unreachable in practice */
   const currentWs = useWorkspace.getState().current ?? "";
   useEffect(() => {
     const firstPaintMs = Math.max(0, performance.now() - mountedAt.current);
     emitTelemetry({
       type: "shell.mounted",
-      shell: "editor",
+      shell: "workspace",
       workspaceId: currentWs,
       firstPaintMs,
     });
@@ -67,13 +72,10 @@ export function EditorShell() {
     return total > 1;
   }, [layout]);
   // MAR-1014 GC: prune file-tree split-keyed expansion sets whose split
-  // no longer exists in the layout. Runs on every layout change — a
-  // split close drops its entry on the same tick.
+  // no longer exists in the layout.
   useEffect(() => {
     const label = syncWindowLabel();
     const keep = new Set<string>();
-    // Always keep the default split slot per workspace for back-compat
-    // (single-shell EditorShell + SidebarPeek lookups go through this).
     if (currentWs) {
       keep.add(fileTreeSplitKey(label, DEFAULT_SPLIT_ID, workspaceIdFor(currentWs)));
     }
@@ -88,7 +90,7 @@ export function EditorShell() {
   }, [layout, currentWs]);
   if (isMultiShell) {
     return (
-      <WorkspaceShell
+      <WorkspaceTabShell
         renderTabBody={(tab: WorkspaceTab, splitId: string) => (
           <SingleWorkspaceBody workspaceTab={tab} splitId={splitId} />
         )}
@@ -107,9 +109,6 @@ function SingleWorkspaceBody({
 }) {
   const { t } = useTranslation();
   const currentFromStore = useWorkspace((s) => s.current);
-  // FIX: EditorShell 에서 ChatShell 로 전환하는 버튼이 없었음. ChatShell 의 역방향 등록.
-  const setPreferredShell = useWorkspace((s) => s.setPreferredShell);
-  const chatShellEnabledForSwitch = isChatShellEnabled();
   // 멀티-워크스페이스 트리에서 호출된 경우 그 탭의 경로를 사용. 그 외에는 글로벌 store.
   const current = workspaceTab?.workspacePath ?? currentFromStore;
   const close = useWorkspace((s) => s.close);
@@ -122,16 +121,13 @@ function SingleWorkspaceBody({
   const showSettings = useSettingsSheet((s) => s.show);
   const splitContainer = useRef<HTMLDivElement | null>(null);
   const prevHiddenRef = useRef(sidebarHidden);
+  // ADR-0019: Chat 은 토글 패널. 기본 열림(agent-first 표면). "Edit" = 닫힘 상태.
+  const [chatOpen, setChatOpen] = useState(true);
   useWorkspaceLayoutSync(current ?? null);
   useSidebarPeekHover();
 
   // S-SBC-006: focus follows the sidebar toggle so keyboard-only users
-  // are never stranded inside an `inert` aside. When the bar opens, the
-  // file tree takes focus (VSCode parity). When it closes, focus moves
-  // to the editor surface unless the user is already typing somewhere
-  // outside the sidebar — then we leave their caret alone. Skips the
-  // initial render so the very first paint doesn't steal focus from
-  // restored state.
+  // are never stranded inside an `inert` aside.
   useEffect(() => {
     if (!current) {
       prevHiddenRef.current = sidebarHidden;
@@ -156,10 +152,7 @@ function SingleWorkspaceBody({
     }
   }, [sidebarHidden, current]);
 
-  // Cmd+, / Ctrl+, opens Settings, matching the platform convention. We
-  // gate on `current` so the shortcut is workspace-only — there's nothing
-  // useful to configure on the Welcome screen, and that screen has its
-  // own keymap to worry about.
+  // Cmd+, / Ctrl+, opens Settings, matching the platform convention.
   useEffect(() => {
     if (!current) return;
     const onKey = (e: KeyboardEvent) => {
@@ -177,6 +170,7 @@ function SingleWorkspaceBody({
     <main
       className="flex h-full w-full flex-col"
       aria-label={t("main.aria.workspace", "Workspace")}
+      data-shell="workspace"
     >
       <WelcomeBanner />
       <ShortcutHint />
@@ -185,25 +179,24 @@ function SingleWorkspaceBody({
           {current}
         </span>
         <div className="flex items-center gap-3">
-          {/* FIX: ChatShell 로 전환하는 버튼이 없었음. ChatShell 헤더의 "Switch to Editor Shell" 와 역방향. */}
-          {chatShellEnabledForSwitch && (
-            <button
-              type="button"
-              data-testid="editor-switch-chat"
-              className="text-[var(--color-muted)] text-xs hover:text-[var(--color-fg)]"
-              onClick={() => {
-                setPreferredShell("chat");
-                emitTelemetry({
-                  type: "shell.switched",
-                  from: "editor",
-                  to: "chat",
-                  trigger: "toolbar",
-                });
-              }}
-            >
-              {t("main.action.switch_chat", "Switch to Chat Shell")}
-            </button>
-          )}
+          {/* ADR-0019: Chat 토글 패널 — 열고 닫기. "Edit" = Chat 접은 상태. */}
+          <button
+            type="button"
+            data-testid="workspace-toggle-chat"
+            className="text-[var(--color-muted)] text-xs hover:text-[var(--color-fg)]"
+            onClick={() => {
+              setChatOpen((v) => !v);
+              emitTelemetry({ type: "shell.chat_toggled", open: !chatOpen });
+            }}
+            aria-label={
+              chatOpen
+                ? t("main.action.hide_chat", "Hide chat")
+                : t("main.action.show_chat", "Show chat")
+            }
+            aria-expanded={chatOpen}
+          >
+            {t("main.action.chat", "Chat")}
+          </button>
           {current && (
             <button
               type="button"
@@ -241,9 +234,8 @@ function SingleWorkspaceBody({
       </header>
       <div ref={splitContainer} className="flex flex-1 overflow-hidden">
         {/* S-SBC-002: aside stays mounted across toggles so FileTree state
-            (scroll, expanded folders) survives. Width is animated; the
-            splitter is only rendered while visible since dragging a
-            zero-width handle has no meaning. */}
+            survives. Width is animated; the splitter is only rendered
+            while visible. */}
         <aside
           id="filetree-aside"
           data-sidebar-aside
@@ -257,10 +249,7 @@ function SingleWorkspaceBody({
             <FileTree workspace={current} {...(splitId !== undefined ? { splitId } : {})} />
           )}
         </aside>
-        {/* S-SBC-003: slim rail when collapsed-in-rail-mode. Clicking it
-            reopens the sidebar (also re-arms the resize splitter). F2 will
-            hang its peek-overlay trigger on this element via the
-            data-sidebar-rail attribute. */}
+        {/* S-SBC-003: slim rail when collapsed-in-rail-mode. */}
         {sidebarHidden && current && collapsedMode === "rail" && (
           <button
             type="button"
@@ -279,6 +268,17 @@ function SingleWorkspaceBody({
           <SidebarSplitter workspace={current} containerRef={splitContainer} />
         )}
         {current && <EditorHost workspace={current} ariaLabel={t("main.aria.editor", "Editor")} />}
+        {/* ADR-0019 §Decision.1: Chat 토글 패널 — 문서 컬럼 오른쪽에 공존.
+            워크스페이스가 있고 패널이 열려 있을 때만 마운트. */}
+        {current && chatOpen && (
+          <aside
+            data-testid="workspace-chat-aside"
+            className="flex w-[360px] min-w-0 shrink-0 flex-col border-[var(--color-border)] border-l bg-[var(--color-surface-subtle)]"
+            aria-label={t("main.aria.chat", "Chat")}
+          >
+            <WorkspaceChatPanel workspaceId={current} />
+          </aside>
+        )}
       </div>
       <SettingsSheet />
       <SidebarPeek />
@@ -287,8 +287,7 @@ function SingleWorkspaceBody({
 }
 
 // S-ESP-003: walk the workspace layout tree. When no layout exists yet
-// (fresh workspace, no legacy seed) we fall back to the legacy
-// single-pane shell so opening files still works.
+// we fall back to the legacy single-pane shell so opening files works.
 function EditorHost({ workspace, ariaLabel }: { workspace: string; ariaLabel: string }) {
   const layout = useEditorLayout((s) => s.layouts[workspace]);
   return (

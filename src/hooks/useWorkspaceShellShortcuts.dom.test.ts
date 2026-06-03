@@ -56,10 +56,9 @@ describe("useWorkspaceShellShortcuts", () => {
   beforeEach(() => {
     setPlatform("MacIntel");
     useWorkspaceLayout.setState({ layout: null });
-    // ADR-0010 scope: these shortcuts only fire when the editor shell
-    // is the active scope. Pin `preferredShell: 'editor'` so the
-    // existing matrix still exercises the binding behaviour.
-    useWorkspace.setState({ current: "/ws-a", readOnly: false, preferredShell: "editor" });
+    // ADR-0019: single Workspace shell — these shortcuts fire whenever a
+    // workspace is open. Pin `current` so the matrix exercises bindings.
+    useWorkspace.setState({ current: "/ws-a", readOnly: false });
   });
 
   afterEach(() => {
@@ -212,11 +211,11 @@ describe("useWorkspaceShellShortcuts", () => {
     expect(activeTabsNodeSize()).toBe(0);
   });
 
-  // ADR-0010 R3 scope gate: the chat shell must own its keymap. When
-  // the workspace's preferredShell flips to chat, our hook stays
-  // silent so the chat input box keeps Mod+T etc. for its own use.
-  it("yields when the chat shell is the active scope", () => {
-    useWorkspace.setState({ current: "/ws-a", preferredShell: "chat" });
+  // ADR-0019 scope gate: bindings stand down when no workspace is open
+  // (Welcome screen). `current: null` short-circuits before the layout
+  // guard — no throw, no mutation, even if a layout somehow lingers.
+  it("yields when no workspace is open", () => {
+    useWorkspace.setState({ current: null });
     useWorkspaceLayout.setState({ layout: emptyWindowLayout("/ws-a") });
     mount();
     const sizeBefore = activeTabsNodeSize();
@@ -224,16 +223,14 @@ describe("useWorkspaceShellShortcuts", () => {
     expect(activeTabsNodeSize()).toBe(sizeBefore);
   });
 
-  // Defensive branch in `isEditorScopeActive`: no workspace open means
-  // the scope gate must let through (we want the shortcut to behave on
-  // the Welcome screen too — though currently the layout guard inside
-  // the handler still short-circuits).
-  it("treats 'no workspace open' as editor scope so the inner layout guard runs", () => {
-    useWorkspace.setState({ current: null, preferredShell: "chat" });
+  // The complementary branch: a workspace is open so the gate passes,
+  // and the inner layout guard then runs (here there is no layout, so
+  // the handler still bails — no throw, no state mutation).
+  it("passes the scope gate when a workspace is open, then the layout guard runs", () => {
+    useWorkspace.setState({ current: "/ws-a" });
+    useWorkspaceLayout.setState({ layout: null });
     mount();
     fire("t", { meta: true });
-    // No layout means the handler bails after the scope check — no
-    // throw, no state mutation.
     expect(useWorkspaceLayout.getState().layout).toBeNull();
   });
 

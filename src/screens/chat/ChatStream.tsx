@@ -11,9 +11,9 @@ export interface ChatStreamProps {
   messages: ChatMessage[];
   onSend: (text: string) => void;
   /**
-   * 사용자가 assistant 응답의 `\`\`\`js/javascript` 코드 블록 옆 "+ Parser"
-   * 버튼을 눌렀을 때 호출. 호출자가 CreateParserDialog 를 prefilledSource
-   * 로 연다. 미제공 시 버튼이 안 보임.
+   * 사용자가 assistant 응답의 `\`\`\`js/javascript` 코드 블록 옆 "파서로 만들기"
+   * 버튼을 눌렀을 때 호출. 호출자가 *파서 개발 모드로 전환* 하며 이 소스를
+   * 워크벤치에 prefill 한다 (ADR-0019 T6 / N5 — 모달 아님). 미제공 시 버튼 숨김.
    */
   onRegisterParser?: (source: string) => void;
 }
@@ -95,11 +95,11 @@ export function ChatStream({ messages, onSend, onRegisterParser }: ChatStreamPro
 
 /**
  * Assistant 메시지에 포함된 ```js / ```javascript / ```ts 코드 블록을 인식해서
- * 각 블록 뒤에 "+ Parser" 액션 버튼을 노출. 버튼 클릭 → onRegisterParser(소스)
- * → 상위가 CreateParserDialog 를 prefilledSource 로 연다.
+ * 각 블록 뒤에 "파서로 만들기" 액션 버튼을 노출. 버튼 클릭 → onRegisterParser(소스)
+ * → 상위가 *파서 개발 모드로 전환* 하며 그 소스를 워크벤치에 prefill 한다.
  *
  * 현재 ACP tool flow 가 미구현이므로 (Phase B), assistant 가 만든 파서 코드를
- * 즉시 등록까지 가는 가장 짧은 동선. plain text/diff/다른 언어 코드 블록은
+ * 즉시 워크벤치까지 가는 가장 짧은 동선. plain text/diff/다른 언어 코드 블록은
  * 그대로 표시.
  */
 function MessageBody({
@@ -148,7 +148,7 @@ function MessageBody({
                   data-testid="chat-codeblock-register-parser"
                   onClick={() => onRegisterParser(seg.code)}
                   className="inline-flex items-center gap-1 rounded border border-[var(--color-border)] px-2 py-0.5 text-xs hover:bg-[var(--color-border)]/40"
-                  title="이 코드로 런타임 파서 등록 (모달이 prefilled 로 열림)"
+                  title="이 코드로 파서 개발 모드 열기 (소스 prefill)"
                 >
                   <Icon name="sparkle" size={12} />
                   <Icon name="plus" size={12} />

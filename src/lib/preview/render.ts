@@ -20,6 +20,7 @@
 // expose `createDebouncedRenderer(delay)` (S-PR-002) which the
 // preview component uses to coalesce keystrokes.
 
+import type { MatchResult } from "@markspread/parser-sdk";
 import { BUILTIN_MARKDOWN_ID, getParserRegistry } from "../parsers/registry";
 import { type SandboxTransport, renderInSandbox } from "../parsers/renderer-host";
 import { type SanitizeOptions, sanitizeHtml } from "./sanitize";
@@ -105,6 +106,14 @@ export interface RenderOptions extends SanitizeOptions {
   transport?: SandboxTransport;
   /** Encoding passed through to the sandbox request (defaults to utf-8). */
   encoding?: string;
+  /**
+   * AC(축2): 리뷰 모드 파서 선택기 override. 사용자가 SpreadPane 의 파서
+   * 셀렉터로 등록된 다른 파서를 명시 선택하면 그 id 를 여기 실어 보낸다.
+   * 설정 시 path 기반 `match()` 를 *우회* 하고 해당 id 의 등록 파서로 직접
+   * 렌더한다 (그 파서가 이 path 에 매칭되지 않더라도 — 워크벤치 없이 즉석
+   * 파서 시험을 가능케 함). 미등록 id 이면 무시하고 정상 match 경로로 폴백.
+   */
+  forceParserId?: string;
 }
 
 export async function render(md: string, opts: RenderOptions = {}): Promise<string> {
@@ -116,10 +125,18 @@ export async function render(md: string, opts: RenderOptions = {}): Promise<stri
   //   AST kind: html | markdown | raw → handleInProcessAst 가 처리
   //   매칭 자체 없음 (no path 등) → builtin pipeline 직접 호출
   if (opts.path) {
-    const matched = getParserRegistry().match({
-      path: opts.path,
-      ...(opts.frontmatter ? { frontmatter: opts.frontmatter } : {}),
-    });
+    const registry = getParserRegistry();
+    // forceParserId 가 등록 파서를 가리키면 match() 를 우회해 그 파서로 직접
+    // 렌더 (사용자 선택 override). 미등록이면 null → 정상 match 폴백.
+    const forced = opts.forceParserId
+      ? registry.list().find((p) => p.manifest.id === opts.forceParserId)
+      : undefined;
+    const matched: MatchResult | null = forced
+      ? { parser: forced, score: 0, reason: "forced" }
+      : registry.match({
+          path: opts.path,
+          ...(opts.frontmatter ? { frontmatter: opts.frontmatter } : {}),
+        });
     if (matched) {
       // 1순위: sandbox transport (외부 plugin 격리)
       if (opts.transport && matched.parser.manifest.id !== BUILTIN_MARKDOWN_ID) {
@@ -249,7 +266,7 @@ async function applyCodeHighlight(
 export function createDebouncedRenderer(delay = 300) {
   let timer: number | undefined;
   let token = 0;
-  return function debouncedRender(md: string, opts?: RenderOptions): Promise<string | null> {
+  const debouncedRender = (md: string, opts?: RenderOptions): Promise<string | null> => {
     const my = ++token;
     return new Promise((resolve) => {
       if (timer) window.clearTimeout(timer);
@@ -260,4 +277,12 @@ export function createDebouncedRenderer(delay = 300) {
       }, delay);
     });
   };
+  // S-PR-002: cancel a pending debounced render. Callers clear the timer on
+  // unmount so a late callback can't run render()/sanitizeHtml after teardown
+  // (e.g. node-env tests where DOMParser is undefined, or wasted work in prod).
+  debouncedRender.cancel = () => {
+    if (timer) window.clearTimeout(timer);
+    timer = undefined;
+  };
+  return debouncedRender;
 }

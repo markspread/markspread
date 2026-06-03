@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { registerParserFromSource, unregisterParser } from "../lib/parsers/register-from-source";
 import { getParserRegistry } from "../lib/parsers/registry";
+import { useActivityMode } from "../store/activity-mode";
 import { Icon } from "./Icon";
 
 interface Props {
@@ -30,6 +31,9 @@ export function CreateParserDialog({
   prefilledSummary = "",
 }: Props): React.ReactElement | null {
   const { t } = useTranslation();
+  // ADR-0019 T5: register/unregister 후 ActivityBar 의 Parser Studio rail 게이트
+  // 재평가를 트리거 (자작 파서 0↔1 경계에서 rail 자동 등장/소멸).
+  const notifyParserRegistryChanged = useActivityMode((s) => s.notifyParserRegistryChanged);
   const [id, setId] = useState("my-parser");
   const [displayName, setDisplayName] = useState("My Parser");
   const [extensions, setExtensions] = useState(".wireweave, .ww");
@@ -87,6 +91,7 @@ export function CreateParserDialog({
         violations: r.violations.map((v) => ({ code: v.code, message: v.message })),
       });
       setRegistryTick((n) => n + 1);
+      notifyParserRegistryChanged();
     } else {
       setResult({
         kind: "error",
@@ -104,6 +109,7 @@ export function CreateParserDialog({
       message: t("parser.dialog.removed", `${id} 등록 해제됨`),
     });
     setRegistryTick((n) => n + 1);
+    notifyParserRegistryChanged();
   };
 
   const handleRemoveById = (rid: string) => {
@@ -117,6 +123,7 @@ export function CreateParserDialog({
     }
     unregisterParser(rid);
     setRegistryTick((n) => n + 1);
+    notifyParserRegistryChanged();
   };
 
   return (

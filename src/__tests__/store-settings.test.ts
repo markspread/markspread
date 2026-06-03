@@ -71,6 +71,14 @@ describe("settings store", () => {
     expect(useSettings.getState().previewTabsEnabled).toBe(false);
   });
 
+  it("setDeveloperMode toggles the ADR-0019 T5 Parser Studio gate flag", () => {
+    expect(useSettings.getState().developerMode).toBe(false);
+    useSettings.getState().setDeveloperMode(true);
+    expect(useSettings.getState().developerMode).toBe(true);
+    useSettings.getState().setDeveloperMode(false);
+    expect(useSettings.getState().developerMode).toBe(false);
+  });
+
   it("setUiFontFamily stores the raw value", () => {
     useSettings.getState().setUiFontFamily("Comic Sans");
     expect(useSettings.getState().uiFontFamily).toBe("Comic Sans");

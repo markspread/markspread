@@ -28,7 +28,9 @@ export type MatchContext = {
 export type MatchResult = {
   parser: RegisteredParser;
   score: number;
-  reason: "frontmatter" | "extension" | "glob" | "fallback";
+  // "forced": 호스트 UI 가 path 매칭을 우회하고 특정 등록 파서로 직접
+  // 렌더하도록 지정 (리뷰 모드 파서 셀렉터 override).
+  reason: "frontmatter" | "extension" | "glob" | "fallback" | "forced";
 };
 
 export type FallbackKey = "markdown";

@@ -4,6 +4,13 @@ import { persist } from "zustand/middleware";
 interface SettingsState {
   autosaveOnClose: boolean;
   /**
+   * ADR-0019 §Decision.5 (T5): "개발자 모드". When ON, the ▣ Parser Studio
+   * rail is shown unconditionally (P-self opt-in). When OFF, the rail only
+   * appears once the user has ≥1 local-trust (self-authored) parser
+   * registered — so P-nondev/reviewer see only ▦/⚙ (noise removal).
+   */
+  developerMode: boolean;
+  /**
    * S-FT-004: VS Code-style preview tab policy. When true, single-click
    * opens a preview tab (re-used for the next single-click); double-click
    * or Enter pins it.
@@ -31,6 +38,7 @@ interface SettingsState {
   // these as the canonical "light / regular / medium" identifiers.
   fontWeight: FontWeight;
   setAutosaveOnClose: (v: boolean) => void;
+  setDeveloperMode: (v: boolean) => void;
   setPreviewTabsEnabled: (v: boolean) => void;
   setUiFontFamily: (v: string) => void;
   setEditorFontFamily: (v: string) => void;
@@ -74,6 +82,7 @@ export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
       autosaveOnClose: true,
+      developerMode: false,
       previewTabsEnabled: true,
       uiFontFamily: "",
       editorFontFamily: "",
@@ -82,6 +91,7 @@ export const useSettings = create<SettingsState>()(
       letterSpacingPx: LETTER_SPACING_DEFAULT,
       fontWeight: FONT_WEIGHT_DEFAULT,
       setAutosaveOnClose: (v) => set({ autosaveOnClose: v }),
+      setDeveloperMode: (v) => set({ developerMode: v }),
       setPreviewTabsEnabled: (v) => set({ previewTabsEnabled: v }),
       setUiFontFamily: (v) => set({ uiFontFamily: v }),
       setEditorFontFamily: (v) => set({ editorFontFamily: v }),

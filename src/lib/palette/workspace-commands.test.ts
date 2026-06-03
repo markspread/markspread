@@ -18,7 +18,6 @@ function makeDeps(overrides: Partial<WorkspaceCommandsDeps> = {}): WorkspaceComm
     setActiveTab: vi.fn(),
     getActiveWorkspacePath: () => "/ws",
     getActiveTabsList: () => [{ id: "t1" }, { id: "t2" }, { id: "t3" }],
-    getPreferredShell: () => "editor",
     focusSplitInDirection: vi.fn(() => true),
     ...overrides,
   };
@@ -141,18 +140,10 @@ describe("registerWorkspacePaletteCommands", () => {
     expect(deps.setActiveTab).not.toHaveBeenCalled();
   });
 
-  it("does NOT run the handler when the chat shell is active", () => {
-    const deps = makeDeps({ getPreferredShell: () => "chat" });
-    registerWorkspacePaletteCommands(deps);
-    const item = query({ raw: "workspace new tab", limit: 50 }).find(
-      (i) => i.id === "workspace.new_tab",
-    );
-    item?.run();
-    expect(deps.addWorkspaceTab).not.toHaveBeenCalled();
-  });
-
-  it("still runs the handler when no shell preference is set", () => {
-    const deps = makeDeps({ getPreferredShell: () => null });
+  // ADR-0019: single Workspace shell — the chat/editor scope gate is
+  // gone, so workspace commands always run when invoked from the palette.
+  it("runs the handler unconditionally (no shell scope gate)", () => {
+    const deps = makeDeps();
     registerWorkspacePaletteCommands(deps);
     const item = query({ raw: "workspace new tab", limit: 50 }).find(
       (i) => i.id === "workspace.new_tab",

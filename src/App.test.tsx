@@ -19,8 +19,9 @@ vi.mock("./lib/open-workspace", () => ({
   newWorkspaceFromDialog: vi.fn(async () => {}),
 }));
 vi.mock("./lib/open-md-file", () => ({ openSingleMdFromDialog: vi.fn(async () => {}) }));
-vi.mock("./screens/EditorShell", () => ({ EditorShell: () => <div data-testid="main" /> }));
-vi.mock("./screens/ChatShell", () => ({ ChatShell: () => <div data-testid="chat" /> }));
+vi.mock("./screens/WorkspaceShell", () => ({
+  WorkspaceShell: () => <div data-testid="workspace-shell" />,
+}));
 vi.mock("./screens/SingleFile", () => ({ SingleFile: () => <div data-testid="single" /> }));
 vi.mock("./screens/Welcome", () => ({
   Welcome: ({
@@ -79,7 +80,7 @@ afterEach(cleanup);
 
 describe("App", () => {
   beforeEach(() => {
-    useWorkspace.setState({ current: null, preferredShell: "chat" });
+    useWorkspace.setState({ current: null });
     useSingleFile.setState({ path: null });
     useTabs.setState({ activePath: null } as never, false);
     useActivityMode.setState({ mode: "workspace" });
@@ -90,20 +91,18 @@ describe("App", () => {
     expect(getByTestId("welcome")).toBeTruthy();
   });
 
-  it("renders EditorShell when workspace + preferredShell=editor", () => {
-    useWorkspace.setState({ current: "/ws", preferredShell: "editor" });
+  // ADR-0019 §Decision.1: a workspace in `workspace` mode routes to the
+  // single unified WorkspaceShell — no chat/editor branch.
+  it("renders the WorkspaceShell when a workspace is open in workspace mode", () => {
+    useWorkspace.setState({ current: "/ws" });
     const { getByTestId } = render(<App />);
-    expect(getByTestId("main")).toBeTruthy();
-  });
-
-  it("renders ChatShell when workspace + preferredShell=chat", () => {
-    useWorkspace.setState({ current: "/ws", preferredShell: "chat" });
-    const { getByTestId } = render(<App />);
-    expect(getByTestId("chat")).toBeTruthy();
+    expect(getByTestId("workspace-shell")).toBeTruthy();
+    // the rail is present so the user can switch modes
+    expect(getByTestId("activity-bar")).toBeTruthy();
   });
 
   it("renders ParserWorkbench when workspace + activity mode = parser", () => {
-    useWorkspace.setState({ current: "/ws", preferredShell: "chat" });
+    useWorkspace.setState({ current: "/ws" });
     useActivityMode.setState({ mode: "parser" });
     const { getByTestId } = render(<App />);
     expect(getByTestId("parser")).toBeTruthy();
@@ -112,7 +111,7 @@ describe("App", () => {
   });
 
   it("renders SingleFile when a single-file path is set (wins over workspace)", () => {
-    useWorkspace.setState({ current: "/ws", preferredShell: "chat" });
+    useWorkspace.setState({ current: "/ws" });
     useSingleFile.setState({ path: "/a.md" });
     const { getByTestId } = render(<App />);
     expect(getByTestId("single")).toBeTruthy();
@@ -137,25 +136,9 @@ describe("App", () => {
 
   it("derives a basename for the export document title from the active tab path", () => {
     useTabs.setState({ activePath: "/ws/notes/a.md" } as never, false);
-    useWorkspace.setState({ current: "/ws", preferredShell: "editor" });
+    useWorkspace.setState({ current: "/ws" });
     render(<App />);
     expect(useTabs.getState().activePath).toBe("/ws/notes/a.md");
-  });
-
-  it("forces EditorShell when MS_SHELL_CHAT_ENABLED is off", () => {
-    const g = globalThis as unknown as {
-      __MS_ENV?: Record<string, unknown> | undefined;
-    };
-    const prev = g.__MS_ENV;
-    g.__MS_ENV = { MS_SHELL_CHAT_ENABLED: "false" };
-    try {
-      useWorkspace.setState({ current: "/ws", preferredShell: "chat" });
-      const { getByTestId } = render(<App />);
-      expect(getByTestId("main")).toBeTruthy();
-    } finally {
-      if (prev === undefined) Reflect.deleteProperty(g, "__MS_ENV");
-      else g.__MS_ENV = prev;
-    }
   });
 
   it("mounts the harness root when ?harness=<mode> is present", () => {

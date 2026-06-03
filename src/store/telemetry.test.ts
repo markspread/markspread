@@ -16,7 +16,7 @@ describe("telemetry emit pipeline", () => {
     const off = subscribeTelemetry(fn);
     emitTelemetry({
       type: "shell.mounted",
-      shell: "chat",
+      shell: "workspace",
       workspaceId: "ws1",
       firstPaintMs: 5,
     });
@@ -31,10 +31,8 @@ describe("telemetry emit pipeline", () => {
     const offA = subscribeTelemetry(a);
     const offB = subscribeTelemetry(b);
     emitTelemetry({
-      type: "shell.switched",
-      from: "chat",
-      to: "editor",
-      trigger: "toolbar",
+      type: "shell.chat_toggled",
+      open: false,
     });
     expect(a).toHaveBeenCalledOnce();
     expect(b).toHaveBeenCalledOnce();
