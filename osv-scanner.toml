@@ -85,17 +85,12 @@ reason = "unic-ucd-version unmaintained — transitive via idna 0.5; gone with T
 id = "RUSTSEC-2025-0100"
 reason = "unic-ucd-ident unmaintained — transitive via idna 0.5; gone with Tauri 3"
 
-# ─── npm: dev-only transitives from vitest/jsdom ────────────────────
-# These come exclusively through vitest 2.1.9 (vite 5.4 peer) and
-# jsdom 25 (ws 8.20). They never reach a production bundle — vitest is
-# dev-only and jsdom is jsdom. Both fixes are pulled in by the
-# vitest 3 / jsdom 26 bumps that renovate raises on the weekly sweep.
+# ─── Rust: ttf-parser ───────────────────────────────────────────────
+# ttf-parser's author declared the crate unmaintained (no fixed version
+# exists in any release). Pulled transitively through fontdb, which
+# still depends on it at the latest fontdb release (0.23). The advisory
+# suggests skrifa (Google fontations) as the successor; revisit when
+# fontdb migrates or we swap the font stack.
 [[IgnoredVulns]]
-id = "GHSA-67mh-4wv8-2f99"
-reason = "esbuild 0.21 (CVSS 5.3 medium) — dev-only via vitest 2.1.9 → vite 5.4 peer; fixed in vitest 3 (vite 6 peer)"
-[[IgnoredVulns]]
-id = "GHSA-4w7w-66w2-5vf9"
-reason = "vite 5.4 (CVSS 6.3 medium) — dev-only via vitest 2.1.9 peer; fixed in vitest 3"
-[[IgnoredVulns]]
-id = "GHSA-58qx-3vcg-4xpx"
-reason = "ws 8.20.0 (CVSS 4.4 medium) — dev-only via jsdom 25; fixed in jsdom 26 (ws 8.20.1+)"
+id = "RUSTSEC-2026-0192"
+reason = "ttf-parser unmaintained, no fixed version — transitive via fontdb (latest 0.23 still uses it); successor skrifa not yet adopted by fontdb"
