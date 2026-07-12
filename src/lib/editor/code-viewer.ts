@@ -3,10 +3,13 @@
 // 문서/코드 비대칭 모델에서 *코드/설정 파일* (T2 B+D) 의 view-only 렌더링.
 // LSP/intellisense 없음 — 가벼움 약속 (CONTEXT.md §3) 준수.
 //
-// Language module 은 *lazy import* — 첫 .ts 열림 시점에만 typescript chunk 다운로드.
-// 이후 캐시. 본 모듈 import 시점에는 어떤 lang 도 로드 안 됨.
+// Language module 은 *lazy import* — 첫 .ts 열림 시점에만 typescript chunk 로드.
+// 이후 캐시 (Vite 가 각 @codemirror/lang-* 를 별도 chunk 로 code-split). 본 모듈
+// import 시점에는 어떤 lang 도 로드 안 됨. read-only 강제 자체는
+// `buildEditorState(..., readOnly)` (state.ts) 가 담당한다.
 
-import type { Extension } from "@codemirror/state";
+import { Compartment, type Extension } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 
 /**
  * 파일 확장자 → CM6 language module factory.
@@ -16,9 +19,7 @@ import type { Extension } from "@codemirror/state";
 const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   ".ts": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-javascript" as string)) as {
-        javascript: (opts?: { typescript?: boolean; jsx?: boolean }) => Extension;
-      };
+      const mod = await import("@codemirror/lang-javascript");
       return mod.javascript({ typescript: true });
     } catch {
       return null;
@@ -26,9 +27,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".tsx": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-javascript" as string)) as {
-        javascript: (opts?: { typescript?: boolean; jsx?: boolean }) => Extension;
-      };
+      const mod = await import("@codemirror/lang-javascript");
       return mod.javascript({ jsx: true, typescript: true });
     } catch {
       return null;
@@ -36,9 +35,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".js": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-javascript" as string)) as {
-        javascript: (opts?: { typescript?: boolean; jsx?: boolean }) => Extension;
-      };
+      const mod = await import("@codemirror/lang-javascript");
       return mod.javascript();
     } catch {
       return null;
@@ -46,9 +43,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".jsx": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-javascript" as string)) as {
-        javascript: (opts?: { typescript?: boolean; jsx?: boolean }) => Extension;
-      };
+      const mod = await import("@codemirror/lang-javascript");
       return mod.javascript({ jsx: true });
     } catch {
       return null;
@@ -56,9 +51,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".json": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-json" as string)) as {
-        json: () => Extension;
-      };
+      const mod = await import("@codemirror/lang-json");
       return mod.json();
     } catch {
       return null;
@@ -66,9 +59,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".css": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-css" as string)) as {
-        css: () => Extension;
-      };
+      const mod = await import("@codemirror/lang-css");
       return mod.css();
     } catch {
       return null;
@@ -76,9 +67,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".html": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-html" as string)) as {
-        html: () => Extension;
-      };
+      const mod = await import("@codemirror/lang-html");
       return mod.html();
     } catch {
       return null;
@@ -86,9 +75,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".rs": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-rust" as string)) as {
-        rust: () => Extension;
-      };
+      const mod = await import("@codemirror/lang-rust");
       return mod.rust();
     } catch {
       return null;
@@ -96,9 +83,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".py": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-python" as string)) as {
-        python: () => Extension;
-      };
+      const mod = await import("@codemirror/lang-python");
       return mod.python();
     } catch {
       return null;
@@ -106,9 +91,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".go": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-go" as string)) as {
-        go: () => Extension;
-      };
+      const mod = await import("@codemirror/lang-go");
       return mod.go();
     } catch {
       return null;
@@ -116,10 +99,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".sql": async () => {
     try {
-      // optional dep — installed only if user opts into SQL viewing.
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-sql" as string)) as {
-        sql: () => Extension;
-      };
+      const mod = await import("@codemirror/lang-sql");
       return mod.sql();
     } catch {
       return null;
@@ -127,9 +107,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".yaml": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-yaml" as string)) as {
-        yaml: () => Extension;
-      };
+      const mod = await import("@codemirror/lang-yaml");
       return mod.yaml();
     } catch {
       return null;
@@ -137,9 +115,7 @@ const LANG_LOADERS: Record<string, () => Promise<Extension | null>> = {
   },
   ".yml": async () => {
     try {
-      const mod = (await import(/* @vite-ignore */ "@codemirror/lang-yaml" as string)) as {
-        yaml: () => Extension;
-      };
+      const mod = await import("@codemirror/lang-yaml");
       return mod.yaml();
     } catch {
       return null;
@@ -172,33 +148,30 @@ export function isSupportedCodeExt(filename: string): boolean {
 }
 
 /**
- * CodeMirror 6 read-only mode extension — 호출자가 EditorState 구성 시 spread.
- * 의존성 0 — `@codemirror/state` 만 의존.
- */
-export function readOnlyExtension(): Extension[] {
-  // 정적 import 해도 가벼움 — state 모듈은 이미 본 도구 코어
-  // 호출자가 EditorState.readOnly.of(true) 직접 추가하는 방식도 가능
-  return [];
-}
-
-/**
- * CM6 EditorState 구성용 helper — 동기 부분만. 호출자가 lang Extension 을
- * 별도 async 로드 후 합쳐서 EditorView 생성.
+ * 비-md 파일 마운트용 setup. `extensions` 를 EditorState 구성에 spread 하면
+ * 빈 language Compartment 가 자리를 잡고, view 생성 후 `applyLanguage(view)` 가
+ * lazy 로드 완료 시점에 compartment 를 reconfigure 해 하이라이트를 켠다.
+ * 로드 실패/미지원 확장자면 compartment 는 비어 있는 채 — plain text 폴백.
  */
 export interface CodeViewerSetup {
-  /** caller 가 ...spread 해서 EditorState.create({ extensions: [...] }) 에 추가 */
+  /** EditorState.create({ extensions: [...] }) 에 spread — 빈 language slot. */
   extensions: Extension[];
-  /** 추후 lang module 로드 시 dispatch 용 — caller 가 EditorView.dispatch 호출 */
-  pendingLanguageLoad: Promise<Extension | null>;
+  /**
+   * lang module lazy 로드 후 view 에 주입. 적용되면 true, plain 폴백이면 false.
+   * `isCancelled` 가 true 를 반환하면 (unmount 등) dispatch 를 생략한다.
+   */
+  applyLanguage(view: EditorView, isCancelled?: () => boolean): Promise<boolean>;
 }
 
-/**
- * 비동기 lang 로드 promise 를 caller 에게 넘김. caller 가 EditorView 생성 후
- * lang 로드 완료 시 `.dispatch({ effects: ... })` 또는 reconfigure.
- */
 export function createCodeViewerSetup(filename: string): CodeViewerSetup {
+  const languageSlot = new Compartment();
   return {
-    extensions: [],
-    pendingLanguageLoad: getLanguageFor(filename),
+    extensions: [languageSlot.of([])],
+    async applyLanguage(view, isCancelled = () => false) {
+      const lang = await getLanguageFor(filename);
+      if (!lang || isCancelled()) return false;
+      view.dispatch({ effects: languageSlot.reconfigure(lang) });
+      return true;
+    },
   };
 }

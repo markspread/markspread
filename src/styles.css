@@ -304,6 +304,34 @@ html.large-font aside[aria-label][style] {
   font-size: 13px;
 }
 
+/* S-PR-007 / S-PR-022: Shiki dual-theme code blocks. The highlighter runs
+   with `defaultColor: false`, so every token carries both a
+   `--shiki-light` and `--shiki-dark` custom property instead of a fixed
+   color. These rules pick the side matching the active app theme — the
+   same HTML serves light and dark without a re-render (SC-BASE-05). */
+.shiki,
+.shiki span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .shiki,
+  html:not([data-theme="light"]) .shiki span {
+    color: var(--shiki-dark);
+    background-color: var(--shiki-dark-bg);
+  }
+}
+html[data-theme="dark"] .shiki,
+html[data-theme="dark"] .shiki span {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+}
+.shiki {
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
 @media (forced-colors: active) {
   :root {
     --color-bg: Canvas;

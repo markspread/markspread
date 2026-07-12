@@ -54,6 +54,48 @@ describe("host parser registry bootstrap", () => {
     expect(m?.parser.manifest.id).toBe("csv-demo");
   });
 
+  // F1 회귀 고정: 동일 확장자 (.md) 를 builtin 과 custom 이 동시에 등록했을 때의
+  // 우선순위 계약. 기존 .csv 테스트는 builtin 과 확장자가 겹치지 않아 tie-break
+  // 를 간접적으로만 커버했다 — 여기서 직접 고정한다.
+  it("routes .md to a custom parser registered over the builtin (recency tie-break)", () => {
+    const reg = getParserRegistry();
+    registerParser(
+      {
+        id: "md-custom",
+        version: "0.1.0",
+        displayName: "Custom Markdown",
+        fileMatch: { extensions: [".md"] },
+        capabilities: "preview-only",
+        entry: "./e.js",
+      },
+      () => ({ ast: null }),
+    );
+    const m = reg.match({ path: "/notes.md" });
+    expect(m?.parser.manifest.id).toBe("md-custom");
+    // 동점 (score 100) 을 최근 등록으로 깬 것 — extension 매칭이지 fallback 이 아니다.
+    expect(m?.reason).toBe("extension");
+  });
+
+  it("restores builtin markdown by extension match (not fallback) after the custom parser is unregistered", () => {
+    const reg = getParserRegistry();
+    registerParser(
+      {
+        id: "md-custom",
+        version: "0.1.0",
+        displayName: "Custom Markdown",
+        fileMatch: { extensions: [".md"] },
+        capabilities: "preview-only",
+        entry: "./e.js",
+      },
+      () => ({ ast: null }),
+    );
+    expect(reg.match({ path: "/notes.md" })?.parser.manifest.id).toBe("md-custom");
+    expect(reg.unregisterParser("md-custom")).toBe(true);
+    const m = reg.match({ path: "/notes.md" });
+    expect(m?.parser.manifest.id).toBe(BUILTIN_MARKDOWN_ID);
+    expect(m?.reason).toBe("extension");
+  });
+
   it("returns the same singleton on repeated calls", () => {
     const a = getParserRegistry();
     const b = getParserRegistry();

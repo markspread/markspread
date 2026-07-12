@@ -47,8 +47,12 @@ export interface RegisterFromSourceResult {
  * `export default factory` 형태 (CJS 도 OK).
  *
  * 본 함수는 *동기 evaluate*. 외부 의존성 import 는 지원 안 함 (eval 환경).
+ *
+ * exported: hot-reload 의 디스크 로더 (hot-reload-tauri.ts) 가 같은
+ * source→factory 변환을 재사용한다 — 두 경로의 evaluate 규칙이 갈라지면
+ * 워크벤치에서 되던 파서가 디스크 리로드에서 깨지는 종류의 버그가 생긴다.
  */
-function evaluateFactory(source: string): ParserFactory | Error {
+export function evaluateFactory(source: string): ParserFactory | Error {
   try {
     // FIX: 이전엔 source 안에 'return' 이 *inner 함수 body* 에 있으면 wrap 을 skip 했음.
     //      그 return 은 inner 함수 것 — outer Function 은 여전히 wrap 필요.

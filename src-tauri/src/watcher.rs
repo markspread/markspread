@@ -409,12 +409,18 @@ async fn walk_modified(
             };
             if meta.is_dir() {
                 // Skip the meta dir itself — we don't want polling churn from
-                // index.db WAL turnover.
+                // index.db WAL turnover. One exception: `.markspread/parsers/`
+                // must stay visible so parser hot-reload (S-PSDK-004 / SC-WB-03)
+                // still fires on polling (network-drive) workspaces. Only that
+                // subdir is descended into — siblings like index.db stay
+                // skipped. A missing `parsers/` dir is harmless: the read_dir
+                // above returns Err and the loop moves on.
                 if path
                     .file_name()
                     .map(|n| n == ".markspread")
                     .unwrap_or(false)
                 {
+                    stack.push(path.join("parsers"));
                     continue;
                 }
                 stack.push(path);
@@ -437,4 +443,75 @@ pub fn fs_watch_stop(state: State<'_, WatcherRegistry>, workspace: String) -> Ap
 
 pub fn register(app: &AppHandle) {
     app.manage(WatcherRegistry::default());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    // SC-WB-03 / S-PSDK-004: the polling walk must skip `.markspread/` meta
+    // churn (index.db WAL) but still surface `.markspread/parsers/` so parser
+    // hot-reload works on polling (network-drive) workspaces too.
+    #[tokio::test]
+    async fn walk_modified_skips_meta_dir_but_keeps_parsers_subdir() {
+        let ws = TempDir::new().unwrap();
+        let root = ws.path();
+        std::fs::write(root.join("a.md"), "x").unwrap();
+        let meta = root.join(".markspread");
+        std::fs::create_dir_all(meta.join("parsers").join("demo")).unwrap();
+        std::fs::write(meta.join("index.db"), "wal").unwrap();
+        std::fs::write(meta.join("settings.json"), "{}").unwrap();
+        let manifest = meta.join("parsers").join("demo").join("manifest.json");
+        let entry = meta.join("parsers").join("demo").join("index.js");
+        std::fs::write(&manifest, "{}").unwrap();
+        std::fs::write(&entry, "x").unwrap();
+
+        let out = walk_modified(root).await.unwrap();
+
+        assert!(out.contains_key(&root.join("a.md")));
+        assert!(out.contains_key(&manifest));
+        assert!(out.contains_key(&entry));
+        assert!(!out.contains_key(&meta.join("index.db")));
+        assert!(!out.contains_key(&meta.join("settings.json")));
+    }
+
+    #[tokio::test]
+    async fn walk_modified_tolerates_missing_parsers_subdir() {
+        let ws = TempDir::new().unwrap();
+        let root = ws.path();
+        std::fs::write(root.join("a.md"), "x").unwrap();
+        let meta = root.join(".markspread");
+        std::fs::create_dir_all(&meta).unwrap();
+        std::fs::write(meta.join("index.db"), "wal").unwrap();
+
+        let out = walk_modified(root).await.unwrap();
+
+        assert_eq!(out.len(), 1);
+        assert!(out.contains_key(&root.join("a.md")));
+    }
+
+    #[tokio::test]
+    async fn walk_modified_picks_up_parser_file_changes_between_walks() {
+        let ws = TempDir::new().unwrap();
+        let root = ws.path();
+        let parser_dir = root.join(".markspread").join("parsers").join("csv");
+        std::fs::create_dir_all(&parser_dir).unwrap();
+        let entry = parser_dir.join("index.js");
+        std::fs::write(&entry, "v1").unwrap();
+
+        let before = walk_modified(root).await.unwrap();
+        // Force a visible mtime bump regardless of filesystem timestamp
+        // granularity.
+        let bumped = std::time::SystemTime::now() + Duration::from_secs(2);
+        let f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&entry)
+            .unwrap();
+        f.set_modified(bumped).unwrap();
+
+        let after = walk_modified(root).await.unwrap();
+        assert!(before.contains_key(&entry));
+        assert_ne!(before.get(&entry), after.get(&entry));
+    }
 }

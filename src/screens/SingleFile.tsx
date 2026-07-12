@@ -127,6 +127,11 @@ export function SingleFile() {
           tabId={path}
           initialDoc={content}
           language={isMd ? "markdown" : "plain"}
+          // ADR-0014 T2.c: path drives the lazy syntax-highlight of non-md
+          // files, which mount read-only (syntax view only) — same contract
+          // as the workspace mount paths (PaneEditor / EditorPane).
+          path={path}
+          readOnly={!isMd}
           onChange={(doc) => setContent(doc)}
         />
       </section>

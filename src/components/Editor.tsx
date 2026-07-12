@@ -13,6 +13,7 @@ import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import { createCodeViewerSetup } from "@/lib/editor/code-viewer";
 import { type EditorLanguage, buildEditorState, mountEditor } from "@/lib/editor/state";
 
 export interface EditorViewPosition {
@@ -35,6 +36,13 @@ type Props = {
   tabId?: string;
   /** "markdown" enables md-specific extensions; "plain" keeps it text-only. */
   language?: EditorLanguage;
+  /**
+   * ADR-0014 T2.c: file path used for lazy syntax-highlight of non-md files.
+   * When `language` is "plain" and the extension maps to a CM6 language
+   * module, the module is lazy-loaded and injected after mount; until it
+   * arrives (or if loading fails) the view stays plain text.
+   */
+  path?: string;
   /** ADR-0014: 코드/설정 파일은 read-only — caller decides per-file. */
   readOnly?: boolean;
   className?: string;
@@ -67,6 +75,7 @@ export function Editor({
   onChange,
   tabId,
   language = "markdown",
+  path,
   readOnly = false,
   className,
   initialPosition,
@@ -127,15 +136,26 @@ export function Editor({
         }
       }
     });
+    // ADR-0014 T2.c: non-md files get a lazy syntax-highlight slot. The
+    // compartment mounts empty (plain text) and is reconfigured once the
+    // language chunk arrives; a failed load leaves the plain fallback.
+    const codeViewer = language === "plain" && path ? createCodeViewerSetup(path) : null;
+    let disposed = false;
     const view = mountEditor(
       hostRef.current,
       initialDoc,
-      [updateExt, placeholderExt(placeholderText), ...(extensions ?? [])],
+      [
+        updateExt,
+        placeholderExt(placeholderText),
+        ...(codeViewer ? codeViewer.extensions : []),
+        ...(extensions ?? []),
+      ],
       undefined,
       language,
       readOnly,
     );
     viewRef.current = view;
+    if (codeViewer) void codeViewer.applyLanguage(view, () => disposed);
     // Restore cursor + scroll if a position was supplied. The line/column
     // values are 0-based here (matches our PaneTab.position contract); CM6
     // uses 1-based lines internally so we adjust on the way in.
@@ -161,6 +181,7 @@ export function Editor({
     };
     view.scrollDOM.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      disposed = true;
       view.scrollDOM.removeEventListener("scroll", onScroll);
       view.destroy();
       viewRef.current = null;
@@ -169,9 +190,10 @@ export function Editor({
     // intentionally not — it's the *initial* value, not a controlled
     // prop. Hot-replacing the doc on every parent re-render would
     // lose the user's cursor. `language` joins so a same-tab swap from
-    // markdown to plain (rare) re-mounts.
+    // markdown to plain (rare) re-mounts; `path` so the highlight slot
+    // tracks the file the pane actually shows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId, language, readOnly]);
+  }, [tabId, language, path, readOnly]);
 
   // If extensions ever change without a tabId swap, reconfigure in
   // place rather than recreate. This is the common case for toggling

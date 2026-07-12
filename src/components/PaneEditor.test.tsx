@@ -21,6 +21,8 @@ let lastEditorProps: {
   onSelectionRange?: (range: SelectionRange) => void;
   remoteDoc?: string;
   language?: string;
+  path?: string;
+  readOnly?: boolean;
   initialPosition?: EditorPosition;
   tabId?: string;
 } | null = null;
@@ -32,6 +34,8 @@ vi.mock("./Editor", () => ({
     onSelectionRange?: (range: SelectionRange) => void;
     remoteDoc?: string;
     language?: string;
+    path?: string;
+    readOnly?: boolean;
     initialPosition?: EditorPosition;
     tabId?: string;
   }) => {
@@ -183,6 +187,19 @@ describe("PaneEditor", () => {
     });
     render(<PaneEditor workspace="/ws" pane={paneWith("/ws/notes.txt")} />);
     expect(lastEditorProps?.language).toBe("plain");
+  });
+
+  it("mounts non-md code files read-only with the path for lazy highlight (ADR-0014 T2.c)", () => {
+    useDocCache.getState().setBaseline("/ws", "/ws/src/main.ts", {
+      content: "const a = 1;",
+      encoding: "utf-8",
+      mtime: 0,
+      sha256: "",
+    });
+    render(<PaneEditor workspace="/ws" pane={paneWith("/ws/src/main.ts")} />);
+    expect(lastEditorProps?.language).toBe("plain");
+    expect(lastEditorProps?.path).toBe("/ws/src/main.ts");
+    expect(lastEditorProps?.readOnly).toBe(true);
   });
 
   it("toggles to spread view when the toggle is clicked", () => {
