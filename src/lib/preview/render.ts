@@ -29,9 +29,14 @@
 // preview component uses to coalesce keystrokes.
 
 import type { MatchResult } from "@markspread/parser-sdk";
+import { useToasts } from "../../store/toasts";
 import { parseFrontmatter } from "../markdown/frontmatter";
 import { BUILTIN_MARKDOWN_ID, getParserRegistry } from "../parsers/registry";
 import { type SandboxTransport, renderInSandbox } from "../parsers/renderer-host";
+import { getRuntimeParserSuspension, suspendRuntimeParser } from "../parsers/runtime-transport";
+import { getParserTransport } from "../parsers/transport-registry";
+import { BUDGETS, describeOutcome, measureAsync } from "../plugins/runtime/budget-guard";
+import { getOrchestrator } from "../plugins/runtime/orchestrator-singleton";
 import { type SanitizeOptions, sanitizeHtml } from "./sanitize";
 
 // We keep dependencies optional to make this module safe to import
@@ -229,6 +234,13 @@ export async function render(md: string, opts: RenderOptions = {}): Promise<stri
           ...(opts.frontmatter ? { frontmatter: opts.frontmatter } : {}),
         });
     if (matched) {
+      // SC-SEC-01..04 / ADR-0016: 신뢰경계 밖(llm-generated/imported) 파서는
+      // in-process 실행 금지 — 동의 게이트 + Worker 격리 + BudgetGuard 를
+      // 강제하는 전용 경로로만 렌더한다. builtin / local(사용자 보유 코드,
+      // ADR-0012 C1) 파서는 기존 in-process 사이클 유지.
+      if (requiresSandbox(matched.parser.manifest.id)) {
+        return renderUntrustedRuntimeParser(matched.parser.manifest.id, md, opts);
+      }
       // 1순위: sandbox transport (외부 plugin 격리)
       if (opts.transport && matched.parser.manifest.id !== BUILTIN_MARKDOWN_ID) {
         const result = await renderInSandbox(opts.transport, {
@@ -265,6 +277,106 @@ export async function render(md: string, opts: RenderOptions = {}): Promise<stri
   }
   // 최후의 fallback: path 자체 없거나 모든 매칭 실패 → host markdown pipeline.
   return renderBuiltinMarkdown(md, opts);
+}
+
+// SC-SEC-01 게이트: trust level 이 llm-generated/imported 인 파서만 sandbox
+// 강제. trust 미등록(= builtin, 디스크 hot-reload 등 사용자 보유 코드) 은
+// ADR-0012 C1 의 사용자 신뢰로 기존 in-process 경로를 탄다.
+function requiresSandbox(parserId: string): boolean {
+  const level = getOrchestrator().trust.level(parserId);
+  return level === "llm-generated" || level === "imported";
+}
+
+// 차단 사유를 문서 대신 렌더하는 가시 카드. sanitizeHtml 화이트리스트
+// (div/p/strong + data-*) 안에서만 구성한다.
+function blockedNoticeHtml(
+  parserId: string,
+  reason: "consent" | "suspended" | "no-transport" | "error" | "bad-ast",
+  detail: string,
+  opts: RenderOptions,
+): string {
+  const id = escapeHtml(parserId);
+  const html = `<div class="ms-parser-blocked" data-testid="parser-blocked" data-parser-blocked="${id}" data-blocked-reason="${reason}"><p><strong>${id}</strong> 파서 실행이 차단되었습니다</p><p>${escapeHtml(detail)}</p></div>`;
+  return sanitizeHtml(html, opts);
+}
+
+/**
+ * SC-SEC-01/03/04: llm-generated/imported 파서 전용 렌더 경로.
+ *   - 활성 동의(T5.F) 없으면 실행 자체를 차단.
+ *   - 실행은 transport-registry 의 Worker transport 로만 (renderInSandbox).
+ *     transport 부재 = 차단 (in-process 강등 금지 — R1 SC-SEC-01 결함 클래스).
+ *   - BudgetGuard(T5.D) local 100ms 예산으로 measureAsync — 초과 시 worker
+ *     suspend + 토스트 알림 + 차단 카드.
+ *   - 결과 AST 는 builtin 과 동일한 handleInProcessAst 사이클로 sanitize.
+ */
+async function renderUntrustedRuntimeParser(
+  parserId: string,
+  md: string,
+  opts: RenderOptions,
+): Promise<string> {
+  const trust = getOrchestrator().trust;
+  if (!trust.hasConsent(parserId)) {
+    return blockedNoticeHtml(
+      parserId,
+      "consent",
+      "활성 동의가 필요합니다 — 파서 등록 시 표시되는 동의 다이얼로그에서 수락 후 사용할 수 있습니다 (ADR-0016 T5.F).",
+      opts,
+    );
+  }
+  const suspension = getRuntimeParserSuspension(parserId);
+  if (suspension) {
+    return blockedNoticeHtml(parserId, "suspended", suspension, opts);
+  }
+  const transport = opts.transport ?? getParserTransport(parserId);
+  if (!transport) {
+    return blockedNoticeHtml(
+      parserId,
+      "no-transport",
+      "격리 실행 환경(Worker transport)이 없습니다 — 파서를 다시 등록하세요.",
+      opts,
+    );
+  }
+  const budget = BUDGETS.local;
+  const { result, outcome } = await measureAsync(budget, () =>
+    renderInSandbox(
+      transport,
+      {
+        type: "parse",
+        requestId: `r-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        parserId,
+        path: opts.path ?? "",
+        content: md,
+        encoding: opts.encoding ?? "utf-8",
+      },
+      // renderInSandbox 자체 timeout 은 backstop — 실제 예산은 measureAsync.
+      { timeoutMs: Math.max(budget.timeCapMs * 10, 1000) },
+    ),
+  );
+  if (outcome.shouldSuspend) {
+    const message = describeOutcome(outcome, parserId);
+    // 재등록 race 가드: 이 render 가 dispatch 한 transport 가 이미 교체됐다면
+    // (워크벤치 debounce 재등록 등) 새 세대 worker 를 suspend 하지 않는다 —
+    // stale 타임아웃의 오발 방지. 현행 세대의 초과만 suspend + 알림.
+    if (getParserTransport(parserId) === transport) {
+      suspendRuntimeParser(parserId, message);
+      useToasts.getState().push({ kind: "error", message });
+    }
+    return blockedNoticeHtml(parserId, "suspended", message, opts);
+  }
+  /* v8 ignore next 4 -- renderInSandbox resolves(never rejects), so error_thrown/null result only guards future refactors */
+  if (!result) {
+    return blockedNoticeHtml(parserId, "error", outcome.message ?? "no result", opts);
+  }
+  if (result.kind === "error") {
+    return blockedNoticeHtml(parserId, "error", result.message, opts);
+  }
+  if (result.kind === "html") {
+    return sanitizeHtml(result.html, opts);
+  }
+  // kind === "ast" — builtin 과 동일한 factory→AST→render 사이클.
+  const handled = await handleInProcessAst({ ast: result.ast }, md, opts);
+  if (handled !== null) return handled;
+  return blockedNoticeHtml(parserId, "bad-ast", "파서가 알 수 없는 AST 를 반환했습니다.", opts);
 }
 
 // The builtin markdown path shared by the no-match fallback and the
