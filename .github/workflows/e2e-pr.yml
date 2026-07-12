@@ -40,6 +40,13 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - name: Install Playwright (chromium only)
         run: pnpm exec playwright install --with-deps chromium
+      - name: Build renderer
+        # playwright.config.ts's webServer runs `pnpm vite preview`,
+        # which serves the prebuilt dist/ — it does not build. Without
+        # this step the webServer dies with "The directory dist does not
+        # exist" before the first test. Renderer build only; the full
+        # tauri build lives in test.yml / e2e-main.yml.
+        run: pnpm vite:build
       - name: Run representative e2e
         env:
           MARKSPREAD_AI_MOCK: "1"
