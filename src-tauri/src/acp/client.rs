@@ -940,8 +940,13 @@ mod tests {
     ///   2. if the host's decision is `allow`/`allow_once`, sends
     ///      `fs/write_text_file` with `target_path`/`target_content`,
     ///   3. completes the prompt with `end_turn`.
+    ///
     /// Returns nothing; runs until the transport closes.
-    async fn run_fs_fake_agent(mut t: MemoryTransport, target_path: String, target_content: String) {
+    async fn run_fs_fake_agent(
+        mut t: MemoryTransport,
+        target_path: String,
+        target_content: String,
+    ) {
         // pending host responses keyed by our outbound request id.
         let mut next_id: u64 = 1000;
         loop {
@@ -983,8 +988,7 @@ mod tests {
                             // 2. wait for the host's decision response.
                             let decision = loop {
                                 match t.recv().await {
-                                    Ok(RawMessage::Response(r))
-                                        if matches!(&r.id, RequestId::Number(n) if *n == perm_id) =>
+                                    Ok(RawMessage::Response(r)) if matches!(&r.id, RequestId::Number(n) if *n == perm_id) =>
                                     {
                                         break r
                                             .result
@@ -1019,8 +1023,7 @@ mod tests {
                                 // Drain the host's fs response before completing.
                                 loop {
                                     match t.recv().await {
-                                        Ok(RawMessage::Response(r))
-                                            if matches!(&r.id, RequestId::Number(n) if *n == w_id) =>
+                                        Ok(RawMessage::Response(r)) if matches!(&r.id, RequestId::Number(n) if *n == w_id) =>
                                         {
                                             break;
                                         }

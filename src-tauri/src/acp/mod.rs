@@ -888,14 +888,19 @@ mod tests {
         }
         assert_eq!(manager().lock().unwrap().len(), baseline + 2);
 
-        // Drop the fake agent half so the transport is genuinely dead.
-        // (Keeping it bound used to leave the transport open-but-silent,
-        // which hung `session/close` forever before the RPC deadline —
-        // that path now has its own regression test in `client.rs`:
-        // `session_close_times_out_on_unresponsive_agent`.)
+        // Drop the fake agent half *before* closing. An underscore-
+        // prefixed binding (`_agent_t2`) lives until end of scope — only
+        // a bare `_` pattern drops immediately — so keeping it alive
+        // left the transport peer open-but-silent and `session/close`
+        // (a request that awaits a reply) parked forever; this exact
+        // line hung every `cargo test` run at the 6h CI timeout. The
+        // open-but-silent path now also has an RPC deadline plus its own
+        // regression test in `client.rs`:
+        // `session_close_times_out_on_unresponsive_agent`.
         drop(agent_t2);
 
-        // Close the target session. The RPC fails with a transport error —
+        // Close the target session. Because the fake agent half was
+        // dropped, the underlying RPC will fail with a transport error —
         // but cleanup MUST still happen. That's exactly the property
         // we're guarding against: a flaky agent can never leak entries.
         let res = acp_close_session(SessionId("close-test-drop".into())).await;
