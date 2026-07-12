@@ -84,7 +84,10 @@ impl Default for AgentRegistry {
                 "@agentclientprotocol/claude-agent-acp".into(),
             ],
             auth: AuthMode::ClaudeSubscription,
-            extra_env: vec![("ANTHROPIC_MODEL".to_string(), "claude-haiku-4-5".to_string())],
+            extra_env: vec![(
+                "ANTHROPIC_MODEL".to_string(),
+                "claude-haiku-4-5".to_string(),
+            )],
         };
         entries.insert(claude_haiku.id.0.clone(), claude_haiku);
 
