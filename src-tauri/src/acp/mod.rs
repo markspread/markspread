@@ -719,7 +719,7 @@ mod tests {
         // Insert two sessions so we can verify the targeted one is the
         // only one removed.
         let (client_t1, _agent_t1) = transport::MemoryTransport::pair(8192);
-        let (client_t2, _agent_t2) = transport::MemoryTransport::pair(8192);
+        let (client_t2, agent_t2) = transport::MemoryTransport::pair(8192);
         let c1 = Arc::new(AcpClient::new(client_t1));
         let c2 = Arc::new(AcpClient::new(client_t2));
         {
@@ -728,6 +728,14 @@ mod tests {
             m.insert("close-test-drop".into(), c2);
         }
         assert_eq!(manager().lock().unwrap().len(), baseline + 2);
+
+        // Drop the fake agent half *before* closing. An underscore-
+        // prefixed binding (`_agent_t2`) lives until end of scope — only
+        // a bare `_` pattern drops immediately — so keeping it alive
+        // left the transport peer open and `session/close` (a request
+        // that awaits a reply) parked forever. This exact line hung
+        // every `cargo test` run at the 6h CI timeout.
+        drop(agent_t2);
 
         // Close the target session. Because the fake agent half was
         // dropped, the underlying RPC will fail with a transport error —
