@@ -1,4 +1,9 @@
 // MAR-1011: tool-approval queue store tests.
+//
+// Fix-E/F14: the queue is in-memory only — the former persistence surface
+// (`load`, `flushQueue` → `tool_queue_save`/`tool_queue_load`) was removed
+// because a queued permission request references a live ACP request id
+// that cannot survive an app restart.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,7 +12,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
 }));
 
-import { type DiffProposal, flushQueue, useToolApprovalQueue } from "./tool-approval-queue";
+import { type DiffProposal, useToolApprovalQueue } from "./tool-approval-queue";
 
 function makeProposal(
   overrides: Partial<DiffProposal> = {},
@@ -44,6 +49,14 @@ describe("tool-approval-queue store", () => {
   it("enqueue accepts a caller-supplied id", () => {
     const p = useToolApprovalQueue.getState().enqueue({ ...makeProposal(), id: "fixed-id" });
     expect(p.id).toBe("fixed-id");
+  });
+
+  it("enqueue carries the agent-authored summary through", () => {
+    const p = useToolApprovalQueue
+      .getState()
+      .enqueue({ ...makeProposal(), summary: "write notes.md" });
+    expect(p.summary).toBe("write notes.md");
+    expect(useToolApprovalQueue.getState().queue[0]?.summary).toBe("write notes.md");
   });
 
   it("decide(accept) removes the entry and forwards `allow` to Rust", async () => {
@@ -101,55 +114,5 @@ describe("tool-approval-queue store", () => {
     expect(useToolApprovalQueue.getState().approveAllBySession.s2).toBe(true);
     useToolApprovalQueue.getState().setApproveAll("s2", false);
     expect(useToolApprovalQueue.getState().approveAllBySession.s2).toBe(false);
-  });
-
-  it("load() pulls a persisted queue back into state", async () => {
-    invokeMock.mockResolvedValueOnce([
-      {
-        id: "fromdisk",
-        sessionId: "s1",
-        agentId: "claude-subscription",
-        toolCallId: "tc",
-        requestId: 1,
-        tool: "edit_file",
-        filePath: "/a",
-        before: "x",
-        after: "y",
-        createdAt: 1,
-      },
-    ]);
-    await useToolApprovalQueue.getState().load("/ws");
-    expect(useToolApprovalQueue.getState().queue[0]?.id).toBe("fromdisk");
-  });
-
-  it("load() ignores a non-array response", async () => {
-    invokeMock.mockResolvedValueOnce({ broken: true });
-    await useToolApprovalQueue.getState().load("/ws");
-    expect(useToolApprovalQueue.getState().queue).toHaveLength(0);
-  });
-
-  it("load() tolerates IPC failure", async () => {
-    invokeMock.mockRejectedValueOnce(new Error("read fail"));
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    await useToolApprovalQueue.getState().load("/ws");
-    expect(useToolApprovalQueue.getState().queue).toHaveLength(0);
-    warn.mockRestore();
-  });
-
-  it("flushQueue persists when given a workspace id", async () => {
-    await flushQueue("/ws", []);
-    expect(invokeMock).toHaveBeenCalledWith("tool_queue_save", expect.any(Object));
-  });
-
-  it("flushQueue is a no-op without a workspace id", async () => {
-    await flushQueue(null, []);
-    expect(invokeMock).not.toHaveBeenCalled();
-  });
-
-  it("flushQueue tolerates IPC failure", async () => {
-    invokeMock.mockRejectedValueOnce(new Error("write fail"));
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    await flushQueue("/ws", []);
-    warn.mockRestore();
   });
 });

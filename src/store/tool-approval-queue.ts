@@ -1,9 +1,14 @@
-// MAR-1011: pending tool-call diff queue with persistence.
+// MAR-1011: pending tool-call diff queue.
 //
 // When an ACP agent asks for permission to write/edit a file, we don't
 // auto-allow. Instead the call goes into this queue and surfaces in the
 // ToolDiffDialog. Decisions are forwarded back to Rust through
 // `acp_approve_diff` (which then sends the underlying ACP response).
+//
+// The queue is *in-memory only* — a queued `session/request_permission`
+// references a live JSON-RPC request id owned by the running agent
+// process, so persisting it across restarts could never be honored
+// (the former `tool_queue_save`/`tool_queue_load` stubs were removed).
 //
 // Per-session "approve all" flag bypasses the dialog for the remainder
 // of the session — useful for non-destructive bulk edits.
@@ -27,6 +32,8 @@ export interface DiffProposal {
   filePath: string;
   before: string;
   after: string;
+  /** Agent-authored human summary of the requested change (may be ""). */
+  summary?: string;
   createdAt: number;
 }
 
@@ -38,20 +45,10 @@ interface ToolApprovalQueueState {
   enqueue: (p: Omit<DiffProposal, "id" | "createdAt"> & { id?: string }) => DiffProposal;
   decide: (proposalId: string, decision: ToolDecision) => Promise<void>;
   setApproveAll: (sessionId: string, value: boolean) => void;
-  load: (workspaceId: string) => Promise<void>;
 }
 
 function randomId(): string {
   return globalThis.crypto.randomUUID().slice(0, 12);
-}
-
-async function persist(workspaceId: string | null, queue: DiffProposal[]): Promise<void> {
-  if (!workspaceId) return;
-  try {
-    await invoke("tool_queue_save", { workspaceId, queue });
-  } catch (e) {
-    console.warn("[tool-queue] save failed", e);
-  }
 }
 
 export const useToolApprovalQueue = create<ToolApprovalQueueState>((set, get) => ({
@@ -69,6 +66,7 @@ export const useToolApprovalQueue = create<ToolApprovalQueueState>((set, get) =>
       filePath: p.filePath,
       before: p.before,
       after: p.after,
+      ...(p.summary !== undefined ? { summary: p.summary } : {}),
       createdAt: Date.now(),
     };
     set((s) => ({ queue: [...s.queue, proposal] }));
@@ -98,19 +96,4 @@ export const useToolApprovalQueue = create<ToolApprovalQueueState>((set, get) =>
   },
   setApproveAll: (sessionId, value) =>
     set((s) => ({ approveAllBySession: { ...s.approveAllBySession, [sessionId]: value } })),
-  load: async (workspaceId) => {
-    try {
-      const loaded = await invoke<DiffProposal[]>("tool_queue_load", { workspaceId });
-      if (Array.isArray(loaded)) {
-        set({ queue: loaded });
-      }
-    } catch (e) {
-      console.warn("[tool-queue] load failed", e);
-    }
-  },
 }));
-
-/** Expose persistence for the ChatShell to call on `queue` change. */
-export async function flushQueue(workspaceId: string | null, queue: DiffProposal[]): Promise<void> {
-  await persist(workspaceId, queue);
-}
