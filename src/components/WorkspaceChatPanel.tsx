@@ -4,6 +4,10 @@
 //   - session bootstrap (always one session per workspace),
 //   - the `acp:notification` stream listener,
 //   - `onSend` → ACP adapter with a context-aware composed prompt,
+//   - SC-LLM-05 (F12): the BYOK lane — `api-key` agents call the stored
+//     provider credential through `ai/runner` (runChatStream) and stream
+//     into the same ChatStream; SC-LLM-06 (F13b) classifies failures
+//     (auth / network / other) into clearly-worded chat notices,
 //   - the queued tool-diff cards (permissionRequest → approval queue),
 //   - ADR-0014 §5 drag-chat edit: selection-scoped requests → inline diff
 //     overlay with Enter/Esc/Cmd+R decisions,
@@ -19,6 +23,9 @@ import { type UnlistenFn, listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAcpAdapter } from "../lib/agents/acp-adapter";
 import type { RegisteredAgent } from "../lib/agents/types";
+import { useKeyStore } from "../lib/ai/key-store";
+import type { ChatMessage as ProviderChatMessage } from "../lib/ai/providers/types";
+import { runChatStream } from "../lib/ai/runner";
 import {
   type Decision,
   type InlineDiff,
@@ -166,6 +173,41 @@ export function WorkspaceChatPanel({ workspaceId }: WorkspaceChatPanelProps) {
     [workspaceId],
   );
 
+  // SC-LLM-05 (F12): BYOK lane. `api-key` agents skip ACP entirely and call
+  // the provider through the runner (which resolves the key via the
+  // `ai_key_resolve` seam — S-AIK-020 — and uses the stored credential's
+  // model/baseUrl). Text chunks stream into the same ChatStream the ACP
+  // lanes use; the accumulated text + terminal error (if any) are returned
+  // so callers (chat / drag-edit) can post-process symmetrically.
+  const streamByokResponse = useCallback(
+    async (
+      chatSessionId: string,
+      alias: string,
+      messages: ProviderChatMessage[],
+    ): Promise<{ text: string; errorMessage: string | null }> => {
+      let text = "";
+      let errorMessage: string | null = null;
+      const iter = runChatStream({ alias, actionId: "chat", messages, stream: true });
+      while (true) {
+        const step = await iter.next();
+        if (step.done) {
+          if (step.value.status === "error") {
+            errorMessage = step.value.errorMessage ?? errorMessage ?? "unknown provider error";
+          }
+          return { text, errorMessage };
+        }
+        const chunk = step.value;
+        if (chunk.kind === "text" && chunk.delta) {
+          text += chunk.delta;
+          appendAssistantChunk(chatSessionId, chunk.delta);
+        } else if (chunk.kind === "error") {
+          errorMessage = chunk.message;
+        }
+      }
+    },
+    [appendAssistantChunk],
+  );
+
   // ADR-0014 §5 (SC-DRAG-01/04): 선택-편집 요청 1회 실행. AI 응답을 선택
   // 텍스트 대비 인라인 diff 로 만들어 overlay 를 띄운다. lane 은 일반 채팅과
   // 동일한 ACP 경로를 재사용 — 플로우 자체는 lane 에 독립적.
@@ -189,11 +231,42 @@ export function WorkspaceChatPanel({ workspaceId }: WorkspaceChatPanelProps) {
         return;
       }
       if (agent.kind === "api-key") {
-        // ADR-0004 contract: api-key path keeps the legacy provider flow.
-        appendMessage(session.id, {
-          role: "assistant",
-          content: `(api-key agent ${agent.label}: legacy provider path)`,
-        });
+        // SC-LLM-05 (F12): drag-edit is lane-independent — the BYOK lane
+        // runs the same selection-scoped prompt through the runner.
+        const alias = await resolveByokAlias();
+        if (!alias) {
+          appendMessage(session.id, { role: "system", content: NO_BYOK_KEY_MESSAGE });
+          return;
+        }
+        const composed = composeDragEditPrompt({ userText: prompt, selection, isRetry });
+        try {
+          const { text: reply, errorMessage } = await streamByokResponse(session.id, alias, [
+            { role: "user", content: composed },
+          ]);
+          if (errorMessage) {
+            appendMessage(session.id, {
+              role: "system",
+              content: describeByokFailure(errorMessage),
+            });
+            return;
+          }
+          const proposed = extractProposedText(reply);
+          if (!proposed) {
+            appendMessage(session.id, {
+              role: "system",
+              content:
+                "Drag-edit: the agent returned no replacement text — document left unchanged.",
+            });
+            return;
+          }
+          const diff = computeInlineDiff(selection.selectedText, proposed);
+          setDragEdit({ selection, raw, screenPosition, prompt, diff, retryUsed: isRetry });
+        } catch (err) {
+          appendMessage(session.id, {
+            role: "system",
+            content: describeByokFailure(describeError(err)),
+          });
+        }
         return;
       }
       try {
@@ -221,7 +294,7 @@ export function WorkspaceChatPanel({ workspaceId }: WorkspaceChatPanelProps) {
         });
       }
     },
-    [session, workspaceId, resolveAgent, appendMessage, ensureAcpSession],
+    [session, workspaceId, resolveAgent, appendMessage, ensureAcpSession, streamByokResponse],
   );
 
   // ADR-0014 §5 (SC-DRAG-02/03/04): Enter=accept / Esc=reject / Cmd+R=retry(1회).
@@ -309,11 +382,46 @@ export function WorkspaceChatPanel({ workspaceId }: WorkspaceChatPanelProps) {
       return;
     }
     if (agent.kind === "api-key") {
-      // ADR-0004 contract: api-key path keeps the legacy provider flow.
-      appendMessage(session.id, {
-        role: "assistant",
-        content: `(api-key agent ${agent.label}: legacy provider path)`,
+      // SC-LLM-05 (F12): BYOK lane — the stored credential (S-AIK-020 key
+      // resolve + model/baseUrl meta) drives a real provider call through
+      // the runner instead of the old placeholder notice.
+      const alias = await resolveByokAlias();
+      if (!alias) {
+        appendMessage(session.id, { role: "system", content: NO_BYOK_KEY_MESSAGE });
+        return;
+      }
+      // BYOK providers are stateless — resend the preamble as a system
+      // message plus the prior user/assistant turns every call. The
+      // *current* turn ships with the same workspace/active-file context
+      // block the ACP lane composes.
+      const history: ProviderChatMessage[] = session.messages.flatMap((m) =>
+        m.role === "user" || m.role === "assistant" ? [{ role: m.role, content: m.content }] : [],
+      );
+      const contextual = await composeAgentInput({
+        userText: text,
+        workspaceId,
+        activeFilePath: activeTabPath,
+        includeSystemPreamble: false,
       });
+      try {
+        const { errorMessage } = await streamByokResponse(session.id, alias, [
+          { role: "system", content: MARKSPREAD_PREAMBLE },
+          ...history,
+          { role: "user", content: contextual },
+        ]);
+        if (errorMessage) {
+          // SC-LLM-06 (F13b): 401/403 → clear auth-error guidance in chat.
+          appendMessage(session.id, {
+            role: "system",
+            content: describeByokFailure(errorMessage),
+          });
+        }
+      } catch (err) {
+        appendMessage(session.id, {
+          role: "system",
+          content: describeByokFailure(describeError(err)),
+        });
+      }
       return;
     }
     try {
@@ -447,6 +555,86 @@ function describeError(err: unknown): string {
 }
 
 /**
+ * In-editor grounding preamble. The ACP lane sends it inline on the first
+ * message of a session; the (stateless) BYOK lane resends it as the
+ * `system` message on every call.
+ */
+const MARKSPREAD_PREAMBLE = [
+  "[Markspread environment]",
+  "You are integrated *into* the Markspread editor (a Tauri-based",
+  "markdown reviewer). The user is editing the workspace and file shown",
+  "below; when they say 'this file', 'the parser', 'add a section',",
+  "they mean the active file. Operate as an in-editor assistant — not",
+  "a generic chatbot. When the user asks you to write a runtime parser",
+  "they mean: produce a JS factory function the user will load into the",
+  "Parser Studio (via the code-block 'Parser' action) to register. When",
+  "they ask you to",
+  "edit a markdown file, output the unified diff or the full new",
+  "content for them to apply.",
+].join("\n");
+
+// ─── SC-LLM-05/06 (F12/F13b): BYOK lane helpers ─────────────────────────
+
+const NO_BYOK_KEY_MESSAGE =
+  "No API key registered — add a provider key in Settings › AI to use this agent.";
+
+/**
+ * Resolve which stored credential the BYOK lane uses: the key store's
+ * default alias (S-AIK-012), falling back to the first entry. Hydrates
+ * the store lazily — chat can run before Settings was ever opened.
+ */
+async function resolveByokAlias(): Promise<string | null> {
+  if (useKeyStore.getState().entries.length === 0) {
+    try {
+      await useKeyStore.getState().load();
+    } catch (e) {
+      console.warn("[WorkspaceChatPanel] ai key list load failed", e);
+    }
+  }
+  const s = useKeyStore.getState();
+  if (s.defaultAlias && s.entries.some((e) => e.alias === s.defaultAlias)) {
+    return s.defaultAlias;
+  }
+  return s.entries[0]?.alias ?? null;
+}
+
+export type ByokErrorKind = "auth" | "network" | "other";
+
+/**
+ * SC-LLM-06 (F13b): classify a runner/adapter failure the same way
+ * `key-test.ts` classifies its probe (auth / network / other). Adapter
+ * errors carry `"<provider> <status>: <body>"` (providers/openai.ts,
+ * providers/anthropic.ts); messages without an HTTP status are matched
+ * against the usual network-failure shapes.
+ */
+export function classifyByokError(message: string): ByokErrorKind {
+  const m = /^\s*\S+\s+(\d{3}):/.exec(message);
+  if (m) {
+    return m[1] === "401" || m[1] === "403" ? "auth" : "other";
+  }
+  if (
+    /network|fetch failed|failed to fetch|econnrefused|enotfound|etimedout|timed out|timeout|dns|socket hang up/i.test(
+      message,
+    )
+  ) {
+    return "network";
+  }
+  return "other";
+}
+
+/** SC-LLM-06: one clearly-worded chat notice per failure class. */
+export function describeByokFailure(message: string): string {
+  switch (classifyByokError(message)) {
+    case "auth":
+      return `Authentication failed — the provider rejected your API key (${message}). Check the key in Settings › AI.`;
+    case "network":
+      return `Network error — could not reach the provider (${message}). Check your connection and try again.`;
+    case "other":
+      return `Provider error: ${message}`;
+  }
+}
+
+/**
  * Compose the actual text shipped to the ACP adapter so the agent knows
  * which workspace / file the user is talking about.
  *
@@ -465,22 +653,7 @@ async function composeAgentInput(args: {
   const parts: string[] = [];
 
   if (includeSystemPreamble) {
-    parts.push(
-      [
-        "[Markspread environment]",
-        "You are integrated *into* the Markspread editor (a Tauri-based",
-        "markdown reviewer). The user is editing the workspace and file shown",
-        "below; when they say 'this file', 'the parser', 'add a section',",
-        "they mean the active file. Operate as an in-editor assistant — not",
-        "a generic chatbot. When the user asks you to write a runtime parser",
-        "they mean: produce a JS factory function the user will load into the",
-        "Parser Studio (via the code-block 'Parser' action) to register. When",
-        "they ask you to",
-        "edit a markdown file, output the unified diff or the full new",
-        "content for them to apply.",
-        "",
-      ].join("\n"),
-    );
+    parts.push(`${MARKSPREAD_PREAMBLE}\n`);
   }
 
   parts.push(`[Workspace] ${workspaceId || "(none)"}`);

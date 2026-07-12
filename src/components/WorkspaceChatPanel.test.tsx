@@ -36,6 +36,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 
 import { invoke } from "@tauri-apps/api/core";
 import { type AcpAdapter, resetAcpAdapter, setAcpAdapter } from "../lib/agents/acp-adapter";
+import { useKeyStore } from "../lib/ai/key-store";
 import { useActivityMode } from "../store/activity-mode";
 import { useAgentRegistry } from "../store/agent-registry";
 import { _cancelChatFlush, useChatSessions } from "../store/chat-sessions";
@@ -68,6 +69,7 @@ function resetStores() {
   useActivityMode.setState({ mode: "workspace", enteredParserFrom: null, parserPrefillSource: "" });
   useDragChatSelection.getState().clear();
   useDocCache.setState({ baselines: {}, live: {}, errors: {}, reloadEpoch: {} });
+  useKeyStore.setState({ entries: [], defaultAlias: null });
   resetAcpAdapter();
   acpListeners.length = 0;
   invokeMock.mockReset();
@@ -89,6 +91,7 @@ afterEach(() => {
   useActivityMode.setState({ mode: "workspace", enteredParserFrom: null, parserPrefillSource: "" });
   useDragChatSelection.getState().clear();
   useDocCache.setState({ baselines: {}, live: {}, errors: {}, reloadEpoch: {} });
+  useKeyStore.setState({ entries: [], defaultAlias: null });
   resetAcpAdapter();
   acpListeners.length = 0;
 });
@@ -131,15 +134,22 @@ describe("WorkspaceChatPanel", () => {
     expect(getByTestId("chat-msg-user").textContent).toContain("hi");
   });
 
-  it("api-key agent bypasses the ACP adapter and prints a legacy notice", async () => {
+  // SC-LLM-05 (F12): the api-key lane never touches ACP. With no stored
+  // credential it prints Settings guidance instead of silently failing.
+  // The happy path (runner call + streaming) lives in
+  // WorkspaceChatPanel.byok.test.tsx.
+  it("api-key agent without a stored key prints Settings guidance (no ACP call)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const adapter = fakeAdapter();
     setAcpAdapter(adapter);
     useAgentRegistry.getState().setWorkspaceDefault(WS, "claude-api-key");
     const { getByTestId, container } = render(<WorkspaceChatPanel workspaceId={WS} />);
     fireEvent.change(getByTestId("chat-input"), { target: { value: "yo" } });
     fireEvent.click(getByTestId("chat-send"));
-    await waitFor(() => expect(container.textContent ?? "").toContain("api-key agent"));
+    await waitFor(() => expect(container.textContent ?? "").toContain("No API key registered"));
+    expect(container.textContent ?? "").toContain("Settings");
     expect(adapter.startSession).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("sending with no registered agent prints a system fallback", async () => {
