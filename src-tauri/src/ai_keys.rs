@@ -664,6 +664,138 @@ pub async fn ai_keychain_probe() -> AppResult<KeychainProbe> {
     }
 }
 
+// ─── Connection test (S-AIK-006..008 / SC-LLM-06) ───────────────────────
+//
+// `ai_key_test` performs the cheapest request each provider accepts
+// (model-list GET) so the Settings → AI "Test" button gets a fast yes/no
+// before the key is saved. Classification contract with
+// `lib/ai/key-test.ts`:
+//
+//   • Ok { status, ok, … }         — the provider answered; the renderer
+//     folds 401/403 into "auth" and other non-2xx into "other".
+//   • Err("network: …")            — DNS/timeout/connection refused. The
+//     error type is `String` (not `AppError`) on purpose: the renderer
+//     matches on the literal `network:` prefix of the rejection message,
+//     and `AppError::Invalid`'s Display would prepend "invalid input: ".
+//
+// The plaintext key arrives as an argument (pre-save test — it may not
+// be in the keychain yet) and lives only on this call's stack.
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiKeyTestResult {
+    pub status: u16,
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    pub message: String,
+}
+
+struct KeyTestPlan {
+    url: String,
+    headers: Vec<(&'static str, String)>,
+    /// Query params appended by reqwest (Google passes the key here).
+    query: Vec<(&'static str, String)>,
+}
+
+/// Route the test request per provider. Base URLs mirror the frontend
+/// catalog in `lib/ai/providers.ts`; `base_url` (when set) overrides.
+fn key_test_plan(provider: &str, base_url: Option<&str>, key: &str) -> Result<KeyTestPlan, String> {
+    fn base(base_url: Option<&str>, default: &str) -> String {
+        base_url.unwrap_or(default).trim_end_matches('/').to_string()
+    }
+    match provider {
+        "anthropic" => Ok(KeyTestPlan {
+            url: format!("{}/v1/models", base(base_url, "https://api.anthropic.com")),
+            headers: vec![
+                ("x-api-key", key.to_string()),
+                ("anthropic-version", "2023-06-01".to_string()),
+            ],
+            query: vec![],
+        }),
+        "google" => Ok(KeyTestPlan {
+            url: format!(
+                "{}/models",
+                base(base_url, "https://generativelanguage.googleapis.com/v1beta")
+            ),
+            headers: vec![],
+            query: vec![("key", key.to_string())],
+        }),
+        // Local, key-less: hitting /api/tags checks reachability only.
+        "ollama" => Ok(KeyTestPlan {
+            url: format!("{}/api/tags", base(base_url, "http://127.0.0.1:11434")),
+            headers: vec![],
+            query: vec![],
+        }),
+        "openai" | "xai" | "deepseek" | "mistral" | "openai-compatible" => {
+            let default = match provider {
+                "openai" => Some("https://api.openai.com/v1"),
+                "xai" => Some("https://api.x.ai/v1"),
+                "deepseek" => Some("https://api.deepseek.com/v1"),
+                "mistral" => Some("https://api.mistral.ai/v1"),
+                // openai-compatible has no default endpoint by definition.
+                _ => None,
+            };
+            let resolved = match (base_url, default) {
+                (Some(b), _) => b.trim_end_matches('/').to_string(),
+                (None, Some(d)) => d.to_string(),
+                (None, None) => {
+                    return Err(format!("provider {provider} requires a base URL"));
+                }
+            };
+            Ok(KeyTestPlan {
+                url: format!("{resolved}/models"),
+                headers: vec![("authorization", format!("Bearer {key}"))],
+                query: vec![],
+            })
+        }
+        other => Err(format!("unknown provider: {other}")),
+    }
+}
+
+#[tauri::command]
+pub async fn ai_key_test(
+    provider: String,
+    model: String,
+    base_url: Option<String>,
+    key: String,
+    abort_cookie: Option<String>,
+) -> Result<AiKeyTestResult, String> {
+    // The renderer registers an abort cookie for ESC-cancel; the request
+    // below is bounded by a 15s timeout, which caps how long a cancelled
+    // test can linger. Cookie-polling cancellation is not implemented.
+    let _ = abort_cookie;
+    let plan = key_test_plan(&provider, base_url.as_deref(), &key)?;
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("network: http client init failed: {e}"))?;
+    let mut req = client.get(&plan.url);
+    for (k, v) in &plan.headers {
+        req = req.header(*k, v);
+    }
+    if !plan.query.is_empty() {
+        req = req.query(&plan.query);
+    }
+    // Connection refused / DNS failure / timeout all land here — the
+    // `network:` prefix is what key-test.ts keys its classification on.
+    let resp = req.send().await.map_err(|e| format!("network: {e}"))?;
+    let status = resp.status().as_u16();
+    let ok = resp.status().is_success();
+    let message = if ok {
+        String::new()
+    } else {
+        // Truncated body so a chatty 4xx/5xx doesn't flood the IPC pipe.
+        resp.text().await.unwrap_or_default().chars().take(300).collect()
+    };
+    Ok(AiKeyTestResult {
+        status,
+        ok,
+        model_id: (ok && !model.is_empty()).then_some(model),
+        message,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -685,5 +817,172 @@ mod tests {
     fn rejects_traversal_alias() {
         assert!(validate_alias("../evil").is_err());
         assert!(validate_alias("ok-alias").is_ok());
+    }
+
+    // ── ai_key_test (S-AIK-006..008 / SC-LLM-06) ────────────────────────
+
+    #[tokio::test]
+    async fn ai_key_test_returns_401_for_rejected_key() {
+        use wiremock::matchers::{header, method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/models"))
+            .and(header("authorization", "Bearer sk-bad"))
+            .respond_with(ResponseTemplate::new(401).set_body_string("invalid api key"))
+            .mount(&server)
+            .await;
+        let out = ai_key_test(
+            "openai".into(),
+            "gpt-5".into(),
+            Some(server.uri()),
+            "sk-bad".into(),
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(out.status, 401);
+        assert!(!out.ok);
+        assert!(out.model_id.is_none());
+        assert!(out.message.contains("invalid api key"));
+    }
+
+    #[tokio::test]
+    async fn ai_key_test_returns_ok_for_accepted_key() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/models"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "data": [] })),
+            )
+            .mount(&server)
+            .await;
+        let out = ai_key_test(
+            "deepseek".into(),
+            "deepseek-chat".into(),
+            Some(server.uri()),
+            "sk-good".into(),
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(out.status, 200);
+        assert!(out.ok);
+        assert_eq!(out.model_id.as_deref(), Some("deepseek-chat"));
+        assert!(out.message.is_empty());
+    }
+
+    #[tokio::test]
+    async fn ai_key_test_anthropic_uses_x_api_key_and_v1_models_path() {
+        use wiremock::matchers::{header, method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/models"))
+            .and(header("x-api-key", "sk-ant-test"))
+            .and(header("anthropic-version", "2023-06-01"))
+            .respond_with(ResponseTemplate::new(403).set_body_string("forbidden"))
+            .mount(&server)
+            .await;
+        let out = ai_key_test(
+            "anthropic".into(),
+            "claude-opus-4-7".into(),
+            Some(server.uri()),
+            "sk-ant-test".into(),
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(out.status, 403);
+        assert!(!out.ok);
+    }
+
+    #[tokio::test]
+    async fn ai_key_test_google_passes_key_as_query_param() {
+        use wiremock::matchers::{method, path, query_param};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/models"))
+            .and(query_param("key", "g-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+            .mount(&server)
+            .await;
+        let out = ai_key_test(
+            "google".into(),
+            "gemini-2.5-pro".into(),
+            Some(server.uri()),
+            "g-key".into(),
+            None,
+        )
+        .await
+        .unwrap();
+        assert!(out.ok);
+    }
+
+    #[tokio::test]
+    async fn ai_key_test_unreachable_endpoint_yields_network_prefixed_error() {
+        // Port 1 is reserved/closed — connection refused, not a HTTP status.
+        let err = ai_key_test(
+            "openai".into(),
+            "gpt-5".into(),
+            Some("http://127.0.0.1:1".into()),
+            "sk-x".into(),
+            None,
+        )
+        .await
+        .unwrap_err();
+        assert!(
+            err.starts_with("network:"),
+            "expected network: prefix, got {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn ai_key_test_openai_compatible_requires_base_url() {
+        let err = ai_key_test(
+            "openai-compatible".into(),
+            "my-model".into(),
+            None,
+            "sk-x".into(),
+            None,
+        )
+        .await
+        .unwrap_err();
+        assert!(err.contains("base URL"));
+        assert!(!err.starts_with("network:"));
+    }
+
+    #[tokio::test]
+    async fn ai_key_test_unknown_provider_errors() {
+        let err = ai_key_test("nope".into(), "m".into(), None, "k".into(), None)
+            .await
+            .unwrap_err();
+        assert!(err.contains("unknown provider"));
+    }
+
+    #[test]
+    fn ai_key_test_result_serialises_camel_case_and_skips_absent_model() {
+        let v = serde_json::to_value(AiKeyTestResult {
+            status: 401,
+            ok: false,
+            model_id: None,
+            message: "unauthorized".into(),
+        })
+        .unwrap();
+        assert_eq!(v["status"], 401);
+        assert_eq!(v["ok"], false);
+        assert!(v.get("modelId").is_none());
+
+        let v = serde_json::to_value(AiKeyTestResult {
+            status: 200,
+            ok: true,
+            model_id: Some("gpt-5".into()),
+            message: String::new(),
+        })
+        .unwrap();
+        assert_eq!(v["modelId"], "gpt-5");
     }
 }

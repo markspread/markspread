@@ -3,11 +3,19 @@
 // goes through `ai_key_*` Rust handlers so plaintext never touches IPC
 // payloads beyond the single `ai_key_save` call; this panel otherwise
 // only exchanges aliases + provider ids + masked status strings.
+//
+// SC-LLM-03: the Add Key form is driven by the PROVIDERS registry
+// (lib/ai/providers.ts) — all 8 providers are selectable, the model
+// defaults per provider, and base-URL-requiring providers (Ollama,
+// OpenAI-compatible) expose a base URL field that is persisted.
+// SC-LLM-06: the Test button runs `testConnection` (ai_key_test on the
+// Rust side) and surfaces ok / auth / network / other outcomes.
 
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ProviderId } from "../lib/ai/providers";
+import { type TestOutcome, describeTestOutcome, testConnection } from "../lib/ai/key-test";
+import { PROVIDERS, type ProviderId, defaultModel, getProvider } from "../lib/ai/providers";
 import { SubscriptionAuthModal } from "./SubscriptionAuthModal";
 
 interface AiKeyEntry {
@@ -24,22 +32,43 @@ interface AiKeyList {
   defaultAlias: string | null;
 }
 
-const DEFAULT_MODEL: Record<string, string> = {
-  anthropic: "claude-sonnet-4-6",
-  openai: "gpt-4o",
-  ollama: "llama3",
+const TEST_OUTCOME_FALLBACK: Record<TestOutcome["kind"], string> = {
+  ok: "Connection OK",
+  auth: "Authentication failed",
+  network: "Network error",
+  other: "Error",
 };
+
+function firstProvider(): ProviderId {
+  return PROVIDERS[0]?.id ?? "anthropic";
+}
 
 export function SettingsAi() {
   const { t } = useTranslation();
   const [rows, setRows] = useState<AiKeyEntry[]>([]);
   const [defaultAlias, setDefaultAlias] = useState<string | null>(null);
-  const [provider, setProvider] = useState<ProviderId>("anthropic");
+  const [provider, setProvider] = useState<ProviderId>(firstProvider());
   const [alias, setAlias] = useState("default");
   const [secret, setSecret] = useState("");
+  const [model, setModel] = useState(() => {
+    const def = getProvider(firstProvider());
+    return def ? (defaultModel(def)?.id ?? "") : "";
+  });
+  const [baseUrl, setBaseUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<TestOutcome | null>(null);
   const [subscribeOpen, setSubscribeOpen] = useState(false);
+
+  const def = getProvider(provider) ?? PROVIDERS[0];
+  /* v8 ignore next -- PROVIDERS is a non-empty compile-time catalog, so a missing definition is unreachable */
+  if (!def) throw new Error("provider catalog is empty");
+  // Ollama is local and key-less (see providers.ts apiKeyHelp); the
+  // runner sends a placeholder Bearer token that local servers ignore.
+  const keyRequired = def.id !== "ollama";
+  const requiresBaseUrl = def.defaultBaseUrl === null;
+  const showBaseUrl = def.baseUrlEditable || requiresBaseUrl;
 
   const refresh = async () => {
     try {
@@ -56,27 +85,69 @@ export function SettingsAi() {
     void refresh();
   }, []);
 
-  const save = async () => {
-    /* v8 ignore next -- the Save button is disabled while !secret, so save() can't be invoked with an empty secret through the UI */
-    if (!secret) return;
-    setBusy(true);
+  const onProviderChange = (next: ProviderId) => {
+    setProvider(next);
+    const d = getProvider(next);
+    setModel(d ? (defaultModel(d)?.id ?? "") : "");
+    setBaseUrl("");
+    setTestResult(null);
     setError(null);
+  };
+
+  /** Shared pre-flight for Save and Test. Returns null when a field is missing. */
+  const validateForm = (): { model: string; baseUrl: string | null } | null => {
+    const trimmedBaseUrl = baseUrl.trim();
+    if (requiresBaseUrl && !trimmedBaseUrl) {
+      setError(t("settings.ai.base_url_required", "Base URL is required for this provider."));
+      return null;
+    }
+    const trimmedModel = model.trim();
+    if (!trimmedModel) {
+      setError(t("settings.ai.model_required", "Model is required."));
+      return null;
+    }
+    return { model: trimmedModel, baseUrl: trimmedBaseUrl || null };
+  };
+
+  const save = async () => {
+    /* v8 ignore next -- the Save button is disabled while the key is missing, so save() can't be invoked without a required secret through the UI */
+    if (keyRequired && !secret) return;
+    setError(null);
+    const form = validateForm();
+    if (!form) return;
+    setBusy(true);
     try {
       await invoke("ai_key_save", {
         alias,
         provider,
-        /* v8 ignore next -- provider is constrained to the three keys in DEFAULT_MODEL by the <select> options, so the `?? ""` fallback is unreachable */
-        model: DEFAULT_MODEL[provider] ?? "",
-        baseUrl: null,
-        key: secret,
+        model: form.model,
+        baseUrl: form.baseUrl,
+        key: secret || "ollama",
       });
       setSecret("");
+      setTestResult(null);
       await refresh();
     } catch (e) {
       setError(String((e as { message?: string })?.message ?? e));
     } finally {
       setBusy(false);
     }
+  };
+
+  const runTest = async () => {
+    setError(null);
+    setTestResult(null);
+    const form = validateForm();
+    if (!form) return;
+    setTesting(true);
+    const outcome = await testConnection({
+      provider,
+      model: form.model,
+      baseUrl: form.baseUrl,
+      key: secret || "ollama",
+    });
+    setTestResult(outcome);
+    setTesting(false);
   };
 
   const remove = async (row: AiKeyEntry) => {
@@ -104,6 +175,8 @@ export function SettingsAi() {
       setBusy(false);
     }
   };
+
+  const described = testResult ? describeTestOutcome(testResult) : null;
 
   return (
     <section
@@ -147,11 +220,13 @@ export function SettingsAi() {
           <select
             className="flex-1 rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs"
             value={provider}
-            onChange={(e) => setProvider(e.target.value as ProviderId)}
+            onChange={(e) => onProviderChange(e.target.value as ProviderId)}
           >
-            <option value="anthropic">{t("ai.provider.anthropic", "Anthropic")}</option>
-            <option value="openai">{t("ai.provider.openai", "OpenAI")}</option>
-            <option value="ollama">{t("ai.provider.ollama", "Ollama (local)")}</option>
+            {PROVIDERS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {t(`ai.provider.${p.id}`, p.label)}
+              </option>
+            ))}
           </select>
         </label>
         <label className="flex items-center gap-2 text-xs">
@@ -163,6 +238,49 @@ export function SettingsAi() {
             onChange={(e) => setAlias(e.target.value)}
           />
         </label>
+        <label className="flex items-center gap-2 text-xs" htmlFor="settings-ai-model">
+          <span className="w-20 text-[var(--color-muted)]">{t("settings.ai.model", "Model")}</span>
+          {def.allowCustomModels ? (
+            <input
+              id="settings-ai-model"
+              type="text"
+              data-testid="ai-model-input"
+              placeholder={t("settings.ai.model_placeholder", "model id")}
+              className="flex-1 rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            />
+          ) : (
+            <select
+              id="settings-ai-model"
+              data-testid="ai-model-select"
+              className="flex-1 rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              {def.models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </label>
+        {showBaseUrl && (
+          <label className="flex items-center gap-2 text-xs">
+            <span className="w-20 text-[var(--color-muted)]">
+              {t("settings.ai.base_url", "Base URL")}
+            </span>
+            <input
+              type="text"
+              data-testid="ai-baseurl-input"
+              placeholder={def.defaultBaseUrl ?? "https://…"}
+              className="flex-1 rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+            />
+          </label>
+        )}
         <label className="flex items-center gap-2 text-xs">
           <span className="w-20 text-[var(--color-muted)]">{t("settings.ai.key", "API Key")}</span>
           <input
@@ -173,10 +291,27 @@ export function SettingsAi() {
             autoComplete="off"
           />
         </label>
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-2">
+          {described && testResult && (
+            <output
+              data-testid="ai-key-test-result"
+              className={`text-xs ${testResult.kind === "ok" ? "text-green-600" : "text-red-500"}`}
+            >
+              {t(described.i18nKey, TEST_OUTCOME_FALLBACK[testResult.kind])} · {described.detail}
+            </output>
+          )}
           <button
             type="button"
-            disabled={!secret || busy}
+            data-testid="ai-key-test-button"
+            disabled={(keyRequired && !secret) || busy || testing}
+            onClick={() => void runTest()}
+            className="rounded border border-[var(--color-border)] px-3 py-1 text-xs disabled:opacity-50"
+          >
+            {testing ? t("settings.ai.testing", "Testing…") : t("settings.ai.test", "Test")}
+          </button>
+          <button
+            type="button"
+            disabled={(keyRequired && !secret) || busy}
             onClick={() => void save()}
             className="rounded bg-[var(--color-accent)] px-3 py-1 text-white text-xs disabled:opacity-50"
           >

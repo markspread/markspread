@@ -125,6 +125,26 @@ describe("ToolDiffDialog", () => {
     });
   });
 
+  it("shows the agent-authored summary when present", () => {
+    const p: DiffProposal = { ...makeProposal(), summary: "update the intro paragraph" };
+    const { getByTestId } = render(<ToolDiffDialog proposal={p} />);
+    expect(getByTestId("tool-diff-summary").textContent).toContain("update the intro paragraph");
+  });
+
+  it("a summary-only proposal (no diff payload) hides the empty diff box", () => {
+    // Fix-E/F14: Rust's permissionRequest carries only {toolCallId, summary}
+    // today — the card must stay meaningful instead of rendering a blank pre.
+    const p: DiffProposal = {
+      ...makeProposal(),
+      before: "",
+      after: "",
+      summary: "write notes.md",
+    };
+    const { getByTestId, queryByTestId } = render(<ToolDiffDialog proposal={p} />);
+    expect(queryByTestId("tool-diff-pre")).toBeNull();
+    expect(getByTestId("tool-diff-summary").textContent).toContain("write notes.md");
+  });
+
   it("works without an onDone callback", async () => {
     const p = makeProposal();
     useToolApprovalQueue.getState().enqueue({
