@@ -6,8 +6,11 @@
 # either: pin to a different version, replace the dep, or add a
 # considered exception here (with a comment + a tracking ticket).
 
+# cargo-deny ≥0.15 (EmbarkStudios/cargo-deny#611) removed `unlicensed`,
+# `copyleft`, `allow-osi-fsf-free` and `default`: the [licenses] section
+# is now allow-list-only, and anything not in `allow` is denied — which
+# is exactly the semantics the removed keys expressed here.
 [licenses]
-unlicensed = "deny"
 allow = [
   "MIT",
   "MIT-0",
@@ -22,10 +25,11 @@ allow = [
   "Unlicense",
   "BlueOak-1.0.0",
   "0BSD",
+  # Mirrors SAFE_LICENCES in licence-check.ts, which lists this
+  # expression literally. In the Rust tree it covers target-lexicon
+  # (cranelift/wasmtime project), pulled transitively by Tauri.
+  "Apache-2.0 WITH LLVM-exception",
 ]
-copyleft = "deny"
-allow-osi-fsf-free = "neither"
-default = "deny"
 confidence-threshold = 0.93
 
 [[licenses.exceptions]]
@@ -33,6 +37,44 @@ confidence-threshold = 0.93
 # as Apache-2.0-compatible. We pin the exception narrowly.
 name = "ring"
 allow = ["LicenseRef-ring"]
+
+# Our own crate. The app is deliberately AGPL-3.0-only (see [package]
+# in Cargo.toml and the repo LICENSE); the allow-list above governs
+# *dependencies*, so the project's own licence gets a pinned exception
+# rather than a global copyleft allowance.
+[[licenses.exceptions]]
+name = "markspread"
+allow = ["AGPL-3.0-only"]
+
+# MPL-2.0 transitives — all unavoidable and all consumed unmodified.
+# MPL-2.0 is file-level weak copyleft: using unmodified crates imposes
+# no obligations on our AGPL app code. cssparser/cssparser-macros/
+# dtoa-short/selectors arrive via dom_query ← tauri-utils 2.9 (Tauri 2
+# runtime, no alternative version without them); option-ext arrives via
+# dirs. Pinned per-crate so any *new* MPL dep still trips the check and
+# gets its own review.
+[[licenses.exceptions]]
+name = "cssparser"
+allow = ["MPL-2.0"]
+[[licenses.exceptions]]
+name = "cssparser-macros"
+allow = ["MPL-2.0"]
+[[licenses.exceptions]]
+name = "dtoa-short"
+allow = ["MPL-2.0"]
+[[licenses.exceptions]]
+name = "selectors"
+allow = ["MPL-2.0"]
+[[licenses.exceptions]]
+name = "option-ext"
+allow = ["MPL-2.0"]
+
+# webpki-roots ships Mozilla's CA certificate data under the permissive
+# CDLA-Permissive-2.0 data licence (standard for webpki-roots ≥0.26).
+# Transitive via reqwest → rustls; unavoidable while we use rustls.
+[[licenses.exceptions]]
+name = "webpki-roots"
+allow = ["CDLA-Permissive-2.0"]
 
 [bans]
 multiple-versions = "warn"
