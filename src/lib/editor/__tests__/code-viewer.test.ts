@@ -1,16 +1,41 @@
-// ADR-0014 (T2.c): Code Viewer 단위 테스트.
+// ADR-0014 (T2.c): Code Viewer 단위 테스트 — 매핑 + *로드 실패* 폴백.
 //
-// lazy language module import 자체는 jsdom 환경에서 dynamic import resolution
-// 가 일관 동작하지 않을 수 있어 unit 테스트는 *분기 + 매핑* 만 확인. 실제
-// language 통합은 e2e (Playwright) 회차에서 검증.
+// 각 @codemirror/lang-* 모듈을 throw 하는 factory 로 mock 해 dynamic import
+// 실패를 시뮬레이트 — 모든 loader 가 try→catch→null 로 떨어져 plain text
+// 폴백이 유지되는지 고정한다. 성공 경로는 code-viewer.langmock.test.ts
+// (mocked module) + code-viewer.dom.test.ts (실제 module + EditorView) 담당.
 
-import { describe, expect, it } from "vitest";
-import {
-  createCodeViewerSetup,
-  getLanguageFor,
-  isSupportedCodeExt,
-  readOnlyExtension,
-} from "../code-viewer";
+import type { EditorView } from "@codemirror/view";
+import { describe, expect, it, vi } from "vitest";
+import { createCodeViewerSetup, getLanguageFor, isSupportedCodeExt } from "../code-viewer";
+
+vi.mock("@codemirror/lang-javascript", () => {
+  throw new Error("chunk load failed");
+});
+vi.mock("@codemirror/lang-json", () => {
+  throw new Error("chunk load failed");
+});
+vi.mock("@codemirror/lang-css", () => {
+  throw new Error("chunk load failed");
+});
+vi.mock("@codemirror/lang-html", () => {
+  throw new Error("chunk load failed");
+});
+vi.mock("@codemirror/lang-rust", () => {
+  throw new Error("chunk load failed");
+});
+vi.mock("@codemirror/lang-python", () => {
+  throw new Error("chunk load failed");
+});
+vi.mock("@codemirror/lang-go", () => {
+  throw new Error("chunk load failed");
+});
+vi.mock("@codemirror/lang-sql", () => {
+  throw new Error("chunk load failed");
+});
+vi.mock("@codemirror/lang-yaml", () => {
+  throw new Error("chunk load failed");
+});
 
 const ALL_EXTS = [
   ".ts",
@@ -30,21 +55,7 @@ const ALL_EXTS = [
 
 describe("isSupportedCodeExt", () => {
   it("returns true for supported extensions", () => {
-    for (const ext of [
-      ".ts",
-      ".tsx",
-      ".js",
-      ".jsx",
-      ".json",
-      ".rs",
-      ".py",
-      ".go",
-      ".sql",
-      ".yaml",
-      ".yml",
-      ".css",
-      ".html",
-    ]) {
+    for (const ext of ALL_EXTS) {
       expect(isSupportedCodeExt(`file${ext}`)).toBe(true);
     }
   });
@@ -61,42 +72,13 @@ describe("isSupportedCodeExt", () => {
   });
 });
 
-describe("readOnlyExtension", () => {
-  it("returns an array (callable)", () => {
-    expect(Array.isArray(readOnlyExtension())).toBe(true);
-  });
-});
-
-describe("createCodeViewerSetup", () => {
-  it("returns extensions array and pending language promise", () => {
-    const setup = createCodeViewerSetup("script.ts");
-    expect(Array.isArray(setup.extensions)).toBe(true);
-    expect(setup.pendingLanguageLoad).toBeInstanceOf(Promise);
-  });
-
-  it("resolves pendingLanguageLoad without throwing for unsupported ext", async () => {
-    const setup = createCodeViewerSetup("README.unknownext");
-    const lang = await setup.pendingLanguageLoad;
-    expect(lang).toBeNull();
-  });
-
-  it("calls getLanguageFor with longest-suffix preference (tsx beats ts)", async () => {
-    // 본 테스트는 동작 보장만 — 실제 lang 인스턴스 검증은 e2e 에서.
-    // jsdom 환경에서 lang module dynamic import 가 resolve 가능한지 본다.
-    const setupTsx = createCodeViewerSetup("component.tsx");
-    // promise 가 throw 없이 resolve 또는 reject 정상 처리되는지만 확인.
-    await expect(setupTsx.pendingLanguageLoad).resolves.toBeDefined();
-  });
-});
-
 describe("getLanguageFor — lazy-load failure path", () => {
-  // The optional @codemirror/lang-* packages are not installed in the test
-  // (or default) environment, so every loader's dynamic import rejects and
-  // each loader falls through its catch to return null. This exercises the
+  // Every mocked module factory throws, so each loader's dynamic import
+  // rejects and falls through its catch to return null. This exercises the
   // try→catch→null branch of all 13 loaders. The success branch is covered
   // in code-viewer.langmock.test.ts where each module is mocked.
   for (const ext of ALL_EXTS) {
-    it(`returns null (not a throw) when the ${ext} language module is absent`, async () => {
+    it(`returns null (not a throw) when the ${ext} language module fails to load`, async () => {
       await expect(getLanguageFor(`file${ext}`)).resolves.toBeNull();
     });
   }
@@ -104,5 +86,28 @@ describe("getLanguageFor — lazy-load failure path", () => {
   it("returns null for an unmapped extension without invoking any loader", async () => {
     await expect(getLanguageFor("notes.unknownext")).resolves.toBeNull();
     await expect(getLanguageFor("Makefile")).resolves.toBeNull();
+  });
+});
+
+describe("createCodeViewerSetup — plain fallback", () => {
+  it("mounts an (initially empty) language slot extension", () => {
+    const setup = createCodeViewerSetup("script.ts");
+    expect(setup.extensions).toHaveLength(1);
+  });
+
+  it("applyLanguage resolves false and never dispatches when the load fails", async () => {
+    const dispatch = vi.fn();
+    const view = { dispatch } as unknown as EditorView;
+    const setup = createCodeViewerSetup("script.ts");
+    await expect(setup.applyLanguage(view)).resolves.toBe(false);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("applyLanguage resolves false and never dispatches for an unmapped extension", async () => {
+    const dispatch = vi.fn();
+    const view = { dispatch } as unknown as EditorView;
+    const setup = createCodeViewerSetup("README.unknownext");
+    await expect(setup.applyLanguage(view, () => false)).resolves.toBe(false);
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });

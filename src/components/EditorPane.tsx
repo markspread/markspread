@@ -228,6 +228,8 @@ export const EditorPane = memo(function EditorPane({ workspace }: EditorPaneProp
         tabId={activePath}
         initialDoc={doc.content}
         language={isMarkdownPath(activePath) ? "markdown" : "plain"}
+        // ADR-0014 T2.c: path drives the lazy syntax-highlight of non-md files.
+        path={activePath}
         // ADR-0014 T2 B+D: 비-md 파일 = read-only (syntax view), md = 편집.
         readOnly={readOnly || !isMarkdownPath(activePath)}
         onChange={handleChange(activePath)}

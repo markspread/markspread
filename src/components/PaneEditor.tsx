@@ -236,6 +236,8 @@ export const PaneEditor = memo(function PaneEditor({ workspace, pane }: PaneEdit
       tabId={`${pane.id}::${activePath}`}
       initialDoc={baseline.content}
       language={isMarkdown ? "markdown" : "plain"}
+      // ADR-0014 T2.c: path drives the lazy syntax-highlight of non-md files.
+      path={activePath}
       // ADR-0014 T2 B+D: 비-md = read-only (syntax view only)
       readOnly={readOnly || !isMarkdown}
       onChange={handleChange(activePath)}

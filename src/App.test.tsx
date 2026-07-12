@@ -13,6 +13,10 @@ vi.mock("./lib/unmount", () => ({
 vi.mock("./lib/polling-notice", () => ({
   registerPollingNoticeListener: vi.fn(() => () => {}),
 }));
+const stopParserHotReload = vi.fn();
+vi.mock("./lib/parsers/hot-reload-tauri", () => ({
+  startParserHotReload: vi.fn(() => stopParserHotReload),
+}));
 vi.mock("./lib/font-effect", () => ({ useFontFamilyEffect: () => {} }));
 vi.mock("./lib/open-workspace", () => ({
   openWorkspaceFromDialog: vi.fn(async () => {}),
@@ -70,6 +74,7 @@ vi.mock("./screens/ParserWorkbench", () => ({
 }));
 
 import App from "./App";
+import { startParserHotReload } from "./lib/parsers/hot-reload-tauri";
 import { useActivityMode } from "./store/activity-mode";
 import { useRecentWorkspaces } from "./store/recent-workspaces";
 import { useSingleFile } from "./store/single-file";
@@ -108,6 +113,24 @@ describe("App", () => {
     expect(getByTestId("parser")).toBeTruthy();
     // activity bar is present so the user can switch back
     expect(getByTestId("activity-bar")).toBeTruthy();
+  });
+
+  // SC-WB-03 / S-PSDK-004: opening a workspace arms the `.markspread/parsers/`
+  // hot-reload watch; unmounting (or switching workspaces) disposes it.
+  it("starts parser hot-reload for the open workspace and disposes on unmount", () => {
+    vi.mocked(startParserHotReload).mockClear();
+    stopParserHotReload.mockClear();
+    useWorkspace.setState({ current: "/ws" });
+    const { unmount } = render(<App />);
+    expect(startParserHotReload).toHaveBeenCalledWith("/ws");
+    unmount();
+    expect(stopParserHotReload).toHaveBeenCalled();
+  });
+
+  it("does not start parser hot-reload when no workspace is open", () => {
+    vi.mocked(startParserHotReload).mockClear();
+    render(<App />);
+    expect(startParserHotReload).not.toHaveBeenCalled();
   });
 
   it("renders SingleFile when a single-file path is set (wins over workspace)", () => {

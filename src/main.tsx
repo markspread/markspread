@@ -91,6 +91,9 @@ void getWindowInfo().finally(async () => {
 
   void restoreSessionOrFallback();
   markFirstPaint();
+  // SC-BASE-02/05: register the mermaid renderer + shiki highlighter with
+  // the preview pipeline. Lazy so the heavy libs never gate first paint.
+  void import("./lib/preview/boot").then((m) => m.bootPreviewRuntime());
   void import("./lib/plugins/boot").then((m) => m.bootInstalledPlugins());
   void import("./lib/updater/scheduler").then((m) => m.startUpdaterScheduler());
   void import("./lib/ai/auth-refresh-boot").then((m) => m.startAuthRefreshScheduler());

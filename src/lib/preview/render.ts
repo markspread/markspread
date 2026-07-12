@@ -3,14 +3,22 @@
 //
 // Pipeline (single render call):
 //   markdown source
-//     → unified.parse (remark-parse + remark-gfm)
+//     → strip frontmatter (S-MD-047 — metadata never renders as body)
+//     → unified.parse (remark-parse + remark-gfm + remark-math)
 //     → remark-rehype
 //     → rehype-raw       (so authored inline HTML survives)
-//     → rehype-shiki     (S-PR-007)  — when a host registers a
-//                                       highlighter, otherwise a
-//                                       no-op pass.
+//     → rehype ms-math   (S-MD-044/045 — rewrite remark-math output
+//                                       into `.ms-math` placeholders
+//                                       for the KaTeX consumer)
 //     → rehype-stringify
 //     → sanitizeHtml     (S-MD-041/042 — strict whitelist)
+//     → highlightCode    (S-PR-007)  — when a host registers a
+//                                       highlighter, otherwise a
+//                                       no-op pass. Runs *after*
+//                                       sanitize: Shiki token styles
+//                                       are trusted-tool output, same
+//                                       model as the mermaid/KaTeX
+//                                       DOM plugins.
 //   HTML string ─────────────────────► consumer injects via
 //                                       `dangerouslySetInnerHTML`
 //
@@ -21,6 +29,7 @@
 // preview component uses to coalesce keystrokes.
 
 import type { MatchResult } from "@markspread/parser-sdk";
+import { parseFrontmatter } from "../markdown/frontmatter";
 import { BUILTIN_MARKDOWN_ID, getParserRegistry } from "../parsers/registry";
 import { type SandboxTransport, renderInSandbox } from "../parsers/renderer-host";
 import { type SanitizeOptions, sanitizeHtml } from "./sanitize";
@@ -40,6 +49,7 @@ async function loadPipeline(): Promise<RenderFn> {
         { unified },
         { default: remarkParse },
         { default: remarkGfm },
+        { default: remarkMath },
         { default: remarkRehype },
         { default: rehypeRaw },
         { default: rehypeStringify },
@@ -47,6 +57,7 @@ async function loadPipeline(): Promise<RenderFn> {
         import("unified"),
         import("remark-parse"),
         import("remark-gfm"),
+        import("remark-math"),
         import("remark-rehype"),
         import("rehype-raw"),
         import("rehype-stringify"),
@@ -54,8 +65,10 @@ async function loadPipeline(): Promise<RenderFn> {
       const processor = unified()
         .use(remarkParse)
         .use(remarkGfm)
+        .use(remarkMath)
         .use(remarkRehype, { allowDangerousHtml: true })
         .use(rehypeRaw)
+        .use(rehypeMsMath)
         .use(rehypeStringify, { allowDangerousHtml: true });
       return async (md: string) => {
         const file = await processor.process(md);
@@ -81,6 +94,84 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+// S-MD-047 / SC-BASE-04: frontmatter is document metadata, never body.
+// Strip it before the markdown pipeline so `---\ntitle: x\n---` doesn't
+// leak into the preview as a thematic break + heading. Only the builtin
+// pipeline strips — custom parsers keep receiving the full document
+// (their manifests may key on frontmatter).
+function stripFrontmatter(md: string): string {
+  return parseFrontmatter(md)?.body ?? md;
+}
+
+// Minimal structural hast node — enough for the math-placeholder walk
+// below without pulling hast types into the runtime module graph.
+interface HastNode {
+  type: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+}
+
+// S-MD-044/045 / SC-BASE-03: remark-math emits
+//   `$x$`   → <code class="language-math math-inline">…</code>
+//   `$$x$$` → <pre><code class="language-math math-display">…</code></pre>
+// while the KaTeX consumer (katex.ts renderMathIn, run by SpreadPane)
+// expects `.ms-math` placeholders with data-mode="inline|block". This
+// rehype step rewrites the math elements into that contract before
+// stringify/sanitise. It runs after rehype-raw so authored inline HTML
+// has already been normalised into real elements.
+function rehypeMsMath() {
+  return (tree: HastNode) => walkMath(tree);
+}
+
+function mathModeOf(node: HastNode): "inline" | "display" | null {
+  if (node.type !== "element") return null;
+  const cls = node.properties?.className;
+  if (!Array.isArray(cls)) return null;
+  if (cls.includes("math-inline")) return "inline";
+  if (cls.includes("math-display")) return "display";
+  return null;
+}
+
+function msMathElement(mode: "inline" | "display", children: HastNode[]): HastNode {
+  return {
+    type: "element",
+    // Block math becomes a <div> so KaTeX display output sits in its own
+    // flow box; inline stays a <span>. Both carry the `.ms-math` contract.
+    tagName: mode === "display" ? "div" : "span",
+    properties: {
+      className: ["ms-math"],
+      dataMode: mode === "display" ? "block" : "inline",
+    },
+    children,
+  };
+}
+
+function walkMath(node: HastNode): void {
+  const children = node.children;
+  if (!children) return;
+  children.forEach((child, i) => {
+    // Fenced `$$…$$` blocks arrive as <pre><code class="…math-display">;
+    // replace the whole <pre> so the math isn't typeset inside a code box.
+    if (child.tagName === "pre") {
+      /* v8 ignore next -- hast elements always carry a children array */
+      const code = (child.children ?? []).find((c) => mathModeOf(c) === "display");
+      if (code) {
+        /* v8 ignore next -- ditto: code elements always carry a children array */
+        children[i] = msMathElement("display", code.children ?? []);
+        return;
+      }
+    }
+    const mode = mathModeOf(child);
+    if (mode) {
+      /* v8 ignore next -- ditto: code elements always carry a children array */
+      children[i] = msMathElement(mode, child.children ?? []);
+      return;
+    }
+    walkMath(child);
+  });
 }
 
 export interface RenderOptions extends SanitizeOptions {
@@ -173,12 +264,23 @@ export async function render(md: string, opts: RenderOptions = {}): Promise<stri
     }
   }
   // 최후의 fallback: path 자체 없거나 모든 매칭 실패 → host markdown pipeline.
+  return renderBuiltinMarkdown(md, opts);
+}
+
+// The builtin markdown path shared by the no-match fallback and the
+// `kind: "markdown"` AST branch. Order matters (SC-BASE-05): sanitize
+// runs on the pipeline output *first*, then the host highlighter
+// rewrites the (already-safe) code blocks — Shiki's per-token `style`
+// attributes would not survive the whitelist, and its output is
+// trusted-tool HTML built from escaped code text, the same trust model
+// as the mermaid/KaTeX post-render DOM plugins.
+async function renderBuiltinMarkdown(md: string, opts: RenderOptions): Promise<string> {
   const pipeline = await loadPipeline();
-  let html = await pipeline(md);
+  let html = sanitizeHtml(await pipeline(stripFrontmatter(md)), opts);
   if (opts.highlightCode) {
     html = await applyCodeHighlight(html, opts.highlightCode);
   }
-  return sanitizeHtml(html, opts);
+  return html;
 }
 
 /**
@@ -206,12 +308,7 @@ async function handleInProcessAst(
   if (kind === "markdown") {
     const source = (ast as { source?: unknown }).source;
     const mdText = typeof source === "string" ? source : originalMd;
-    const pipeline = await loadPipeline();
-    let html = await pipeline(mdText);
-    if (opts.highlightCode) {
-      html = await applyCodeHighlight(html, opts.highlightCode);
-    }
-    return sanitizeHtml(html, opts);
+    return renderBuiltinMarkdown(mdText, opts);
   }
   if (kind === "raw") {
     const value = (ast as { value?: unknown }).value;
