@@ -31,7 +31,7 @@ interface ShikiCore {
       defaultColor?: false;
     },
   ): string;
-  loadedLanguages(): string[];
+  getLoadedLanguages(): string[];
   loadLanguage(lang: string): Promise<void>;
 }
 
@@ -60,7 +60,7 @@ export async function highlightCode(code: string, lang: string): Promise<string>
   const highlighter = await shikiPromise;
   if (!highlighter) return fallback(code, lang);
   const langKey = lang || "text";
-  if (!highlighter.loadedLanguages().includes(langKey)) {
+  if (!highlighter.getLoadedLanguages().includes(langKey)) {
     try {
       await highlighter.loadLanguage(langKey);
     } catch {

@@ -71,6 +71,7 @@ async function loadPipeline(): Promise<RenderFn> {
         .use(remarkParse)
         .use(remarkGfm)
         .use(remarkMath)
+        .use(remarkPromoteDisplayMath)
         .use(remarkRehype, { allowDangerousHtml: true })
         .use(rehypeRaw)
         .use(rehypeMsMath)
@@ -119,9 +120,45 @@ interface HastNode {
   children?: HastNode[];
 }
 
+// Minimal structural mdast node — same rationale as HastNode below.
+interface MdastNode {
+  type: string;
+  position?: { start?: { offset?: number | undefined } | undefined } | undefined;
+  data?: { hProperties?: Record<string, unknown> | undefined } | undefined;
+  children?: MdastNode[] | undefined;
+}
+
+// SC-BASE-03: micromark parses a *single-line* `$$x$$` as inlineMath
+// (double dollars are only a block fence when they stand on their own
+// lines), which would demote a standalone `$$x$$` paragraph to inline
+// typesetting. GitHub/Obsidian convention: a paragraph that is nothing
+// but `$$…$$` typesets as display math, while `$$…$$` embedded in
+// running text stays inline (that narrower case is pinned by the
+// existing render.dom tests). Promote only the standalone form before
+// remark-rehype maps node.data to hast.
+function remarkPromoteDisplayMath() {
+  return (tree: MdastNode, file: { value?: unknown }) => {
+    const src = typeof file.value === "string" ? file.value : "";
+    const promote = (node: MdastNode): void => {
+      for (const child of node.children ?? []) promote(child);
+      if (node.type !== "paragraph") return;
+      const only = node.children?.length === 1 ? node.children[0] : undefined;
+      if (only?.type !== "inlineMath") return;
+      const start = only.position?.start?.offset;
+      if (typeof start !== "number" || src.slice(start, start + 2) !== "$$") return;
+      const data = only.data ?? {};
+      only.data = data;
+      data.hProperties = { ...data.hProperties, className: ["language-math", "math-display"] };
+    };
+    promote(tree);
+  };
+}
+
 // S-MD-044/045 / SC-BASE-03: remark-math emits
 //   `$x$`   → <code class="language-math math-inline">…</code>
-//   `$$x$$` → <pre><code class="language-math math-display">…</code></pre>
+//   `$$x$$` → <pre><code class="…math-display">…</code></pre> (fenced)
+//             or inlineMath promoted to math-display by the remark step
+//             above (single-line)
 // while the KaTeX consumer (katex.ts renderMathIn, run by SpreadPane)
 // expects `.ms-math` placeholders with data-mode="inline|block". This
 // rehype step rewrites the math elements into that contract before
@@ -455,6 +492,15 @@ async function applyCodeHighlight(
     const start = m.index ?? 0;
     parts.push(html.slice(last, start));
     const lang = m[1] ?? "";
+    // Mermaid fences are consumed by the mermaid DOM plugin, which
+    // matches `pre > code.language-mermaid` — highlighting would
+    // replace that hook (shiki ships a mermaid grammar) and no diagram
+    // would ever render. Leave the block untouched.
+    if (lang === "mermaid") {
+      parts.push(m[0]);
+      last = start + m[0].length;
+      continue;
+    }
     /* v8 ignore next -- the inner capture group is non-optional, so m[2] is always a string */
     const code = decoder(m[2] ?? "");
     try {

@@ -16,7 +16,7 @@ function makeHighlighter(loaded: string[]) {
       (code: string, opts: { lang: string }) =>
         `<pre class="shiki" data-lang="${opts.lang}">${code}</pre>`,
     ),
-    loadedLanguages: vi.fn(() => loaded),
+    getLoadedLanguages: vi.fn(() => loaded),
     loadLanguage: vi.fn(async (lang: string) => {
       loaded.push(lang);
     }),
