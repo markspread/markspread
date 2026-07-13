@@ -236,6 +236,8 @@ export const PaneEditor = memo(function PaneEditor({ workspace, pane }: PaneEdit
       tabId={`${pane.id}::${activePath}`}
       initialDoc={baseline.content}
       language={isMarkdown ? "markdown" : "plain"}
+      // ADR-0014 T2.c: path drives the lazy syntax-highlight of non-md files.
+      path={activePath}
       // ADR-0014 T2 B+D: 비-md = read-only (syntax view only)
       readOnly={readOnly || !isMarkdown}
       onChange={handleChange(activePath)}
@@ -255,6 +257,9 @@ export const PaneEditor = memo(function PaneEditor({ workspace, pane }: PaneEdit
                 fullText: range.fullText,
                 fromOffset: range.fromOffset,
                 toOffset: range.toOffset,
+                // ADR-0014 §5: AI 응답 diff 는 *선택 위치에* 인라인으로 뜬다.
+                // CM6 은 실제 DOM selection 을 유지하므로 rect 를 여기서 캡처.
+                screenPosition: selectionScreenPosition(),
               });
             },
           }
@@ -296,6 +301,19 @@ export const PaneEditor = memo(function PaneEditor({ workspace, pane }: PaneEdit
     </section>
   );
 });
+
+/**
+ * ADR-0014 H13: 현재 DOM selection 의 화면 좌표. InlineDiffOverlay 를 선택
+ * 영역 바로 아래에 띄우기 위한 best-effort 계산 — jsdom 등 layout 없는
+ * 환경에선 zero-rect 가 나오므로 null 로 강등 (overlay 는 중앙 fallback).
+ */
+function selectionScreenPosition(): { top: number; left: number } | null {
+  const domSel = window.getSelection?.();
+  if (!domSel || domSel.rangeCount === 0) return null;
+  const rect = domSel.getRangeAt(0).getBoundingClientRect();
+  if (rect.top === 0 && rect.left === 0 && rect.width === 0 && rect.height === 0) return null;
+  return { top: rect.bottom + 8, left: rect.left };
+}
 
 function ViewModeToggle({
   mode,

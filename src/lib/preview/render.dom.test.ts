@@ -7,6 +7,9 @@ import {
   getParserRegistry,
 } from "../parsers/registry";
 import type { SandboxTransport } from "../parsers/renderer-host";
+// Real KaTeX (not the katex.dom.test mock) — the SC-BASE-03 regression
+// asserts the *end-to-end* seam: pipeline placeholder → KaTeX markup.
+import { renderMathIn } from "./katex";
 import { createDebouncedRenderer, render } from "./render";
 
 afterEach(() => {
@@ -463,6 +466,121 @@ describe("render — handleInProcessAst defensive branches → builtin fallback"
     registerFactory("unkkind", ".unkkind", () => ({ ast: { kind: "totally-unknown" } }));
     const out = await render("# unk", { path: "/x.unkkind" });
     expect(out).toContain("<h1>unk</h1>");
+  });
+});
+
+// SC-BASE-03 regression: R1 found the `.ms-math` consumer (katex.ts) had
+// no producer — remark-math was missing so `$E=mc^2$` rendered literally.
+// These tests pin the whole seam: markdown → placeholder → KaTeX markup.
+describe("render — math placeholders (SC-BASE-03)", () => {
+  it("turns $inline$ math into an .ms-math span that KaTeX then typesets", async () => {
+    const out = await render("mass–energy: $E=mc^2$ equivalence");
+    expect(out).toContain('class="ms-math"');
+    expect(out).toContain('data-mode="inline"');
+    // the raw TeX no longer appears as literal $…$ prose
+    expect(out).not.toContain("$E=mc^2$");
+    const root = document.createElement("div");
+    root.innerHTML = out;
+    await renderMathIn(root);
+    const el = root.querySelector(".ms-math");
+    expect(el?.getAttribute("data-rendered")).toBe("true");
+    expect(el?.querySelector(".katex")).not.toBeNull();
+  });
+
+  it("turns a $$…$$ fenced block into a block-mode .ms-math div (no <pre> box)", async () => {
+    const out = await render("$$\n\\sum_{i=1}^{n} i\n$$");
+    expect(out).toContain('data-mode="block"');
+    expect(out).toMatch(/<div class="ms-math"/);
+    expect(out).not.toContain("<pre>");
+    const root = document.createElement("div");
+    root.innerHTML = out;
+    await renderMathIn(root);
+    expect(root.querySelector(".ms-math .katex")).not.toBeNull();
+  });
+
+  it("keeps a standalone single-dollar paragraph as inline math (no display promotion)", async () => {
+    // remarkPromoteDisplayMath 는 paragraph 가 inlineMath *하나뿐* 이어도 원문이
+    // `$$` 로 시작할 때만 display 로 승격한다 — `$x$` 단독 문단은 inline 유지.
+    const out = await render("$E=mc^2$");
+    expect(out).toContain('data-mode="inline"');
+    expect(out).not.toContain('data-mode="block"');
+  });
+
+  it("treats inline $$…$$ as inline math (remark-math text-math semantics)", async () => {
+    const out = await render("before $$x^2$$ after");
+    expect(out).toContain('data-mode="inline"');
+    expect(out).toContain("before");
+    expect(out).toContain("after");
+  });
+
+  it("rewrites an authored bare math-display element outside a <pre>", async () => {
+    // rehype-raw route: authored HTML carrying the remark-math classes is
+    // normalised into the same `.ms-math` contract as pipeline output.
+    const out = await render('x <code class="language-math math-display">x^2</code> y');
+    expect(out).toContain('data-mode="block"');
+    expect(out).toContain('class="ms-math"');
+  });
+
+  it("leaves regular code blocks untouched by the math rewrite", async () => {
+    const out = await render("```js\nconst dollars = '$5';\n```");
+    expect(out).toContain("<pre>");
+    expect(out).not.toContain("ms-math");
+  });
+});
+
+// SC-BASE-04 regression: R1 found SpreadPane rendered the raw document, so
+// `---\ntitle: x\n---` leaked into the preview as <hr> + heading.
+describe("render — frontmatter stripping (SC-BASE-04)", () => {
+  it("does not leak frontmatter into the rendered body", async () => {
+    const out = await render("---\ntitle: my doc\ntags: [a, b]\n---\n\n# Body\n\nprose");
+    expect(out).toContain("<h1>Body</h1>");
+    expect(out).toContain("prose");
+    expect(out).not.toContain("<hr");
+    expect(out).not.toContain("title: my doc");
+    expect(out).not.toContain("<h2");
+  });
+
+  it("also strips frontmatter on the builtin .md parser route (path match)", async () => {
+    const out = await render("---\ntitle: routed\n---\n\n# Routed", { path: "/ws/doc.md" });
+    expect(out).toContain("<h1>Routed</h1>");
+    expect(out).not.toContain("title: routed");
+    expect(out).not.toContain("<hr");
+  });
+
+  it("keeps a mid-document thematic break intact (no over-stripping)", async () => {
+    const out = await render("above\n\n---\n\nbelow");
+    expect(out).toContain("<hr");
+    expect(out).toContain("above");
+    expect(out).toContain("below");
+  });
+});
+
+// SC-BASE-05 regression: R1 found the sanitiser ran *after* the code
+// highlighter, so Shiki's per-token `style` attributes were stripped and
+// every code block fell back to unstyled text. The order is now
+// sanitize → highlight; these tests pin both halves of that contract.
+describe("render — highlight style survival (SC-BASE-05)", () => {
+  const shikiLike = (code: string, lang: string) =>
+    `<pre class="shiki" style="--shiki-light:#24292e;--shiki-dark:#e1e4e8"><code><span data-lang="${lang}" style="--shiki-light:#d73a49;--shiki-dark:#f97583">${code}</span></code></pre>`;
+
+  it("keeps the highlighter's per-token style attributes in the output", async () => {
+    const out = await render("```js\nconst x = 1;\n```", { highlightCode: shikiLike });
+    expect(out).toContain('class="shiki"');
+    expect(out).toContain("--shiki-light:#d73a49");
+    expect(out).toContain("--shiki-dark:#f97583");
+  });
+
+  it("still strips style/script from authored markdown when a highlighter is active", async () => {
+    const out = await render(
+      '<div style="color:red" onclick="x()">hi</div>\n\n<script>alert(1)</script>\n\n```js\nsafe\n```',
+      { highlightCode: shikiLike },
+    );
+    // XSS 계약 (SC-BASE-06) 후퇴 금지: 문서 유래 style/on*/script 는 여전히 제거,
+    // style 을 유지하는 건 highlighter 출력(신뢰된 도구 산출물)뿐이다.
+    expect(out).not.toContain("color:red");
+    expect(out).not.toContain("onclick");
+    expect(out).not.toMatch(/<script/i);
+    expect(out).toContain("--shiki-light:#d73a49");
   });
 });
 

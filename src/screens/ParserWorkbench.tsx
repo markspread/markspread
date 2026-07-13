@@ -18,8 +18,18 @@ import { type UnlistenFn, listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileTree } from "../components/FileTree";
+import { PluginConsentDialog } from "../components/PluginConsentDialog";
 import { getAcpAdapter } from "../lib/agents/acp-adapter";
-import { registerParserFromSource, unregisterParser } from "../lib/parsers/register-from-source";
+import {
+  registerParserFromSource,
+  resolveParserConsent,
+  unregisterParser,
+} from "../lib/parsers/register-from-source";
+import {
+  type ConsentDecision,
+  type ConsentPrompt,
+  summariseViolations,
+} from "../lib/plugins/runtime/consent";
 import { render } from "../lib/preview/render";
 import { useActivityMode } from "../store/activity-mode";
 import { useAgentRegistry } from "../store/agent-registry";
@@ -117,6 +127,11 @@ export function ParserWorkbench({ workspace }: Props): React.ReactElement {
   const [previewHtml, setPreviewHtml] = useState("");
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
+  // SC-SEC-04: [적용] 경로의 활성 동의 다이얼로그 상태. 워크벤치 라이브
+  // 프리뷰(sentinel)는 개발 루프라 동의 skip — 실확장자 등록만 동의 요구.
+  const [consentPrompt, setConsentPrompt] = useState<ConsentPrompt | null>(null);
+  // '이 파서로 지금 렌더' 가 동의 대기로 미뤄졌을 때, Accept 후 리뷰 복귀 여부.
+  const renderAfterConsentRef = useRef(false);
 
   // AC(축2): 중앙 패널 샘플/프리뷰 세로 분할 비율 + 드래그 컨테이너 ref.
   const [sampleRatio, setSampleRatio] = useState(SAMPLE_RATIO_DEFAULT);
@@ -196,12 +211,18 @@ export function ParserWorkbench({ workspace }: Props): React.ReactElement {
         displayName: "studio-preview",
         extensions: [STUDIO_EXT],
         source,
+        // 개발 루프: 코드 전문이 바로 옆 에디터에 노출 — 동의 다이얼로그 skip.
+        // Validator/Worker 격리/BudgetGuard 는 동일 적용 (SC-SEC-01..03).
+        workbenchPreview: true,
       });
       if (!res.ok) {
         // register/eval is synchronous (no await above), so `cancelled` cannot
         // have flipped here — no unmount-race guard needed on this path.
+        // SC-SEC-02: Validator 위반 시 프리뷰 렌더 차단 + 위반 목록 표시.
+        const violationText =
+          res.violations.length > 0 ? `\n${summariseViolations(res.violations)}` : "";
         /* v8 ignore next -- registerParserFromSource sets `error` on every failure path, so the "파서 평가 실패" fallback is unreachable */
-        setPreviewError(res.error ?? "파서 평가 실패");
+        setPreviewError(`${res.error ?? "파서 평가 실패"}${violationText}`);
         setPreviewHtml("");
         return;
       }
@@ -302,9 +323,12 @@ export function ParserWorkbench({ workspace }: Props): React.ReactElement {
     }
   };
 
-  // 파서를 실제 확장자에 등록. 성공 여부를 반환 — 역방향 '지금 렌더' 가
-  // 등록 성공 시에만 리뷰로 복귀하도록 분기하기 위함.
-  const applyParser = (): boolean => {
+  // 파서를 실제 확장자에 등록. 결과 3상 — 역방향 '지금 렌더' 가 활성 완료
+  // 시에만 리뷰로 복귀하고, 동의 대기면 Accept 이후로 미루기 위함.
+  //   "activated" : 등록 + 활성 완료 (재등록 등 이미 동의된 경우)
+  //   "pending"   : Validator 통과, 활성 동의 다이얼로그 대기 (SC-SEC-04)
+  //   "failed"    : 입력 오류 / Validator 위반 / 등록 실패
+  const applyParser = (): "activated" | "pending" | "failed" => {
     setApplyMsg(null);
     const exts = extensions
       .split(",")
@@ -313,39 +337,74 @@ export function ParserWorkbench({ workspace }: Props): React.ReactElement {
       .map((e) => (e.startsWith(".") ? e : `.${e}`));
     if (!parserId.trim()) {
       setApplyMsg("파서 id 를 입력하세요.");
-      return false;
+      return "failed";
     }
     if (exts.length === 0) {
       setApplyMsg("확장자를 하나 이상 입력하세요 (예: .md, .wiki).");
-      return false;
+      return "failed";
     }
-    // 이전 동일 id 가 있으면 교체 (unregisterParser 는 throw 하지 않음).
-    unregisterParser(parserId.trim());
+    // 동일 id 재등록은 registerParserFromSource 가 registry 항목만 교체한다
+    // (trust/consent 유지 — ADR-0016 T5.F "수정마다 동의 X"). unregisterParser
+    // 를 먼저 부르면 consent 가 리셋돼 매 [적용]마다 다이얼로그가 떠버린다.
     const res = registerParserFromSource({
       id: parserId.trim(),
       displayName: parserId.trim(),
       extensions: exts,
       source,
     });
+    if (!res.ok) {
+      // SC-SEC-02: Validator 위반 포함 등록 거부 — 위반 목록 표시.
+      const violationText =
+        res.violations.length > 0 ? ` — ${summariseViolations(res.violations)}` : "";
+      /* v8 ignore next -- registerParserFromSource sets `error` on every failure path, so the "알 수 없는 오류" fallback is unreachable */
+      setApplyMsg(`❌ 등록 실패: ${res.error ?? "알 수 없는 오류"}${violationText}`);
+      return "failed";
+    }
+    if (res.consent?.action === "show" && res.consent.prompt) {
+      // SC-SEC-04: 신규 파서 활성 동의 대기 — Accept 시에만 활성.
+      setConsentPrompt(res.consent.prompt);
+      setApplyMsg(`동의 대기: ${parserId.trim()} — 파서 코드 확인 후 수락하세요.`);
+      return "pending";
+    }
     setApplyMsg(
-      res.ok
-        ? `✅ 등록됨: ${parserId.trim()} → ${exts.join(", ")} (리뷰 모드에서 해당 파일이 이 파서로 렌더됩니다)`
-        : /* v8 ignore next -- registerParserFromSource sets `error` on every failure path, so the "알 수 없는 오류" fallback is unreachable */
-          `❌ 등록 실패: ${res.error ?? "알 수 없는 오류"}`,
+      `✅ 등록됨: ${parserId.trim()} → ${exts.join(", ")} (리뷰 모드에서 해당 파일이 이 파서로 렌더됩니다)`,
     );
     // ADR-0019 T5: 자작 파서가 실제 확장자에 등록되면 rail 게이트 재평가 트리거.
-    if (res.ok) notifyParserRegistryChanged();
-    return res.ok;
+    notifyParserRegistryChanged();
+    return "activated";
   };
 
   const onApply = () => {
+    renderAfterConsentRef.current = false;
     applyParser();
   };
 
   // N10 역방향 동선: 등록 + 리뷰 모드 복귀 + 프리뷰 강제 재렌더(nonce 증가).
-  // 등록 실패 시 워크벤치에 머문 채 오류 메시지만 표시한다.
+  // 등록 실패 시 워크벤치에 머문 채 오류 메시지만 표시. 동의 대기면 Accept
+  // 이후에 복귀한다.
   const onApplyAndRender = () => {
-    if (applyParser()) renderWithParser();
+    renderAfterConsentRef.current = false;
+    const outcome = applyParser();
+    if (outcome === "activated") renderWithParser();
+    if (outcome === "pending") renderAfterConsentRef.current = true;
+  };
+
+  // SC-SEC-04: 활성 동의 다이얼로그 결정 처리.
+  const onConsentDecision = (decision: ConsentDecision) => {
+    const pid = consentPrompt?.pluginName;
+    setConsentPrompt(null);
+    /* v8 ignore next -- prompt is non-null while the dialog is mounted; defensive */
+    if (!pid) return;
+    const { activated } = resolveParserConsent(pid, decision);
+    if (activated) {
+      setApplyMsg(`✅ 등록됨: ${pid} (동의 완료 — 리뷰 모드에서 이 파서로 렌더됩니다)`);
+      notifyParserRegistryChanged();
+      if (renderAfterConsentRef.current) renderWithParser();
+    } else {
+      setApplyMsg(`❌ 동의 거절 — ${pid} 등록이 취소되었습니다.`);
+      notifyParserRegistryChanged();
+    }
+    renderAfterConsentRef.current = false;
   };
 
   const messages = useMemo(() => session?.messages ?? [], [session]);
@@ -553,6 +612,9 @@ export function ParserWorkbench({ workspace }: Props): React.ReactElement {
           />
         </section>
       </div>
+
+      {/* SC-SEC-04 / ADR-0016 T5.F: [적용] 경로의 활성 동의 다이얼로그. */}
+      <PluginConsentDialog prompt={consentPrompt} onDecision={onConsentDecision} />
     </main>
   );
 }

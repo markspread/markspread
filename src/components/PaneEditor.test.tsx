@@ -21,6 +21,8 @@ let lastEditorProps: {
   onSelectionRange?: (range: SelectionRange) => void;
   remoteDoc?: string;
   language?: string;
+  path?: string;
+  readOnly?: boolean;
   initialPosition?: EditorPosition;
   tabId?: string;
 } | null = null;
@@ -32,6 +34,8 @@ vi.mock("./Editor", () => ({
     onSelectionRange?: (range: SelectionRange) => void;
     remoteDoc?: string;
     language?: string;
+    path?: string;
+    readOnly?: boolean;
     initialPosition?: EditorPosition;
     tabId?: string;
   }) => {
@@ -183,6 +187,19 @@ describe("PaneEditor", () => {
     });
     render(<PaneEditor workspace="/ws" pane={paneWith("/ws/notes.txt")} />);
     expect(lastEditorProps?.language).toBe("plain");
+  });
+
+  it("mounts non-md code files read-only with the path for lazy highlight (ADR-0014 T2.c)", () => {
+    useDocCache.getState().setBaseline("/ws", "/ws/src/main.ts", {
+      content: "const a = 1;",
+      encoding: "utf-8",
+      mtime: 0,
+      sha256: "",
+    });
+    render(<PaneEditor workspace="/ws" pane={paneWith("/ws/src/main.ts")} />);
+    expect(lastEditorProps?.language).toBe("plain");
+    expect(lastEditorProps?.path).toBe("/ws/src/main.ts");
+    expect(lastEditorProps?.readOnly).toBe(true);
   });
 
   it("toggles to spread view when the toggle is clicked", () => {
@@ -432,6 +449,71 @@ describe("PaneEditor", () => {
         toOffset: 5,
       }),
     );
+    capture.mockRestore();
+  });
+
+  it("captures the DOM selection screen position, degrading zero-rects to null", () => {
+    const capture = vi.spyOn(useDragChatSelection.getState(), "capture");
+    const getSelection = vi.spyOn(window, "getSelection");
+    const selectionWithRect = (rect: {
+      top: number;
+      left: number;
+      bottom: number;
+      width: number;
+      height: number;
+    }) =>
+      ({
+        rangeCount: 1,
+        getRangeAt: () => ({
+          getBoundingClientRect: () => ({ ...rect, right: rect.left + rect.width }),
+        }),
+      }) as unknown as Selection;
+    useDocCache.getState().setBaseline("/ws", "/ws/a.md", {
+      content: "hello world",
+      encoding: "utf-8",
+      mtime: 0,
+      sha256: "",
+    });
+    render(<PaneEditor workspace="/ws" pane={paneWith("/ws/a.md")} />);
+    const select = () =>
+      act(() =>
+        lastEditorProps?.onSelectionRange?.({ fromOffset: 0, toOffset: 5, fullText: "hello" }),
+      );
+    const lastScreenPosition = () =>
+      (capture.mock.calls.at(-1)?.[0] as { screenPosition: unknown }).screenPosition;
+
+    // Layout-backed rect → position just below the selection.
+    getSelection.mockReturnValue(
+      selectionWithRect({ top: 10, left: 20, bottom: 30, width: 40, height: 20 }),
+    );
+    select();
+    expect(lastScreenPosition()).toEqual({ top: 38, left: 20 });
+
+    // Partially-zero rects are real layout results, not the jsdom
+    // zero-rect degenerate — each one defeats a different guard clause.
+    for (const rect of [
+      { top: 0, left: 5, bottom: 12, width: 0, height: 0 },
+      { top: 0, left: 0, bottom: 9, width: 3, height: 0 },
+      { top: 0, left: 0, bottom: 7, width: 0, height: 7 },
+    ]) {
+      getSelection.mockReturnValue(selectionWithRect(rect));
+      select();
+      expect(lastScreenPosition()).toEqual({ top: rect.bottom + 8, left: rect.left });
+    }
+
+    // All-zero rect (jsdom / no layout) → null → overlay center fallback.
+    getSelection.mockReturnValue(
+      selectionWithRect({ top: 0, left: 0, bottom: 0, width: 0, height: 0 }),
+    );
+    select();
+    expect(lastScreenPosition()).toBeNull();
+
+    // No selection object at all → null.
+    getSelection.mockReturnValue(null);
+    select();
+    expect(lastScreenPosition()).toBeNull();
+
+    getSelection.mockRestore();
     capture.mockRestore();
   });
 

@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
-use agent_registry::{AgentDescriptor, AgentRegistry};
+use agent_registry::{AgentDescriptor, AgentRegistry, CustomAgent};
 use client::{AcpClient, AcpEvent};
 use protocol::{AgentId, ContentBlock, PermissionDecision, RequestId, SessionId};
 
@@ -45,7 +45,19 @@ fn remove_session(session_id: &SessionId) -> Option<Arc<AcpClient>> {
 
 fn registry() -> &'static Mutex<AgentRegistry> {
     static R: OnceLock<Mutex<AgentRegistry>> = OnceLock::new();
-    R.get_or_init(|| Mutex::new(AgentRegistry::default()))
+    R.get_or_init(|| {
+        // SC-LLM-04: merge persisted custom agents over the builtins so a
+        // registered agent still resolves (and spawns) after a restart.
+        let mut r = AgentRegistry::default();
+        if let Ok(path) = agent_registry::custom_agents_path() {
+            for agent in agent_registry::load_custom_agents(&path) {
+                if let Some(entry) = agent_registry::entry_from_custom(&agent) {
+                    r.insert(entry);
+                }
+            }
+        }
+        Mutex::new(r)
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -357,12 +369,13 @@ pub async fn acp_approve_tool(
 
 // ─── MAR-1010 / MAR-1011 surface ────────────────────────────────────────
 //
-// These four commands extend the existing ACP surface with the
+// These commands extend the existing ACP surface with the
 // agent-registry + tool-diff approval flow that U2 needs from the
-// renderer. They are intentionally thin: persistence + decision routing
-// is owned by the renderer stores; Rust merely acts as the IPC
-// pipe and (for `acp_approve_diff`) hands the decision to the live ACP
-// client when one exists.
+// renderer. Custom-agent persistence lives Rust-side (`agents.json`,
+// see `agent_registry`); the remaining commands are thin IPC pipes —
+// decision routing is owned by the renderer stores and
+// `acp_approve_diff` hands the decision to the live ACP client when one
+// exists.
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -373,32 +386,68 @@ pub struct ApproveDiffRequestId {
     pub request_id_string: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CustomAgent {
-    pub id: String,
-    pub label: String,
-    pub kind: String,
-}
-
 #[tauri::command]
 pub async fn agents_list_custom() -> Result<Vec<CustomAgent>, AppError> {
-    // The renderer hydrates builtins itself; we return an empty list
-    // until persisted custom agents land in a follow-up.
-    Ok(Vec::new())
+    // The renderer hydrates builtins itself; we return only the persisted
+    // custom agents (`agents.json` in the app data dir).
+    let path = agent_registry::custom_agents_path().map_err(AppError::Invalid)?;
+    Ok(agent_registry::load_custom_agents(&path))
 }
 
+/// SC-LLM-04: persist a custom agent (command, args, env) to `agents.json`
+/// and register it in the live in-memory registry so `acp_start_session`
+/// can resolve + spawn it immediately — and again after a restart via the
+/// merge in `registry()`.
 #[tauri::command]
 pub async fn agents_save_custom(agent: CustomAgent) -> Result<(), AppError> {
-    // Persistence (writing to `~/.markspread/agents.json`) is wired in a
-    // follow-up; today we accept and discard to keep the IPC ack flow.
-    let _ = agent;
+    if agent.id.trim().is_empty() {
+        return Err(AppError::Invalid("agent id must not be empty".into()));
+    }
+    if agent_registry::is_builtin_id(&agent.id) {
+        return Err(AppError::Invalid(format!(
+            "cannot overwrite builtin agent {}",
+            agent.id
+        )));
+    }
+    // ACP kinds must be spawnable; a record without a command would only
+    // fail later with a confusing spawn error.
+    if agent.kind.starts_with("acp") {
+        let has_command = agent
+            .transport
+            .as_ref()
+            .is_some_and(|t| !t.command.trim().is_empty());
+        if !has_command {
+            return Err(AppError::Invalid(
+                "acp agent requires a non-empty command".into(),
+            ));
+        }
+    }
+    let path = agent_registry::custom_agents_path().map_err(AppError::Invalid)?;
+    let mut list = agent_registry::load_custom_agents(&path);
+    list.retain(|a| a.id != agent.id);
+    list.push(agent.clone());
+    agent_registry::save_custom_agents(&path, &list).map_err(AppError::Invalid)?;
+    if let Some(entry) = agent_registry::entry_from_custom(&agent) {
+        registry().lock().unwrap().insert(entry);
+    }
     Ok(())
 }
 
 #[tauri::command]
 pub async fn agents_remove_custom(id: String) -> Result<(), AppError> {
-    let _ = id;
+    // Builtins are never removable — ack as a no-op (the renderer store
+    // guards this too; this is the defensive re-check).
+    if agent_registry::is_builtin_id(&id) {
+        return Ok(());
+    }
+    let path = agent_registry::custom_agents_path().map_err(AppError::Invalid)?;
+    let mut list = agent_registry::load_custom_agents(&path);
+    let before = list.len();
+    list.retain(|a| a.id != id);
+    if list.len() != before {
+        agent_registry::save_custom_agents(&path, &list).map_err(AppError::Invalid)?;
+    }
+    registry().lock().unwrap().remove(&AgentId(id));
     Ok(())
 }
 
@@ -438,20 +487,13 @@ pub async fn acp_approve_diff(
     Ok(())
 }
 
-#[tauri::command]
-pub async fn tool_queue_save(
-    workspace_id: String,
-    queue: serde_json::Value,
-) -> Result<(), AppError> {
-    let _ = (workspace_id, queue);
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn tool_queue_load(workspace_id: String) -> Result<serde_json::Value, AppError> {
-    let _ = workspace_id;
-    Ok(serde_json::Value::Array(Vec::new()))
-}
+// NOTE: the former `tool_queue_save` / `tool_queue_load` no-op stubs were
+// removed on purpose (Fix-E/F14). A queued `session/request_permission`
+// references a live JSON-RPC request id owned by the running agent
+// process — after an app restart that process (and the request id) no
+// longer exist, so a persisted queue could never be answered. The
+// approval queue is therefore in-memory only
+// (see `src/store/tool-approval-queue.ts`).
 
 #[tauri::command]
 pub async fn acp_cancel(session_id: SessionId) -> Result<(), AppError> {
@@ -578,24 +620,151 @@ mod tests {
         assert_eq!(v["event"]["reason"], "eof");
     }
 
+    fn custom_agent_fixture(id: &str) -> CustomAgent {
+        CustomAgent {
+            id: id.into(),
+            label: format!("{id} label"),
+            kind: "acp-external".into(),
+            transport: Some(agent_registry::CustomAgentTransport {
+                command: "codex-acp".into(),
+                args: vec!["--stdio".into()],
+                cwd: None,
+                env: None,
+                auth: Some("none".into()),
+            }),
+            model: None,
+        }
+    }
+
+    fn clear_custom_agents_file() {
+        if let Ok(path) = agent_registry::custom_agents_path() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+
     #[tokio::test]
     #[serial]
     async fn agents_list_custom_returns_empty_by_default() {
+        clear_custom_agents_file();
         let out = agents_list_custom().await.unwrap();
         assert!(out.is_empty());
     }
 
     #[tokio::test]
     #[serial]
-    async fn agents_save_and_remove_custom_are_noops_today() {
-        agents_save_custom(CustomAgent {
-            id: "x".into(),
-            label: "X".into(),
-            kind: "acp-external".into(),
-        })
-        .await
-        .unwrap();
-        agents_remove_custom("x".into()).await.unwrap();
+    async fn agents_save_custom_persists_registers_and_removes() {
+        clear_custom_agents_file();
+        let agent = custom_agent_fixture("mod-test-agent");
+        agents_save_custom(agent.clone()).await.unwrap();
+
+        // Persisted: visible through the list command (and hence across a
+        // renderer reload).
+        let listed = agents_list_custom().await.unwrap();
+        assert!(listed.iter().any(|a| a.id == "mod-test-agent"));
+
+        // Registered: resolvable by the same registry acp_start_session
+        // consults, with the spawnable argv intact.
+        {
+            let r = registry().lock().unwrap();
+            let entry = r
+                .get(&AgentId("mod-test-agent".into()))
+                .expect("custom agent missing from registry");
+            assert_eq!(
+                entry.command,
+                vec!["codex-acp".to_string(), "--stdio".to_string()]
+            );
+        }
+        let agents = acp_list_agents().await.unwrap();
+        assert!(agents.iter().any(|a| a.id.as_str() == "mod-test-agent"));
+
+        // Save is an upsert: re-saving with a new label replaces, not dupes.
+        let mut renamed = agent.clone();
+        renamed.label = "renamed".into();
+        agents_save_custom(renamed).await.unwrap();
+        let listed = agents_list_custom().await.unwrap();
+        let matches: Vec<_> = listed.iter().filter(|a| a.id == "mod-test-agent").collect();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].label, "renamed");
+
+        // Remove drops both the persisted record and the registry entry.
+        agents_remove_custom("mod-test-agent".into()).await.unwrap();
+        let listed = agents_list_custom().await.unwrap();
+        assert!(!listed.iter().any(|a| a.id == "mod-test-agent"));
+        assert!(registry()
+            .lock()
+            .unwrap()
+            .get(&AgentId("mod-test-agent".into()))
+            .is_none());
+        clear_custom_agents_file();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn agents_save_custom_rejects_empty_id_and_missing_command() {
+        clear_custom_agents_file();
+        let mut no_id = custom_agent_fixture("ok");
+        no_id.id = "  ".into();
+        let err = agents_save_custom(no_id).await.unwrap_err();
+        match err {
+            AppError::Invalid(s) => assert!(s.contains("id")),
+            other => panic!("expected Invalid, got {other:?}"),
+        }
+
+        let mut no_cmd = custom_agent_fixture("no-cmd");
+        no_cmd.transport = None;
+        let err = agents_save_custom(no_cmd).await.unwrap_err();
+        match err {
+            AppError::Invalid(s) => assert!(s.contains("command")),
+            other => panic!("expected Invalid, got {other:?}"),
+        }
+        // Nothing was persisted by the rejected saves.
+        assert!(agents_list_custom().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn agents_save_custom_rejects_builtin_ids() {
+        clear_custom_agents_file();
+        let mut clash = custom_agent_fixture("claude-subscription");
+        clash.id = "claude-subscription".into();
+        let err = agents_save_custom(clash).await.unwrap_err();
+        match err {
+            AppError::Invalid(s) => assert!(s.contains("builtin")),
+            other => panic!("expected Invalid, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn agents_remove_custom_is_noop_for_builtins() {
+        clear_custom_agents_file();
+        agents_remove_custom("claude-subscription".into())
+            .await
+            .unwrap();
+        // The builtin still resolves — unknown-agent NotFound behaviour is
+        // reserved for genuinely unregistered ids.
+        assert!(registry()
+            .lock()
+            .unwrap()
+            .get(&AgentId("claude-subscription".into()))
+            .is_some());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn unknown_agent_still_unresolvable_after_custom_saves() {
+        clear_custom_agents_file();
+        agents_save_custom(custom_agent_fixture("known-agent"))
+            .await
+            .unwrap();
+        // acp_start_session's NotFound arm keys off this same lookup.
+        assert!(registry()
+            .lock()
+            .unwrap()
+            .get(&AgentId("never-registered".into()))
+            .is_none());
+        agents_remove_custom("known-agent".into()).await.unwrap();
+        clear_custom_agents_file();
     }
 
     #[tokio::test]
@@ -604,16 +773,6 @@ mod tests {
         acp_set_workspace_default("/ws".into(), "claude-subscription".into())
             .await
             .unwrap();
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn tool_queue_save_and_load_round_trip_empty() {
-        tool_queue_save("/ws".into(), serde_json::Value::Array(Vec::new()))
-            .await
-            .unwrap();
-        let loaded = tool_queue_load("/ws".into()).await.unwrap();
-        assert!(loaded.is_array());
     }
 
     #[tokio::test]
@@ -732,9 +891,12 @@ mod tests {
         // Drop the fake agent half *before* closing. An underscore-
         // prefixed binding (`_agent_t2`) lives until end of scope — only
         // a bare `_` pattern drops immediately — so keeping it alive
-        // left the transport peer open and `session/close` (a request
-        // that awaits a reply) parked forever. This exact line hung
-        // every `cargo test` run at the 6h CI timeout.
+        // left the transport peer open-but-silent and `session/close`
+        // (a request that awaits a reply) parked forever; this exact
+        // line hung every `cargo test` run at the 6h CI timeout. The
+        // open-but-silent path now also has an RPC deadline plus its own
+        // regression test in `client.rs`:
+        // `session_close_times_out_on_unresponsive_agent`.
         drop(agent_t2);
 
         // Close the target session. Because the fake agent half was

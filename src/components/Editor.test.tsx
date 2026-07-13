@@ -65,9 +65,29 @@ const mountEditor = vi.fn((host: HTMLElement, doc: string): FakeView => {
   return view;
 });
 
+let lastMountExtensions: readonly unknown[] | null = null;
 vi.mock("@/lib/editor/state", () => ({
-  mountEditor: (host: HTMLElement, doc: string) => mountEditor(host, doc),
+  mountEditor: (host: HTMLElement, doc: string, extra?: readonly unknown[]) => {
+    lastMountExtensions = extra ?? null;
+    return mountEditor(host, doc);
+  },
   buildEditorState: vi.fn((_doc: string) => ({ kind: "fake-state" })),
+}));
+
+// ADR-0014 T2.c: capture the lazy-highlight seam so the tests can assert the
+// wiring (slot extension mounted, applyLanguage invoked, cancel on unmount)
+// without real language modules. The real contract is covered in
+// src/lib/editor/__tests__/code-viewer.dom.test.ts.
+let lastApplyLanguageArgs: { view: unknown; isCancelled?: () => boolean } | null = null;
+const createCodeViewerSetupMock = vi.fn((_filename: string) => ({
+  extensions: [{ kind: "code-viewer-slot" }],
+  applyLanguage: vi.fn((view: unknown, isCancelled?: () => boolean) => {
+    lastApplyLanguageArgs = { view, ...(isCancelled ? { isCancelled } : {}) };
+    return Promise.resolve(true);
+  }),
+}));
+vi.mock("@/lib/editor/code-viewer", () => ({
+  createCodeViewerSetup: (filename: string) => createCodeViewerSetupMock(filename),
 }));
 vi.mock("@codemirror/view", () => ({
   EditorView: {
@@ -90,7 +110,10 @@ beforeEach(() => {
   lastUpdateListener = null;
   lastView = null;
   docStore = "";
+  lastMountExtensions = null;
+  lastApplyLanguageArgs = null;
   mountEditor.mockClear();
+  createCodeViewerSetupMock.mockClear();
 });
 
 afterEach(cleanup);
@@ -276,5 +299,37 @@ describe("Editor", () => {
     lastView?.dispatch.mockClear();
     rerender(<Editor initialDoc="x" />);
     expect(lastView?.dispatch).not.toHaveBeenCalled();
+  });
+
+  // ADR-0014 T2.c: non-md files mount a lazy syntax-highlight slot and load
+  // the language module after the view is up; md files never touch the seam.
+  describe("lazy syntax highlight (plain + path)", () => {
+    it("mounts the code-viewer slot and applies the language to the live view", () => {
+      render(<Editor initialDoc="{}" language="plain" path="/ws/config.json" />);
+      expect(createCodeViewerSetupMock).toHaveBeenCalledWith("/ws/config.json");
+      expect(lastMountExtensions).toEqual(
+        expect.arrayContaining([expect.objectContaining({ kind: "code-viewer-slot" })]),
+      );
+      expect(lastApplyLanguageArgs?.view).toBe(lastView);
+      // While mounted the cancel probe reports "keep going".
+      expect(lastApplyLanguageArgs?.isCancelled?.()).toBe(false);
+    });
+
+    it("cancels a pending language load on unmount", () => {
+      const { unmount } = render(<Editor initialDoc="x" language="plain" path="/ws/a.ts" />);
+      expect(lastApplyLanguageArgs?.isCancelled?.()).toBe(false);
+      unmount();
+      expect(lastApplyLanguageArgs?.isCancelled?.()).toBe(true);
+    });
+
+    it("skips the code-viewer seam for markdown files", () => {
+      render(<Editor initialDoc="# hi" language="markdown" path="/ws/note.md" />);
+      expect(createCodeViewerSetupMock).not.toHaveBeenCalled();
+    });
+
+    it("skips the code-viewer seam when no path is provided", () => {
+      render(<Editor initialDoc="text" language="plain" />);
+      expect(createCodeViewerSetupMock).not.toHaveBeenCalled();
+    });
   });
 });

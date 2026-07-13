@@ -21,6 +21,7 @@ import { currentHarnessMode } from "./lib/harness";
 import { registerKeybindings } from "./lib/keybindings";
 import { openSingleMdFromDialog } from "./lib/open-md-file";
 import { newWorkspaceFromDialog, openWorkspaceFromDialog } from "./lib/open-workspace";
+import { startParserHotReload } from "./lib/parsers/hot-reload-tauri";
 import { registerPollingNoticeListener } from "./lib/polling-notice";
 import { maybeStartUnmountWatch, registerUnmountListener, stopUnmountWatch } from "./lib/unmount";
 import { HarnessRoot } from "./screens/HarnessRoot";
@@ -68,6 +69,12 @@ function RealApp() {
     return () => {
       void stopUnmountWatch(current);
     };
+  }, [current]);
+  // SC-WB-03 / S-PSDK-004: `.markspread/parsers/` 하위 파일 변경 감시 →
+  // 파서 자동 re-register. 워크스페이스가 바뀌면 이전 감시를 정리하고 새로 연다.
+  useEffect(() => {
+    if (!current) return;
+    return startParserHotReload(current);
   }, [current]);
   // S-MWS-005: 워크스페이스가 처음 열릴 때 셸 레이아웃을 초기화. 두 번째 호출부터는
   // ensure 가 기존 레이아웃을 그대로 반환하므로 비용 없음.

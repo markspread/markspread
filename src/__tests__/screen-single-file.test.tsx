@@ -22,6 +22,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 let lastEditorProps: {
   initialDoc: string;
   language?: string;
+  path?: string;
+  readOnly?: boolean;
   onChange?: (doc: string) => void;
   tabId?: string;
 } | null = null;
@@ -29,6 +31,8 @@ vi.mock("../components/Editor", () => ({
   Editor: (props: {
     initialDoc: string;
     language?: string;
+    path?: string;
+    readOnly?: boolean;
     onChange?: (doc: string) => void;
     tabId?: string;
   }) => {
@@ -143,6 +147,21 @@ describe("screens/SingleFile", () => {
     // Editor mounts; the non-md path drives the `isMd ? "markdown" : "plain"` else arm.
     expect(screen.getByTestId("single-file-editor")).toBeTruthy();
     expect(lastEditorProps?.language).toBe("plain");
+  });
+
+  it("mounts a non-md single file read-only with the path for lazy highlight (ADR-0014 T2.c)", () => {
+    useSingleFile.setState({ path: "/docs/config.json", content: "{}", dirty: false });
+    render(<SingleFile />);
+    expect(lastEditorProps?.language).toBe("plain");
+    expect(lastEditorProps?.path).toBe("/docs/config.json");
+    expect(lastEditorProps?.readOnly).toBe(true);
+  });
+
+  it("keeps markdown single files editable (readOnly off)", () => {
+    useSingleFile.setState({ path: "/docs/note.md", content: "x", dirty: false });
+    render(<SingleFile />);
+    expect(lastEditorProps?.readOnly).toBe(false);
+    expect(lastEditorProps?.path).toBe("/docs/note.md");
   });
 
   it("forwards Editor onChange edits into the single-file store", () => {

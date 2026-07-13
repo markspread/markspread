@@ -3,14 +3,22 @@
 //
 // Pipeline (single render call):
 //   markdown source
-//     → unified.parse (remark-parse + remark-gfm)
+//     → strip frontmatter (S-MD-047 — metadata never renders as body)
+//     → unified.parse (remark-parse + remark-gfm + remark-math)
 //     → remark-rehype
 //     → rehype-raw       (so authored inline HTML survives)
-//     → rehype-shiki     (S-PR-007)  — when a host registers a
-//                                       highlighter, otherwise a
-//                                       no-op pass.
+//     → rehype ms-math   (S-MD-044/045 — rewrite remark-math output
+//                                       into `.ms-math` placeholders
+//                                       for the KaTeX consumer)
 //     → rehype-stringify
 //     → sanitizeHtml     (S-MD-041/042 — strict whitelist)
+//     → highlightCode    (S-PR-007)  — when a host registers a
+//                                       highlighter, otherwise a
+//                                       no-op pass. Runs *after*
+//                                       sanitize: Shiki token styles
+//                                       are trusted-tool output, same
+//                                       model as the mermaid/KaTeX
+//                                       DOM plugins.
 //   HTML string ─────────────────────► consumer injects via
 //                                       `dangerouslySetInnerHTML`
 //
@@ -21,8 +29,14 @@
 // preview component uses to coalesce keystrokes.
 
 import type { MatchResult } from "@markspread/parser-sdk";
+import { useToasts } from "../../store/toasts";
+import { parseFrontmatter } from "../markdown/frontmatter";
 import { BUILTIN_MARKDOWN_ID, getParserRegistry } from "../parsers/registry";
 import { type SandboxTransport, renderInSandbox } from "../parsers/renderer-host";
+import { getRuntimeParserSuspension, suspendRuntimeParser } from "../parsers/runtime-transport";
+import { getParserTransport } from "../parsers/transport-registry";
+import { BUDGETS, describeOutcome, measureAsync } from "../plugins/runtime/budget-guard";
+import { getOrchestrator } from "../plugins/runtime/orchestrator-singleton";
 import { type SanitizeOptions, sanitizeHtml } from "./sanitize";
 
 // We keep dependencies optional to make this module safe to import
@@ -40,6 +54,7 @@ async function loadPipeline(): Promise<RenderFn> {
         { unified },
         { default: remarkParse },
         { default: remarkGfm },
+        { default: remarkMath },
         { default: remarkRehype },
         { default: rehypeRaw },
         { default: rehypeStringify },
@@ -47,6 +62,7 @@ async function loadPipeline(): Promise<RenderFn> {
         import("unified"),
         import("remark-parse"),
         import("remark-gfm"),
+        import("remark-math"),
         import("remark-rehype"),
         import("rehype-raw"),
         import("rehype-stringify"),
@@ -54,8 +70,11 @@ async function loadPipeline(): Promise<RenderFn> {
       const processor = unified()
         .use(remarkParse)
         .use(remarkGfm)
+        .use(remarkMath)
+        .use(remarkPromoteDisplayMath)
         .use(remarkRehype, { allowDangerousHtml: true })
         .use(rehypeRaw)
+        .use(rehypeMsMath)
         .use(rehypeStringify, { allowDangerousHtml: true });
       return async (md: string) => {
         const file = await processor.process(md);
@@ -81,6 +100,122 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+// S-MD-047 / SC-BASE-04: frontmatter is document metadata, never body.
+// Strip it before the markdown pipeline so `---\ntitle: x\n---` doesn't
+// leak into the preview as a thematic break + heading. Only the builtin
+// pipeline strips — custom parsers keep receiving the full document
+// (their manifests may key on frontmatter).
+function stripFrontmatter(md: string): string {
+  return parseFrontmatter(md)?.body ?? md;
+}
+
+// Minimal structural hast node — enough for the math-placeholder walk
+// below without pulling hast types into the runtime module graph.
+interface HastNode {
+  type: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+}
+
+// Minimal structural mdast node — same rationale as HastNode below.
+interface MdastNode {
+  type: string;
+  position?: { start?: { offset?: number | undefined } | undefined } | undefined;
+  data?: { hProperties?: Record<string, unknown> | undefined } | undefined;
+  children?: MdastNode[] | undefined;
+}
+
+// SC-BASE-03: micromark parses a *single-line* `$$x$$` as inlineMath
+// (double dollars are only a block fence when they stand on their own
+// lines), which would demote a standalone `$$x$$` paragraph to inline
+// typesetting. GitHub/Obsidian convention: a paragraph that is nothing
+// but `$$…$$` typesets as display math, while `$$…$$` embedded in
+// running text stays inline (that narrower case is pinned by the
+// existing render.dom tests). Promote only the standalone form before
+// remark-rehype maps node.data to hast.
+function remarkPromoteDisplayMath() {
+  return (tree: MdastNode, file: { value?: unknown }) => {
+    /* v8 ignore next -- the pipeline always processes a string, so file.value is a string here; the "" arm guards direct transformer reuse */
+    const src = typeof file.value === "string" ? file.value : "";
+    const promote = (node: MdastNode): void => {
+      for (const child of node.children ?? []) promote(child);
+      if (node.type !== "paragraph") return;
+      const only = node.children?.length === 1 ? node.children[0] : undefined;
+      if (only?.type !== "inlineMath") return;
+      const start = only.position?.start?.offset;
+      if (typeof start !== "number" || src.slice(start, start + 2) !== "$$") return;
+      /* v8 ignore next -- mdast-util-math always sets data (hName/hProperties) on inlineMath, so the {} arm only guards other math sources */
+      const data = only.data ?? {};
+      only.data = data;
+      data.hProperties = { ...data.hProperties, className: ["language-math", "math-display"] };
+    };
+    promote(tree);
+  };
+}
+
+// S-MD-044/045 / SC-BASE-03: remark-math emits
+//   `$x$`   → <code class="language-math math-inline">…</code>
+//   `$$x$$` → <pre><code class="…math-display">…</code></pre> (fenced)
+//             or inlineMath promoted to math-display by the remark step
+//             above (single-line)
+// while the KaTeX consumer (katex.ts renderMathIn, run by SpreadPane)
+// expects `.ms-math` placeholders with data-mode="inline|block". This
+// rehype step rewrites the math elements into that contract before
+// stringify/sanitise. It runs after rehype-raw so authored inline HTML
+// has already been normalised into real elements.
+function rehypeMsMath() {
+  return (tree: HastNode) => walkMath(tree);
+}
+
+function mathModeOf(node: HastNode): "inline" | "display" | null {
+  if (node.type !== "element") return null;
+  const cls = node.properties?.className;
+  if (!Array.isArray(cls)) return null;
+  if (cls.includes("math-inline")) return "inline";
+  if (cls.includes("math-display")) return "display";
+  return null;
+}
+
+function msMathElement(mode: "inline" | "display", children: HastNode[]): HastNode {
+  return {
+    type: "element",
+    // Block math becomes a <div> so KaTeX display output sits in its own
+    // flow box; inline stays a <span>. Both carry the `.ms-math` contract.
+    tagName: mode === "display" ? "div" : "span",
+    properties: {
+      className: ["ms-math"],
+      dataMode: mode === "display" ? "block" : "inline",
+    },
+    children,
+  };
+}
+
+function walkMath(node: HastNode): void {
+  const children = node.children;
+  if (!children) return;
+  children.forEach((child, i) => {
+    // Fenced `$$…$$` blocks arrive as <pre><code class="…math-display">;
+    // replace the whole <pre> so the math isn't typeset inside a code box.
+    if (child.tagName === "pre") {
+      /* v8 ignore next -- hast elements always carry a children array */
+      const code = (child.children ?? []).find((c) => mathModeOf(c) === "display");
+      if (code) {
+        /* v8 ignore next -- ditto: code elements always carry a children array */
+        children[i] = msMathElement("display", code.children ?? []);
+        return;
+      }
+    }
+    const mode = mathModeOf(child);
+    if (mode) {
+      /* v8 ignore next -- ditto: code elements always carry a children array */
+      children[i] = msMathElement(mode, child.children ?? []);
+      return;
+    }
+    walkMath(child);
+  });
 }
 
 export interface RenderOptions extends SanitizeOptions {
@@ -138,6 +273,13 @@ export async function render(md: string, opts: RenderOptions = {}): Promise<stri
           ...(opts.frontmatter ? { frontmatter: opts.frontmatter } : {}),
         });
     if (matched) {
+      // SC-SEC-01..04 / ADR-0016: 신뢰경계 밖(llm-generated/imported) 파서는
+      // in-process 실행 금지 — 동의 게이트 + Worker 격리 + BudgetGuard 를
+      // 강제하는 전용 경로로만 렌더한다. builtin / local(사용자 보유 코드,
+      // ADR-0012 C1) 파서는 기존 in-process 사이클 유지.
+      if (requiresSandbox(matched.parser.manifest.id)) {
+        return renderUntrustedRuntimeParser(matched.parser.manifest.id, md, opts);
+      }
       // 1순위: sandbox transport (외부 plugin 격리)
       if (opts.transport && matched.parser.manifest.id !== BUILTIN_MARKDOWN_ID) {
         const result = await renderInSandbox(opts.transport, {
@@ -173,12 +315,124 @@ export async function render(md: string, opts: RenderOptions = {}): Promise<stri
     }
   }
   // 최후의 fallback: path 자체 없거나 모든 매칭 실패 → host markdown pipeline.
+  return renderBuiltinMarkdown(md, opts);
+}
+
+// SC-SEC-01 게이트: trust level 이 llm-generated/imported 인 파서만 sandbox
+// 강제. trust 미등록(= builtin, 디스크 hot-reload 등 사용자 보유 코드) 은
+// ADR-0012 C1 의 사용자 신뢰로 기존 in-process 경로를 탄다.
+function requiresSandbox(parserId: string): boolean {
+  const level = getOrchestrator().trust.level(parserId);
+  return level === "llm-generated" || level === "imported";
+}
+
+// 차단 사유를 문서 대신 렌더하는 가시 카드. sanitizeHtml 화이트리스트
+// (div/p/strong + data-*) 안에서만 구성한다.
+function blockedNoticeHtml(
+  parserId: string,
+  reason: "consent" | "suspended" | "no-transport" | "error" | "bad-ast",
+  detail: string,
+  opts: RenderOptions,
+): string {
+  const id = escapeHtml(parserId);
+  const html = `<div class="ms-parser-blocked" data-testid="parser-blocked" data-parser-blocked="${id}" data-blocked-reason="${reason}"><p><strong>${id}</strong> 파서 실행이 차단되었습니다</p><p>${escapeHtml(detail)}</p></div>`;
+  return sanitizeHtml(html, opts);
+}
+
+/**
+ * SC-SEC-01/03/04: llm-generated/imported 파서 전용 렌더 경로.
+ *   - 활성 동의(T5.F) 없으면 실행 자체를 차단.
+ *   - 실행은 transport-registry 의 Worker transport 로만 (renderInSandbox).
+ *     transport 부재 = 차단 (in-process 강등 금지 — R1 SC-SEC-01 결함 클래스).
+ *   - BudgetGuard(T5.D) local 100ms 예산으로 measureAsync — 초과 시 worker
+ *     suspend + 토스트 알림 + 차단 카드.
+ *   - 결과 AST 는 builtin 과 동일한 handleInProcessAst 사이클로 sanitize.
+ */
+async function renderUntrustedRuntimeParser(
+  parserId: string,
+  md: string,
+  opts: RenderOptions,
+): Promise<string> {
+  const trust = getOrchestrator().trust;
+  if (!trust.hasConsent(parserId)) {
+    return blockedNoticeHtml(
+      parserId,
+      "consent",
+      "활성 동의가 필요합니다 — 파서 등록 시 표시되는 동의 다이얼로그에서 수락 후 사용할 수 있습니다 (ADR-0016 T5.F).",
+      opts,
+    );
+  }
+  const suspension = getRuntimeParserSuspension(parserId);
+  if (suspension) {
+    return blockedNoticeHtml(parserId, "suspended", suspension, opts);
+  }
+  const transport = opts.transport ?? getParserTransport(parserId);
+  if (!transport) {
+    return blockedNoticeHtml(
+      parserId,
+      "no-transport",
+      "격리 실행 환경(Worker transport)이 없습니다 — 파서를 다시 등록하세요.",
+      opts,
+    );
+  }
+  const budget = BUDGETS.local;
+  const { result, outcome } = await measureAsync(budget, () =>
+    renderInSandbox(
+      transport,
+      {
+        type: "parse",
+        requestId: `r-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        parserId,
+        /* v8 ignore next -- render() only routes here when opts.path matched a parser, so the "" arm satisfies the type only */
+        path: opts.path ?? "",
+        content: md,
+        encoding: opts.encoding ?? "utf-8",
+      },
+      // renderInSandbox 자체 timeout 은 backstop — 실제 예산은 measureAsync.
+      { timeoutMs: Math.max(budget.timeCapMs * 10, 1000) },
+    ),
+  );
+  if (outcome.shouldSuspend) {
+    const message = describeOutcome(outcome, parserId);
+    // 재등록 race 가드: 이 render 가 dispatch 한 transport 가 이미 교체됐다면
+    // (워크벤치 debounce 재등록 등) 새 세대 worker 를 suspend 하지 않는다 —
+    // stale 타임아웃의 오발 방지. 현행 세대의 초과만 suspend + 알림.
+    if (getParserTransport(parserId) === transport) {
+      suspendRuntimeParser(parserId, message);
+      useToasts.getState().push({ kind: "error", message });
+    }
+    return blockedNoticeHtml(parserId, "suspended", message, opts);
+  }
+  /* v8 ignore next 4 -- renderInSandbox resolves(never rejects), so error_thrown/null result only guards future refactors */
+  if (!result) {
+    return blockedNoticeHtml(parserId, "error", outcome.message ?? "no result", opts);
+  }
+  if (result.kind === "error") {
+    return blockedNoticeHtml(parserId, "error", result.message, opts);
+  }
+  if (result.kind === "html") {
+    return sanitizeHtml(result.html, opts);
+  }
+  // kind === "ast" — builtin 과 동일한 factory→AST→render 사이클.
+  const handled = await handleInProcessAst({ ast: result.ast }, md, opts);
+  if (handled !== null) return handled;
+  return blockedNoticeHtml(parserId, "bad-ast", "파서가 알 수 없는 AST 를 반환했습니다.", opts);
+}
+
+// The builtin markdown path shared by the no-match fallback and the
+// `kind: "markdown"` AST branch. Order matters (SC-BASE-05): sanitize
+// runs on the pipeline output *first*, then the host highlighter
+// rewrites the (already-safe) code blocks — Shiki's per-token `style`
+// attributes would not survive the whitelist, and its output is
+// trusted-tool HTML built from escaped code text, the same trust model
+// as the mermaid/KaTeX post-render DOM plugins.
+async function renderBuiltinMarkdown(md: string, opts: RenderOptions): Promise<string> {
   const pipeline = await loadPipeline();
-  let html = await pipeline(md);
+  let html = sanitizeHtml(await pipeline(stripFrontmatter(md)), opts);
   if (opts.highlightCode) {
     html = await applyCodeHighlight(html, opts.highlightCode);
   }
-  return sanitizeHtml(html, opts);
+  return html;
 }
 
 /**
@@ -206,12 +460,7 @@ async function handleInProcessAst(
   if (kind === "markdown") {
     const source = (ast as { source?: unknown }).source;
     const mdText = typeof source === "string" ? source : originalMd;
-    const pipeline = await loadPipeline();
-    let html = await pipeline(mdText);
-    if (opts.highlightCode) {
-      html = await applyCodeHighlight(html, opts.highlightCode);
-    }
-    return sanitizeHtml(html, opts);
+    return renderBuiltinMarkdown(mdText, opts);
   }
   if (kind === "raw") {
     const value = (ast as { value?: unknown }).value;
@@ -246,6 +495,15 @@ async function applyCodeHighlight(
     const start = m.index ?? 0;
     parts.push(html.slice(last, start));
     const lang = m[1] ?? "";
+    // Mermaid fences are consumed by the mermaid DOM plugin, which
+    // matches `pre > code.language-mermaid` — highlighting would
+    // replace that hook (shiki ships a mermaid grammar) and no diagram
+    // would ever render. Leave the block untouched.
+    if (lang === "mermaid") {
+      parts.push(m[0]);
+      last = start + m[0].length;
+      continue;
+    }
     /* v8 ignore next -- the inner capture group is non-optional, so m[2] is always a string */
     const code = decoder(m[2] ?? "");
     try {

@@ -25,6 +25,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -73,6 +74,12 @@ impl From<RpcError> for AcpError {
 }
 
 pub type AcpResult<T> = Result<T, AcpError>;
+
+/// Upper bound on how long `session/close` waits for the agent's ack.
+/// A dead/hung transport previously blocked `acp_close_session` forever;
+/// the manager entry is force-removed by the caller regardless of the RPC
+/// outcome, so a graceful ack is worth at most this much waiting.
+pub const SESSION_CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// Inbound notifications and incoming agent-initiated requests that the
 /// host UI/command layer must act on. The session id field on the
@@ -204,9 +211,26 @@ impl AcpClient {
         self.send_raw(RawMessage::Notification(n)).await
     }
 
+    /// `session/close` is bounded by [`SESSION_CLOSE_TIMEOUT`]: a dead or
+    /// unresponsive transport must never hang the caller — the host is about
+    /// to force-drop the session either way, so we only wait briefly for a
+    /// graceful ack.
     pub async fn session_close(&self, session_id: SessionId) -> AcpResult<()> {
+        self.session_close_with_timeout(session_id, SESSION_CLOSE_TIMEOUT)
+            .await
+    }
+
+    /// Timeout-parameterised variant of [`Self::session_close`] so tests can
+    /// exercise the deadline without waiting the production duration.
+    pub async fn session_close_with_timeout(
+        &self,
+        session_id: SessionId,
+        deadline: Duration,
+    ) -> AcpResult<()> {
         let p = SessionCloseParams { session_id };
-        let _: Value = self.request(Method::SessionClose.as_str(), &p).await?;
+        let _: Value = self
+            .request_with_deadline(Method::SessionClose.as_str(), &p, Some(deadline))
+            .await?;
         Ok(())
     }
 
@@ -252,6 +276,19 @@ impl AcpClient {
         method: &str,
         params: &P,
     ) -> AcpResult<R> {
+        self.request_with_deadline(method, params, None).await
+    }
+
+    /// Core request path. `deadline: Some(d)` bounds the wait for the
+    /// response; on expiry the pending waiter is removed (so a late
+    /// response doesn't warn-spam the reader) and `AcpError::Transport`
+    /// is returned.
+    async fn request_with_deadline<P: Serialize, R: serde::de::DeserializeOwned>(
+        &self,
+        method: &str,
+        params: &P,
+        deadline: Option<Duration>,
+    ) -> AcpResult<R> {
         let id_num = self.inner.next_id.fetch_add(1, Ordering::Relaxed);
         let id = RequestId::from_u64(id_num);
         let req = Request::new(id.clone(), method, params)?;
@@ -261,7 +298,20 @@ impl AcpClient {
             map.insert(id_key(&id), tx);
         }
         self.send_raw(RawMessage::Request(req)).await?;
-        let resp = rx.await.map_err(|_| AcpError::Closed)??;
+        let resp = match deadline {
+            None => rx.await.map_err(|_| AcpError::Closed)??,
+            Some(d) => match tokio::time::timeout(d, rx).await {
+                Ok(inner) => inner.map_err(|_| AcpError::Closed)??,
+                Err(_elapsed) => {
+                    let mut map = self.inner.pending.lock().unwrap();
+                    map.remove(&id_key(&id));
+                    return Err(AcpError::Transport(format!(
+                        "{method} timed out after {}ms",
+                        d.as_millis()
+                    )));
+                }
+            },
+        };
         if let Some(e) = resp.error {
             return Err(e.into());
         }
@@ -758,6 +808,45 @@ mod tests {
         matches!(ev, AcpEvent::Closed(_));
     }
 
+    // F15 regression: an agent that stays *alive but silent* (transport
+    // open, no response) must not hang `session/close` forever. Before the
+    // deadline landed, `rx.await` blocked indefinitely and
+    // `acp::tests::close_session_removes_entry_from_manager` deadlocked the
+    // whole #[serial] suite.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn session_close_times_out_on_unresponsive_agent() {
+        let (client_t, _agent_t) = MemoryTransport::pair(8192);
+        // NB: `_agent_t` is intentionally kept alive — the transport stays
+        // open so the request is neither answered nor failed by EOF.
+        let client = AcpClient::new(client_t);
+        let started = std::time::Instant::now();
+        let err = client
+            .session_close_with_timeout(SessionId("silent".into()), Duration::from_millis(100))
+            .await
+            .unwrap_err();
+        match err {
+            AcpError::Transport(msg) => assert!(msg.contains("timed out"), "got: {msg}"),
+            other => panic!("expected Transport timeout, got {other:?}"),
+        }
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "close must return promptly after the deadline"
+        );
+        // The pending waiter was removed on expiry — no leak.
+        assert!(client.inner.pending.lock().unwrap().is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn session_close_succeeds_within_deadline_on_responsive_agent() {
+        let (client_t, agent_t) = MemoryTransport::pair(8192);
+        tokio::spawn(run_fake_agent(agent_t));
+        let client = AcpClient::new(client_t);
+        client
+            .session_close(SessionId("sess-1".into()))
+            .await
+            .expect("responsive agent must ack close inside the deadline");
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn permission_request_routes_to_event_and_response_round_trips() {
         let (client_t, mut agent_t) = MemoryTransport::pair(8192);
@@ -847,10 +936,10 @@ mod tests {
     // compare content + mtime, exactly the contract the task demands.
 
     /// Fake agent for the fs flow. On `session/prompt`:
-    ///   1. sends `session/request_permission` to the host and waits,
-    ///   2. if the host's decision is `allow`/`allow_once`, sends
-    ///      `fs/write_text_file` with `target_path`/`target_content`,
-    ///   3. completes the prompt with `end_turn`.
+    /// 1. sends `session/request_permission` to the host and waits,
+    /// 2. if the host's decision is `allow`/`allow_once`, sends
+    ///    `fs/write_text_file` with `target_path`/`target_content`,
+    /// 3. completes the prompt with `end_turn`.
     ///
     /// Returns nothing; runs until the transport closes.
     async fn run_fs_fake_agent(

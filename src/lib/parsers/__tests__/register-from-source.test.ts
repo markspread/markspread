@@ -1,18 +1,34 @@
 // H4 / ADR-0013: 런타임 파서 source → 등록 end-to-end logic 검증.
+//
+// SC-SEC-01..04 계약 (R1 수정): 등록은 Validator 게이트를 통과해야 하고,
+// llm-generated 소스는 메인스레드에서 실행되지 않으며(guard factory),
+// 활성 동의(Accept) 후에만 Worker transport 가 붙는다.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getOrchestrator, resetOrchestrator } from "../../plugins/runtime/orchestrator-singleton";
-import { registerParserFromSource, unregisterParser } from "../register-from-source";
+import {
+  compileFactorySource,
+  evaluateFactory,
+  registerParserFromSource,
+  resolveParserConsent,
+  unregisterParser,
+} from "../register-from-source";
 import { __resetParserRegistryForTests, getParserRegistry } from "../registry";
+import { __resetRuntimeParserTransportsForTests } from "../runtime-transport";
+import { __resetParserTransportsForTests, getParserTransport } from "../transport-registry";
 
 beforeEach(() => {
   __resetParserRegistryForTests();
   resetOrchestrator();
+  __resetParserTransportsForTests();
+  __resetRuntimeParserTransportsForTests();
 });
 
 afterEach(() => {
   __resetParserRegistryForTests();
   resetOrchestrator();
+  __resetParserTransportsForTests();
+  __resetRuntimeParserTransportsForTests();
   vi.restoreAllMocks();
 });
 
@@ -51,7 +67,10 @@ describe("registerParserFromSource — happy path", () => {
     expect(r.ok).toBe(true);
   });
 
-  it("registered factory actually produces ast on parse", () => {
+  it("SC-SEC-01: registry factory is a guard — user code never runs in-process", () => {
+    // 계약 갱신 (R1): 이전엔 factory 가 메인스레드에서 user 코드를 실행했다.
+    // 이제 registry factory 는 sandbox-only guard 이고 실행은 Worker transport
+    // (renderInSandbox) 경로에서만 일어난다.
     registerParserFromSource({
       id: "echo",
       displayName: "Echo",
@@ -61,12 +80,121 @@ describe("registerParserFromSource — happy path", () => {
     const matched = getParserRegistry().match({ path: "/x.echo" });
     if (!matched) throw new Error("expected match");
     const out = matched.parser.factory({ content: "hi", path: "/x.echo", encoding: "utf-8" });
-    expect((out as { ast: { kind: string; html: string } }).ast.html).toBe("echo:hi");
+    const ast = (out as { ast: { kind: string; value?: string } }).ast;
+    expect(ast.kind).toBe("raw");
+    expect(String(ast.value)).toContain("sandbox 전용");
+    expect(String(ast.value)).not.toContain("echo:hi");
+  });
+
+  it("SC-SEC-04: consent Accept 후에만 Worker transport 가 등록된다", () => {
+    const r = registerParserFromSource({
+      id: "consent-flow",
+      displayName: "CF",
+      extensions: [".cf"],
+      source: `(input) => ({ ast: { kind: "html", html: input.content } })`,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.activated).toBe(false);
+    expect(r.consent?.action).toBe("show");
+    expect(r.consent?.prompt?.fullSource).toContain("input.content");
+    // 미동의 상태 — transport 없음 + 동의 기록 없음.
+    expect(getParserTransport("consent-flow")).toBeNull();
+    expect(getOrchestrator().trust.hasConsent("consent-flow")).toBe(false);
+    // Accept → recordConsent + transport 활성.
+    const { activated } = resolveParserConsent("consent-flow", "accept");
+    expect(activated).toBe(true);
+    expect(getOrchestrator().trust.hasConsent("consent-flow")).toBe(true);
+    expect(getParserTransport("consent-flow")).not.toBeNull();
+  });
+
+  it("SC-SEC-04: consent Reject 는 등록을 롤백한다", () => {
+    registerParserFromSource({
+      id: "consent-reject",
+      displayName: "CR",
+      extensions: [".cr"],
+      source: `(input) => ({ ast: { kind: "html", html: input.content } })`,
+    });
+    const { activated } = resolveParserConsent("consent-reject", "reject");
+    expect(activated).toBe(false);
+    expect(getParserRegistry().match({ path: "/x.cr" })?.parser.manifest.id).not.toBe(
+      "consent-reject",
+    );
+    expect(getParserTransport("consent-reject")).toBeNull();
+  });
+
+  it("재등록(교체)은 기존 동의를 유지한다 — T5.F '수정마다 X'", () => {
+    registerParserFromSource({
+      id: "re-apply",
+      displayName: "RA",
+      extensions: [".ra"],
+      source: `(input) => ({ ast: { kind: "html", html: "v1" } })`,
+    });
+    resolveParserConsent("re-apply", "accept");
+    const second = registerParserFromSource({
+      id: "re-apply",
+      displayName: "RA",
+      extensions: [".ra"],
+      source: `(input) => ({ ast: { kind: "html", html: "v2" } })`,
+    });
+    expect(second.ok).toBe(true);
+    expect(second.consent?.action).toBe("already-consented");
+    expect(second.activated).toBe(true);
+  });
+
+  it("consent Accept 는 pending source 가 없으면 no-op (activated:false)", () => {
+    // 등록된 적 없는 id 의 Accept — pendingConsentSources 미스 가드 (line 229).
+    const { activated } = resolveParserConsent("never-registered", "accept");
+    expect(activated).toBe(false);
+    expect(getParserTransport("never-registered")).toBeNull();
+  });
+
+  it("consent Accept 시 recordConsent 실패면 활성하지 않는다 (lines 233-235)", () => {
+    registerParserFromSource({
+      id: "consent-boom",
+      displayName: "CB",
+      extensions: [".cb"],
+      source: `(input) => ({ ast: { kind: "html", html: input.content } })`,
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(getOrchestrator().trust, "recordConsent").mockImplementation(() => {
+      throw new Error("record-consent-boom");
+    });
+    const { activated } = resolveParserConsent("consent-boom", "accept");
+    expect(activated).toBe(false);
+    // 동의 기록 실패 = Worker 활성 없음 — 실패는 경고로 표면화된다.
+    expect(getParserTransport("consent-boom")).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      "[register-from-source] consent record failed",
+      expect.any(Error),
+    );
+  });
+
+  it("workbenchPreview: recordConsent 실패는 경고로 삼키고 등록은 계속된다 (lines 196-197)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(getOrchestrator().trust, "recordConsent").mockImplementation(() => {
+      throw new Error("wb-consent-boom");
+    });
+    const r = registerParserFromSource({
+      id: "wb-consent-fail",
+      displayName: "WB",
+      extensions: [".wbf"],
+      source: `(input) => ({ ast: { kind: "html", html: input.content } })`,
+      workbenchPreview: true,
+    });
+    expect(r.ok).toBe(true);
+    expect(warn).toHaveBeenCalledWith(
+      "[register-from-source] workbench consent record failed",
+      expect.any(Error),
+    );
+    // 동의 기록이 실패했으므로 즉시 활성 대신 동의 대기(show)로 떨어진다.
+    expect(r.consent?.action).toBe("show");
+    expect(r.activated).toBe(false);
   });
 });
 
 describe("registerParserFromSource — validation + safety", () => {
-  it("reports validator violations even on successful registration", () => {
+  it("SC-SEC-02: validator violation rejects registration (ok:false + violations)", () => {
+    // 계약 갱신 (R1): 이전 "성공 + 위반 표시" 는 확정 결함 — 위반 = 등록 거부.
     const r = registerParserFromSource({
       id: "with-fetch",
       displayName: "fetcher",
@@ -74,9 +202,11 @@ describe("registerParserFromSource — validation + safety", () => {
       // 'fetch(' violates Validator network_fetch rule
       source: `(input) => { fetch("/x"); return { ast: { kind: "html", html: input.content } }; }`,
     });
-    // Registration succeeds but caller sees violations to surface in UI.
-    expect(r.ok).toBe(true);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/거부/);
     expect(r.violations.some((v) => v.code === "network_fetch")).toBe(true);
+    // Registry 미등록.
+    expect(getParserRegistry().match({ path: "/x.f" })?.parser.manifest.id).not.toBe("with-fetch");
   });
 
   it("fails on syntax error in source", () => {
@@ -90,44 +220,70 @@ describe("registerParserFromSource — validation + safety", () => {
     expect(r.error).toBeTruthy();
   });
 
-  it("fails when source returns non-function", () => {
+  it("accepts a non-function source at registration — shape 오류는 Worker 평가로 이연", () => {
+    // 계약 갱신 (R1 / SC-SEC-01): 등록 시점 검사는 *컴파일 전용* 이다 —
+    // untrusted 소스를 메인스레드에서 실행(평가)하지 않으므로 "42 는 함수가
+    // 아님" 은 Worker 안 평가 시 parse:err 로 표면화된다 (runtime-transport
+    // 테스트가 고정). IIFE throw 같은 실행 부작용도 등록 시점에는 발생하지
+    // 않는다 — 그것이 곧 격리다.
     const r = registerParserFromSource({
       id: "noobj",
       displayName: "noobj",
       extensions: [".no"],
       source: "42",
     });
-    expect(r.ok).toBe(false);
-    expect(r.error).toMatch(/must be a function/);
+    expect(r.ok).toBe(true);
+    expect(r.consent?.action).toBe("show");
   });
 
-  it("wraps a non-{ast} factory return value into a raw AST (line 70 / branch 69)", () => {
-    // Registration succeeds; the factory's *runtime* return is a bare value
-    // (no `ast` key) → evaluateFactory's wrapper coerces it to { ast: raw }.
-    registerParserFromSource({
-      id: "bare-return",
-      displayName: "bare",
-      extensions: [".bare"],
-      // returns a plain string, NOT an object with `ast`.
-      source: `(input) => "just-text:" + input.content`,
+  it("registration does NOT execute untrusted top-level code (SC-SEC-01)", () => {
+    // 이전 계약에선 IIFE 가 등록 시점 메인스레드에서 실행됐다("plain-string-failure"
+    // 를 동기로 받았음) — 그 실행 자체가 SC-SEC-01 결함. 이제 컴파일만 한다.
+    const marker = vi.fn();
+    (globalThis as { __ms_sec_marker__?: unknown }).__ms_sec_marker__ = marker;
+    const r = registerParserFromSource({
+      id: "no-exec",
+      displayName: "ne",
+      extensions: [".ne"],
+      source: `(() => { globalThis.__ms_sec_marker__(); return (i) => ({ ast: { kind: "raw", value: i.content } }); })()`,
     });
-    const matched = getParserRegistry().match({ path: "/x.bare" });
-    if (!matched) throw new Error("expected match");
-    const out = matched.parser.factory({ content: "hi", path: "/x.bare", encoding: "utf-8" });
+    expect(r.ok).toBe(true);
+    expect(marker).not.toHaveBeenCalled();
+    (globalThis as { __ms_sec_marker__?: unknown }).__ms_sec_marker__ = undefined;
+  });
+
+  it("evaluateFactory (local-trust 경로) wraps a non-{ast} return into a raw AST", () => {
+    // evaluateFactory 는 디스크 hot-reload(local trust, ADR-0012 C1) 전용으로
+    // 남는다 — wrapper 계약을 직접 고정.
+    const factory = evaluateFactory(`(input) => "just-text:" + input.content`);
+    if (factory instanceof Error) throw factory;
+    const out = factory({ content: "hi", path: "/x.bare", encoding: "utf-8" });
     expect(out).toEqual({ ast: { kind: "raw", value: "just-text:hi" } });
   });
 
-  it("normalises a non-Error throw from evaluation (branch 73)", () => {
-    // The eval body throws a *string*, not an Error → evaluateFactory's
-    // `e instanceof Error ? e : new Error(String(e))` takes the else branch.
-    const r = registerParserFromSource({
-      id: "throw-string",
-      displayName: "ts",
-      extensions: [".ts-doc"],
-      source: `(() => { throw "plain-string-failure" })()`,
-    });
-    expect(r.ok).toBe(false);
-    expect(r.error).toBe("plain-string-failure");
+  it("evaluateFactory normalises a non-Error throw from evaluation", () => {
+    const result = evaluateFactory(`(() => { throw "plain-string-failure" })()`);
+    expect(result).toBeInstanceOf(Error);
+    expect((result as Error).message).toBe("plain-string-failure");
+  });
+
+  it("evaluateFactory returns a thrown Error instance as-is (line 99 instanceof arm)", () => {
+    const result = evaluateFactory(`(() => { throw new Error("eval-error-failure") })()`);
+    expect(result).toBeInstanceOf(Error);
+    expect((result as Error).message).toBe("eval-error-failure");
+  });
+
+  it("compileFactorySource normalises a non-Error throw into an Error (line 114 String(e) branch)", () => {
+    // `new Function` 컴파일은 항상 SyntaxError(Error) 를 던지므로, 비-Error 정규화
+    // 분기는 strip 단계 seam — .replace 가 문자열을 던지는 적대적 "source" 로만 도달한다.
+    const evil = {
+      replace: () => {
+        throw "compile-string-failure";
+      },
+    } as unknown as string;
+    const err = compileFactorySource(evil);
+    expect(err).toBeInstanceOf(Error);
+    expect(err?.message).toBe("compile-string-failure");
   });
 
   it("returns ok:false when the registry rejects the manifest (lines 100-106)", () => {
@@ -225,22 +381,28 @@ describe("unregisterParser", () => {
 });
 
 describe("end-to-end — user creates wireweave parser, opens .wireweave file", () => {
-  it("registered parser is the one returned for the matching extension", () => {
+  it("registered parser matches the extension; execution stays sandbox-only", () => {
     registerParserFromSource({
       id: "wireweave-e2e",
       displayName: "WireWeave E2E",
       extensions: [".wireweave"],
       source: `(input) => ({ ast: { kind: "html", html: '<div class="ww">' + input.content + '</div>' } })`,
     });
+    resolveParserConsent("wireweave-e2e", "accept");
     const matched = getParserRegistry().match({ path: "/docs/diagram.wireweave" });
     expect(matched?.parser.manifest.id).toBe("wireweave-e2e");
-    // SpreadPane would call this factory with the file content
+    // SC-SEC-01 계약: SpreadPane(render.ts) 은 이 factory 를 직접 호출하지
+    // 않는다 — 실행은 transport-registry 의 Worker transport 로만. factory 는
+    // guard (사용자 코드 미실행). 실제 sandbox 렌더는 preview 의
+    // parser-security.dom.test 가 고정한다.
+    expect(getParserTransport("wireweave-e2e")).not.toBeNull();
     const out = matched?.parser.factory({
       content: "A -> B",
       path: "/docs/diagram.wireweave",
       encoding: "utf-8",
     });
-    expect((out as { ast: { kind: string; html: string } }).ast.html).toContain('class="ww"');
-    expect((out as { ast: { kind: string; html: string } }).ast.html).toContain("A -> B");
+    const ast = (out as { ast: { kind: string; value?: string } }).ast;
+    expect(ast.kind).toBe("raw");
+    expect(String(ast.value)).not.toContain("A -> B");
   });
 });

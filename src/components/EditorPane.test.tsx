@@ -11,6 +11,8 @@ let lastEditorProps: {
   initialDoc: string;
   onChange?: (next: string) => void;
   language?: string;
+  path?: string;
+  readOnly?: boolean;
   tabId?: string;
 } | null = null;
 vi.mock("./Editor", () => ({
@@ -18,6 +20,8 @@ vi.mock("./Editor", () => ({
     initialDoc: string;
     onChange?: (next: string) => void;
     language?: string;
+    path?: string;
+    readOnly?: boolean;
     tabId?: string;
   }) => {
     lastEditorProps = props;
@@ -69,6 +73,16 @@ describe("EditorPane", () => {
     render(<EditorPane workspace="/ws" />);
     await waitFor(() => expect(screen.getByTestId("editor")).toBeTruthy());
     expect(lastEditorProps?.language).toBe("plain");
+  });
+
+  it("mounts non-md code files read-only with the path for lazy highlight (ADR-0014 T2.c)", async () => {
+    invokeMock.mockResolvedValue({ content: "const a = 1;", encoding: "utf-8" });
+    useTabs.setState({ activePath: "/ws/src/main.ts" });
+    render(<EditorPane workspace="/ws" />);
+    await waitFor(() => expect(screen.getByTestId("editor")).toBeTruthy());
+    expect(lastEditorProps?.language).toBe("plain");
+    expect(lastEditorProps?.path).toBe("/ws/src/main.ts");
+    expect(lastEditorProps?.readOnly).toBe(true);
   });
 
   it("shows a loading hint between the activePath swap and the read response", async () => {

@@ -63,26 +63,35 @@ export function ToolDiffDialog({ proposal, onDone }: ToolDiffDialogProps) {
           Approve all in this session
         </label>
       </header>
-      <pre
-        data-testid="tool-diff-pre"
-        className="max-h-64 overflow-auto whitespace-pre-wrap rounded bg-[var(--color-surface-subtle)] p-2 font-mono text-xs"
-      >
-        {lines.map((l, i) => {
-          const color =
-            l.kind === "add"
-              ? "var(--color-success, #10b981)"
-              : l.kind === "remove"
-                ? "var(--color-danger, #ef4444)"
-                : "var(--color-muted)";
-          const sigil = l.kind === "add" ? "+" : l.kind === "remove" ? "-" : " ";
-          return (
-            <div key={`${i}-${l.kind}`} style={{ color }} data-kind={l.kind}>
-              {sigil}
-              {l.text}
-            </div>
-          );
-        })}
-      </pre>
+      {proposal.summary ? (
+        <p data-testid="tool-diff-summary" className="mb-2 text-[var(--color-muted)] text-xs">
+          {proposal.summary}
+        </p>
+      ) : null}
+      {/* Rust 가 summary 만 전달하는 permission request (diff payload 없음)
+          는 빈 diff 박스 대신 summary 카드로만 보인다. */}
+      {lines.length > 0 && (
+        <pre
+          data-testid="tool-diff-pre"
+          className="max-h-64 overflow-auto whitespace-pre-wrap rounded bg-[var(--color-surface-subtle)] p-2 font-mono text-xs"
+        >
+          {lines.map((l, i) => {
+            const color =
+              l.kind === "add"
+                ? "var(--color-success, #10b981)"
+                : l.kind === "remove"
+                  ? "var(--color-danger, #ef4444)"
+                  : "var(--color-muted)";
+            const sigil = l.kind === "add" ? "+" : l.kind === "remove" ? "-" : " ";
+            return (
+              <div key={`${i}-${l.kind}`} style={{ color }} data-kind={l.kind}>
+                {sigil}
+                {l.text}
+              </div>
+            );
+          })}
+        </pre>
+      )}
       <footer className="mt-2 flex justify-end gap-2">
         <button
           type="button"

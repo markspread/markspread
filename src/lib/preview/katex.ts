@@ -16,7 +16,12 @@ let katexMod: Promise<KatexModule | null> | null = null;
 
 async function loadKatex(): Promise<KatexModule | null> {
   if (!katexMod) {
-    katexMod = import("katex").catch(() => null);
+    // The stylesheet ships alongside the lazy module — KaTeX markup is
+    // unreadable without it (fonts, struts, fraction layout). Vite splits
+    // it into its own CSS chunk that loads on first math render only.
+    katexMod = Promise.all([import("katex"), import("katex/dist/katex.min.css")])
+      .then(([m]) => m)
+      .catch(() => null);
   }
   return katexMod;
 }

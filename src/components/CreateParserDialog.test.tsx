@@ -54,7 +54,7 @@ describe("CreateParserDialog", () => {
     expect(screen.getByTestId("parser-create")).toBeTruthy();
   });
 
-  it("end-to-end: user types parser source → click Create → registered + visible via getParserRegistry().match", () => {
+  it("end-to-end: Create → consent dialog(요약+전체코드) → Accept → registered + visible via match (SC-SEC-04)", () => {
     render(<CreateParserDialog open={true} onClose={() => {}} />);
     setValue(screen.getByTestId("parser-id") as HTMLInputElement, "wireweave-ui-test");
     setValue(screen.getByTestId("parser-extensions") as HTMLInputElement, ".wireweave");
@@ -63,11 +63,51 @@ describe("CreateParserDialog", () => {
       `(input) => ({ ast: { kind: "html", html: '<svg data-ww="1">' + input.content + '</svg>' } })`,
     );
     fireEvent.click(screen.getByTestId("parser-create"));
+    // SC-SEC-04 계약 갱신: 등록 = 자동 동의가 아니다 — 활성 동의 다이얼로그가
+    // 뜨고 (AI 요약 + 전체 코드 토글 + Accept/Reject), Accept 후 활성.
+    expect(screen.getByTestId("plugin-consent-overlay")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("consent-toggle-code"));
+    expect(screen.getByTestId("consent-full-code").textContent).toContain("data-ww");
+    fireEvent.click(screen.getByTestId("consent-accept"));
     // Success UI
     expect(screen.getByTestId("parser-result-success")).toBeTruthy();
     // Registry match returns our parser
     const m = getParserRegistry().match({ path: "/x/y.wireweave" });
     expect(m?.parser.manifest.id).toBe("wireweave-ui-test");
+  });
+
+  it("re-creating an already-consented parser succeeds immediately without a consent dialog (T5.F 수정마다 X)", () => {
+    render(<CreateParserDialog open={true} onClose={() => {}} />);
+    setValue(screen.getByTestId("parser-id") as HTMLInputElement, "reconsented");
+    setValue(screen.getByTestId("parser-extensions") as HTMLInputElement, ".rc");
+    setValue(
+      screen.getByTestId("parser-source") as HTMLTextAreaElement,
+      `(input) => ({ ast: { kind: "html", html: input.content } })`,
+    );
+    fireEvent.click(screen.getByTestId("parser-create"));
+    fireEvent.click(screen.getByTestId("consent-accept"));
+    // 두 번째 Create — 동의가 유지되므로(already-consented) 다이얼로그 없이
+    // 바로 성공 메시지 경로(lines 109-117)를 탄다.
+    fireEvent.click(screen.getByTestId("parser-create"));
+    expect(screen.queryByTestId("plugin-consent-overlay")).toBeNull();
+    expect(screen.getByTestId("parser-result-success").textContent).toContain("등록 완료");
+    expect(getParserRegistry().match({ path: "/x.rc" })?.parser.manifest.id).toBe("reconsented");
+  });
+
+  it("consent Reject rolls the registration back (SC-SEC-04)", () => {
+    render(<CreateParserDialog open={true} onClose={() => {}} />);
+    setValue(screen.getByTestId("parser-id") as HTMLInputElement, "rejected-parser");
+    setValue(screen.getByTestId("parser-extensions") as HTMLInputElement, ".rj");
+    setValue(
+      screen.getByTestId("parser-source") as HTMLTextAreaElement,
+      `(input) => ({ ast: { kind: "html", html: input.content } })`,
+    );
+    fireEvent.click(screen.getByTestId("parser-create"));
+    fireEvent.click(screen.getByTestId("consent-reject"));
+    expect(screen.getByTestId("parser-result-error").textContent).toContain("동의 거절");
+    expect(getParserRegistry().match({ path: "/x.rj" })?.parser.manifest.id).not.toBe(
+      "rejected-parser",
+    );
   });
 
   it("shows error for syntax-broken source", () => {
@@ -82,7 +122,7 @@ describe("CreateParserDialog", () => {
     expect(screen.getByTestId("parser-result-error")).toBeTruthy();
   });
 
-  it("shows violations list when source has risky calls (fetch)", () => {
+  it("rejects registration and lists violations when source has risky calls (fetch) — SC-SEC-02", () => {
     render(<CreateParserDialog open={true} onClose={() => {}} />);
     setValue(screen.getByTestId("parser-id") as HTMLInputElement, "fetchy");
     setValue(screen.getByTestId("parser-extensions") as HTMLInputElement, ".fy");
@@ -91,9 +131,12 @@ describe("CreateParserDialog", () => {
       `(input) => { fetch("/x"); return { ast: { kind: "html", html: input.content } }; }`,
     );
     fireEvent.click(screen.getByTestId("parser-create"));
-    // Registration succeeds but violations panel shows
-    expect(screen.getByTestId("parser-result-success")).toBeTruthy();
+    // SC-SEC-02 계약 갱신: Validator 위반 = 등록 거부 (기존 "성공 + 위반 표시"
+    // 는 R1 확정 결함). 실패 UI + 위반 목록.
+    expect(screen.getByTestId("parser-result-error").textContent).toMatch(/거부/);
     expect(screen.getByTestId("parser-violations").textContent).toMatch(/network_fetch/);
+    // Registry 에 미등록 — .fy 파일이 이 파서로 매칭되지 않는다.
+    expect(getParserRegistry().match({ path: "/x.fy" })?.parser.manifest.id).not.toBe("fetchy");
   });
 
   it("Remove button unregisters", () => {
@@ -252,6 +295,9 @@ describe("CreateParserDialog", () => {
       `(input) => ({ ast: { kind: "html", html: input.content } })`,
     );
     fireEvent.click(screen.getByTestId("parser-create"));
+    // 동의 다이얼로그가 전달된 summary 를 표시하고, Accept 후 성공 UI.
+    expect(screen.getByTestId("consent-summary").textContent).toContain("summary text");
+    fireEvent.click(screen.getByTestId("consent-accept"));
     expect(screen.getByTestId("parser-result-success")).toBeTruthy();
     const row = screen.getByTestId("parser-registry-row-named-by-id");
     // displayName column shows the id because the display field was blank.

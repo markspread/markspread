@@ -4,16 +4,23 @@
 //   1. 사용자가 ChatStream 의 assistant 응답에서 ```js 코드 복사
 //   2. CreateParserDialog 열기 (toolbar 또는 chat의 + 버튼)
 //   3. id + displayName + 확장자 (콤마구분) + code 입력
-//   4. "Validate" → Validator violations 표시
-//   5. "Create & Register" → ParserRegistry 에 등록 + TrustRegistry llm-generated
-//   6. 해당 확장자 파일 열면 SpreadPane 가 자동으로 새 파서 사용
+//   4. "Create & Register" → Validator 위반 시 등록 거부 + 위반 목록 표시 (SC-SEC-02)
+//   5. 통과 시 PluginConsentDialog (요약 + 전체 코드 + Accept/Reject) — ADR-0016 T5.F
+//      Accept 에만 recordConsent + Worker 활성 (SC-SEC-04)
+//   6. 해당 확장자 파일 열면 SpreadPane 가 sandbox 경로로 새 파서 사용
 
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { registerParserFromSource, unregisterParser } from "../lib/parsers/register-from-source";
+import {
+  registerParserFromSource,
+  resolveParserConsent,
+  unregisterParser,
+} from "../lib/parsers/register-from-source";
 import { getParserRegistry } from "../lib/parsers/registry";
+import type { ConsentDecision, ConsentPrompt } from "../lib/plugins/runtime/consent";
 import { useActivityMode } from "../store/activity-mode";
 import { Icon } from "./Icon";
+import { PluginConsentDialog } from "./PluginConsentDialog";
 
 interface Props {
   open: boolean;
@@ -46,6 +53,8 @@ export function CreateParserDialog({
   }>({ kind: "idle" });
   /** force re-render to refresh registry list after register/unregister */
   const [registryTick, setRegistryTick] = useState(0);
+  /** SC-SEC-04: 등록 통과 후 활성 동의 대기 중인 prompt. null = 다이얼로그 닫힘. */
+  const [consentPrompt, setConsentPrompt] = useState<ConsentPrompt | null>(null);
 
   // ParserRegistry 의 모든 등록 파서. registryTick 으로 register/unregister 후 refresh.
   const registeredParsers = useMemo(() => {
@@ -81,24 +90,55 @@ export function CreateParserDialog({
       source,
       ...(summary ? { oneLinerSummary: summary } : {}),
     });
-    if (r.ok) {
-      setResult({
-        kind: "success",
-        message: t(
-          "parser.dialog.success",
-          `등록 완료 — ${exts.join("/")} 파일 열면 새 파서가 사용됨`,
-        ),
-        violations: r.violations.map((v) => ({ code: v.code, message: v.message })),
-      });
-      setRegistryTick((n) => n + 1);
-      notifyParserRegistryChanged();
-    } else {
+    if (!r.ok) {
+      // SC-SEC-02: Validator 위반 = 등록 거부 — 실패 + 위반 목록 표시.
       setResult({
         kind: "error",
         message: r.error ?? t("parser.dialog.error.unknown", "unknown"),
         violations: r.violations.map((v) => ({ code: v.code, message: v.message })),
       });
+      return;
     }
+    if (r.consent?.action === "show" && r.consent.prompt) {
+      // SC-SEC-04: 활성 동의 다이얼로그 — Accept 전에는 실행 불가.
+      setConsentPrompt(r.consent.prompt);
+      setResult({ kind: "idle" });
+      setRegistryTick((n) => n + 1);
+      return;
+    }
+    setResult({
+      kind: "success",
+      message: t(
+        "parser.dialog.success",
+        `등록 완료 — ${exts.join("/")} 파일 열면 새 파서가 사용됨`,
+      ),
+    });
+    setRegistryTick((n) => n + 1);
+    notifyParserRegistryChanged();
+  };
+
+  const handleConsentDecision = (decision: ConsentDecision) => {
+    const pid = consentPrompt?.pluginName;
+    setConsentPrompt(null);
+    /* v8 ignore next -- prompt is non-null while the dialog is mounted; defensive */
+    if (!pid) return;
+    const { activated } = resolveParserConsent(pid, decision);
+    if (activated) {
+      setResult({
+        kind: "success",
+        message: t("parser.dialog.consent_accepted", `동의 완료 — ${pid} 파서가 활성되었습니다`),
+      });
+    } else {
+      setResult({
+        kind: "error",
+        message: t(
+          "parser.dialog.consent_rejected",
+          `동의 거절 — ${pid} 파서가 등록 해제되었습니다`,
+        ),
+      });
+    }
+    setRegistryTick((n) => n + 1);
+    notifyParserRegistryChanged();
   };
 
   const handleRemove = () => {
@@ -127,221 +167,228 @@ export function CreateParserDialog({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      role="presentation"
-      data-testid="create-parser-overlay"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      {/* biome-ignore lint/a11y/useSemanticElements: portal-less overlay; matches app convention */}
+    <>
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-parser-title"
-        className="flex max-h-[88vh] w-[min(720px,94vw)] flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-fg)] shadow-2xl"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        role="presentation"
+        data-testid="create-parser-overlay"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
       >
-        <header className="flex items-center justify-between border-[var(--color-border)] border-b px-4 py-3">
-          <h2 id="create-parser-title" className="flex items-center gap-2 font-semibold text-base">
-            <Icon name="sparkle" size={16} />
-            <span>{t("parser.dialog.title", "런타임 파서 만들기")}</span>
-          </h2>
-          <button
-            type="button"
-            data-testid="create-parser-close"
-            onClick={onClose}
-            aria-label="Close"
-            className="text-[var(--color-muted)] hover:text-[var(--color-fg)]"
-          >
-            <Icon name="close" size={16} />
-          </button>
-        </header>
+        {/* biome-ignore lint/a11y/useSemanticElements: portal-less overlay; matches app convention */}
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-parser-title"
+          className="flex max-h-[88vh] w-[min(720px,94vw)] flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-fg)] shadow-2xl"
+        >
+          <header className="flex items-center justify-between border-[var(--color-border)] border-b px-4 py-3">
+            <h2
+              id="create-parser-title"
+              className="flex items-center gap-2 font-semibold text-base"
+            >
+              <Icon name="sparkle" size={16} />
+              <span>{t("parser.dialog.title", "런타임 파서 만들기")}</span>
+            </h2>
+            <button
+              type="button"
+              data-testid="create-parser-close"
+              onClick={onClose}
+              aria-label="Close"
+              className="text-[var(--color-muted)] hover:text-[var(--color-fg)]"
+            >
+              <Icon name="close" size={16} />
+            </button>
+          </header>
 
-        <div className="flex-1 overflow-y-auto p-4 text-sm">
-          <div className="mb-3 flex gap-2">
-            <label className="flex flex-1 flex-col gap-1">
-              <span className="text-[var(--color-muted)] text-xs">ID</span>
+          <div className="flex-1 overflow-y-auto p-4 text-sm">
+            <div className="mb-3 flex gap-2">
+              <label className="flex flex-1 flex-col gap-1">
+                <span className="text-[var(--color-muted)] text-xs">ID</span>
+                <input
+                  data-testid="parser-id"
+                  type="text"
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  placeholder="wireweave"
+                  className="rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm"
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1">
+                <span className="text-[var(--color-muted)] text-xs">Display Name</span>
+                <input
+                  data-testid="parser-display"
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm"
+                />
+              </label>
+            </div>
+            <label className="mb-3 flex flex-col gap-1">
+              <span className="text-[var(--color-muted)] text-xs">Extensions (comma)</span>
               <input
-                data-testid="parser-id"
+                data-testid="parser-extensions"
                 type="text"
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                placeholder="wireweave"
+                value={extensions}
+                onChange={(e) => setExtensions(e.target.value)}
+                placeholder=".wireweave, .ww"
                 className="rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm"
               />
             </label>
-            <label className="flex flex-1 flex-col gap-1">
-              <span className="text-[var(--color-muted)] text-xs">Display Name</span>
+            <label className="mb-3 flex flex-col gap-1">
+              <span className="text-[var(--color-muted)] text-xs">한 줄 요약 (consent 표시용)</span>
               <input
-                data-testid="parser-display"
+                data-testid="parser-summary"
                 type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                placeholder="WireWeave DSL → SVG 다이어그램"
                 className="rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm"
               />
             </label>
-          </div>
-          <label className="mb-3 flex flex-col gap-1">
-            <span className="text-[var(--color-muted)] text-xs">Extensions (comma)</span>
-            <input
-              data-testid="parser-extensions"
-              type="text"
-              value={extensions}
-              onChange={(e) => setExtensions(e.target.value)}
-              placeholder=".wireweave, .ww"
-              className="rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm"
-            />
-          </label>
-          <label className="mb-3 flex flex-col gap-1">
-            <span className="text-[var(--color-muted)] text-xs">한 줄 요약 (consent 표시용)</span>
-            <input
-              data-testid="parser-summary"
-              type="text"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              placeholder="WireWeave DSL → SVG 다이어그램"
-              className="rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-[var(--color-muted)] text-xs">
-              Factory JS (default export 또는 function 식)
-            </span>
-            <textarea
-              data-testid="parser-source"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              rows={12}
-              spellCheck={false}
-              placeholder={`(input) => ({ ast: { kind: "html", html: "<pre>" + input.content + "</pre>" } })`}
-              className="rounded border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-2 font-mono text-xs"
-            />
-          </label>
-          {result.kind === "success" && (
-            <div
-              data-testid="parser-result-success"
-              className="mt-3 flex items-start gap-2 rounded border border-emerald-400 bg-emerald-50 p-2 text-emerald-900 text-xs dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"
-            >
-              <Icon name="check" size={14} className="mt-0.5 shrink-0" />
-              <span>{result.message}</span>
-            </div>
-          )}
-          {result.kind === "error" && (
-            <div
-              data-testid="parser-result-error"
-              className="mt-3 flex items-start gap-2 rounded border border-red-400 bg-red-50 p-2 text-red-900 text-xs dark:border-red-700 dark:bg-red-950 dark:text-red-200"
-            >
-              <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
-              <span>{result.message}</span>
-            </div>
-          )}
-          {result.violations && result.violations.length > 0 && (
-            <ul
-              data-testid="parser-violations"
-              className="mt-2 list-disc rounded border border-amber-300 bg-amber-50 p-2 pl-6 text-amber-900 text-xs dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
-            >
-              {result.violations.map((v, i) => (
-                <li key={`${v.code}-${i}`}>
-                  <strong>{v.code}</strong>: {v.message}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {/* 현재 등록된 파서 목록 — fallback markdown 포함 모두 표시.
-              사용자가 어떤 파서가 활성인지 한눈에 보고 즉시 unregister 가능. */}
-          <section
-            className="mt-4 border-[var(--color-border)] border-t pt-3"
-            data-testid="parser-registry-list"
-          >
-            <h3 className="mb-2 text-[var(--color-muted)] text-xs uppercase tracking-wide">
-              {t("parser.dialog.registry_title", "현재 등록된 파서")} ({registeredParsers.length})
-            </h3>
-            {registeredParsers.length === 0 ? (
-              <p className="text-[var(--color-muted)] text-xs italic">
-                {t("parser.dialog.registry_empty", "등록된 파서가 없습니다")}
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-1">
-                {registeredParsers.map((p) => (
-                  <li
-                    key={p.id}
-                    data-testid={`parser-registry-row-${p.id}`}
-                    className="flex items-center justify-between gap-2 rounded border border-[var(--color-border)]/40 px-2 py-1 text-xs"
-                  >
-                    <div className="flex min-w-0 flex-col">
-                      <span className="truncate font-medium">{p.displayName}</span>
-                      <span className="truncate text-[var(--color-muted)]">
-                        {p.id} · {p.extensions.length > 0 ? p.extensions.join(", ") : "(no ext)"}
-                        {p.isSystem && (
-                          <>
-                            {" · "}
-                            <em>{t("parser.dialog.system", "시스템 (삭제 불가)")}</em>
-                          </>
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        className="rounded border border-[var(--color-border)] px-1.5 py-0.5 text-[var(--color-muted)] hover:bg-[var(--color-border)]/40 hover:text-[var(--color-fg)]"
-                        onClick={() => {
-                          setId(p.id);
-                          setDisplayName(p.displayName);
-                          setExtensions(p.extensions.join(", "));
-                        }}
-                        title={t("parser.dialog.load_into_form", "이 파서 ID 로 폼 채우기")}
-                      >
-                        {t("parser.dialog.edit_in_form", "Edit")}
-                      </button>
-                      {!p.isSystem && (
-                        <button
-                          type="button"
-                          data-testid={`parser-registry-remove-${p.id}`}
-                          className="rounded border border-red-300 px-1.5 py-0.5 text-red-600 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-950"
-                          onClick={() => handleRemoveById(p.id)}
-                          title={t("parser.dialog.remove_this", "이 파서 등록 해제")}
-                        >
-                          <Icon name="trash" size={12} />
-                        </button>
-                      )}
-                    </div>
+            <label className="flex flex-col gap-1">
+              <span className="text-[var(--color-muted)] text-xs">
+                Factory JS (default export 또는 function 식)
+              </span>
+              <textarea
+                data-testid="parser-source"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                rows={12}
+                spellCheck={false}
+                placeholder={`(input) => ({ ast: { kind: "html", html: "<pre>" + input.content + "</pre>" } })`}
+                className="rounded border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-2 font-mono text-xs"
+              />
+            </label>
+            {result.kind === "success" && (
+              <div
+                data-testid="parser-result-success"
+                className="mt-3 flex items-start gap-2 rounded border border-emerald-400 bg-emerald-50 p-2 text-emerald-900 text-xs dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"
+              >
+                <Icon name="check" size={14} className="mt-0.5 shrink-0" />
+                <span>{result.message}</span>
+              </div>
+            )}
+            {result.kind === "error" && (
+              <div
+                data-testid="parser-result-error"
+                className="mt-3 flex items-start gap-2 rounded border border-red-400 bg-red-50 p-2 text-red-900 text-xs dark:border-red-700 dark:bg-red-950 dark:text-red-200"
+              >
+                <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
+                <span>{result.message}</span>
+              </div>
+            )}
+            {result.violations && result.violations.length > 0 && (
+              <ul
+                data-testid="parser-violations"
+                className="mt-2 list-disc rounded border border-amber-300 bg-amber-50 p-2 pl-6 text-amber-900 text-xs dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+              >
+                {result.violations.map((v, i) => (
+                  <li key={`${v.code}-${i}`}>
+                    <strong>{v.code}</strong>: {v.message}
                   </li>
                 ))}
               </ul>
             )}
-          </section>
-        </div>
 
-        <footer className="flex items-center justify-between border-[var(--color-border)] border-t px-4 py-3">
-          <button
-            type="button"
-            data-testid="parser-remove"
-            onClick={handleRemove}
-            className="text-red-600 text-xs hover:underline"
-          >
-            {t("parser.dialog.remove", "이 ID 등록 해제")}
-          </button>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded border border-[var(--color-border)] px-3 py-1.5 text-sm hover:bg-[var(--color-border)]/40"
+            {/* 현재 등록된 파서 목록 — fallback markdown 포함 모두 표시.
+              사용자가 어떤 파서가 활성인지 한눈에 보고 즉시 unregister 가능. */}
+            <section
+              className="mt-4 border-[var(--color-border)] border-t pt-3"
+              data-testid="parser-registry-list"
             >
-              {t("parser.dialog.cancel", "취소")}
-            </button>
-            <button
-              type="button"
-              data-testid="parser-create"
-              onClick={handleCreate}
-              className="rounded bg-[var(--color-accent)] px-3 py-1.5 text-sm text-white hover:opacity-90"
-            >
-              {t("parser.dialog.create", "Create & Register")}
-            </button>
+              <h3 className="mb-2 text-[var(--color-muted)] text-xs uppercase tracking-wide">
+                {t("parser.dialog.registry_title", "현재 등록된 파서")} ({registeredParsers.length})
+              </h3>
+              {registeredParsers.length === 0 ? (
+                <p className="text-[var(--color-muted)] text-xs italic">
+                  {t("parser.dialog.registry_empty", "등록된 파서가 없습니다")}
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {registeredParsers.map((p) => (
+                    <li
+                      key={p.id}
+                      data-testid={`parser-registry-row-${p.id}`}
+                      className="flex items-center justify-between gap-2 rounded border border-[var(--color-border)]/40 px-2 py-1 text-xs"
+                    >
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate font-medium">{p.displayName}</span>
+                        <span className="truncate text-[var(--color-muted)]">
+                          {p.id} · {p.extensions.length > 0 ? p.extensions.join(", ") : "(no ext)"}
+                          {p.isSystem && (
+                            <>
+                              {" · "}
+                              <em>{t("parser.dialog.system", "시스템 (삭제 불가)")}</em>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          className="rounded border border-[var(--color-border)] px-1.5 py-0.5 text-[var(--color-muted)] hover:bg-[var(--color-border)]/40 hover:text-[var(--color-fg)]"
+                          onClick={() => {
+                            setId(p.id);
+                            setDisplayName(p.displayName);
+                            setExtensions(p.extensions.join(", "));
+                          }}
+                          title={t("parser.dialog.load_into_form", "이 파서 ID 로 폼 채우기")}
+                        >
+                          {t("parser.dialog.edit_in_form", "Edit")}
+                        </button>
+                        {!p.isSystem && (
+                          <button
+                            type="button"
+                            data-testid={`parser-registry-remove-${p.id}`}
+                            className="rounded border border-red-300 px-1.5 py-0.5 text-red-600 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-950"
+                            onClick={() => handleRemoveById(p.id)}
+                            title={t("parser.dialog.remove_this", "이 파서 등록 해제")}
+                          >
+                            <Icon name="trash" size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
-        </footer>
+
+          <footer className="flex items-center justify-between border-[var(--color-border)] border-t px-4 py-3">
+            <button
+              type="button"
+              data-testid="parser-remove"
+              onClick={handleRemove}
+              className="text-red-600 text-xs hover:underline"
+            >
+              {t("parser.dialog.remove", "이 ID 등록 해제")}
+            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded border border-[var(--color-border)] px-3 py-1.5 text-sm hover:bg-[var(--color-border)]/40"
+              >
+                {t("parser.dialog.cancel", "취소")}
+              </button>
+              <button
+                type="button"
+                data-testid="parser-create"
+                onClick={handleCreate}
+                className="rounded bg-[var(--color-accent)] px-3 py-1.5 text-sm text-white hover:opacity-90"
+              >
+                {t("parser.dialog.create", "Create & Register")}
+              </button>
+            </div>
+          </footer>
+        </div>
       </div>
-    </div>
+      {/* SC-SEC-04 / ADR-0016 T5.F: 활성 동의 다이얼로그 — Create 통과 후 노출. */}
+      <PluginConsentDialog prompt={consentPrompt} onDecision={handleConsentDecision} />
+    </>
   );
 }

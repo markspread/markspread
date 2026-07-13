@@ -13,8 +13,15 @@ import { gzipSync } from "node:zlib";
 
 // Ceilings (gzipped bytes). Bump deliberately in the same PR that adds
 // the weight, so the diff records the trade-off.
+//
+// 2026-07 bump (900 kB → 1.8 MB): wiring the baseline-parsing renderers
+// into the app (SC-BASE-02/03/05) adds mermaid (~750 kB across its
+// per-diagram chunks), KaTeX (~76 kB) and a curated shiki core+grammar
+// set (~150 kB). All of it is lazy — first-diagram / first-formula /
+// first-code-fence loads — so the boot path and cold-start gates are
+// unaffected; this ceiling bounds what a full offline install ships.
 const CEILINGS = {
-  totalJs: 900 * 1024,
+  totalJs: 1800 * 1024,
   totalCss: 80 * 1024,
   largestChunk: 500 * 1024,
 };

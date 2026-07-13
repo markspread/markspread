@@ -2,6 +2,12 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { unregisterParser } from "../lib/parsers/register-from-source";
+import { getParserRegistry } from "../lib/parsers/registry";
+import {
+  __resetRuntimeParserTransportsForTests,
+  createInProcessParserTransportForTests,
+  setRuntimeParserTransportFactoryForTests,
+} from "../lib/parsers/runtime-transport";
 import * as previewRender from "../lib/preview/render";
 import { useActivityMode } from "../store/activity-mode";
 import { useChatSessions } from "../store/chat-sessions";
@@ -63,6 +69,10 @@ function defaultInvoke(cmd: string): Promise<unknown> {
 
 beforeEach(() => {
   h.invoke.mockImplementation(defaultInvoke);
+  // SC-SEC-01: jsdom 에는 Worker 가 없어 기본 transport 는 fail-closed(차단)다.
+  // 라이브 프리뷰 동작 검증을 위해 실제 worker bootstrap 스크립트를 in-process
+  // 로 실행하는 고충실도 fake 를 주입한다.
+  setRuntimeParserTransportFactoryForTests(createInProcessParserTransportForTests);
 });
 
 afterEach(() => {
@@ -84,7 +94,13 @@ afterEach(() => {
   });
   unregisterParser("__studio_preview__");
   unregisterParser("my-parser");
+  __resetRuntimeParserTransportsForTests();
 });
+
+// SC-SEC-04: [적용] 은 활성 동의 다이얼로그를 거친다 — Accept 헬퍼.
+function acceptConsent() {
+  fireEvent.click(screen.getByTestId("consent-accept"));
+}
 
 describe("ParserWorkbench", () => {
   it("renders the live preview by running the default parser over the sample", async () => {
@@ -121,6 +137,21 @@ describe("ParserWorkbench", () => {
     await waitFor(() => expect(screen.getByTestId("parser-preview-error")).toBeTruthy());
   });
 
+  it("SC-SEC-02: validator violation blocks the live preview and lists the violation", async () => {
+    render(<ParserWorkbench workspace={WS} />);
+    fireEvent.change(screen.getByTestId("parser-source"), {
+      target: {
+        value: `(input) => { fetch("/exfil"); return { ast: { kind: "html", html: input.content } }; }`,
+      },
+    });
+    await waitFor(() => {
+      const err = screen.getByTestId("parser-preview-error").textContent ?? "";
+      expect(err).toContain("network_fetch");
+    });
+    // 렌더 차단 — 프리뷰 본문 없음.
+    expect(screen.queryByTestId("parser-preview")).toBeNull();
+  });
+
   it("apply: requires a parser id", () => {
     render(<ParserWorkbench workspace={WS} />);
     fireEvent.change(screen.getByTestId("parser-id"), { target: { value: "  " } });
@@ -135,15 +166,68 @@ describe("ParserWorkbench", () => {
     expect(screen.getByTestId("parser-apply-msg").textContent).toContain("확장자");
   });
 
-  it("apply: registers the parser and normalises bare extensions", () => {
+  it("apply: consent dialog → accept → registers the parser and normalises bare extensions", () => {
+    // SC-SEC-02/04 계약 갱신: [적용] 은 즉시 등록이 아니라 활성 동의(T5.F)를
+    // 거친다. Accept 후 registry 에 정규화된 확장자로 등록된다.
     render(<ParserWorkbench workspace={WS} />);
     fireEvent.change(screen.getByTestId("parser-id"), { target: { value: "my-parser" } });
     fireEvent.change(screen.getByTestId("parser-extensions"), { target: { value: "wiki, .md" } });
     fireEvent.click(screen.getByTestId("parser-apply"));
+    // 동의 다이얼로그 노출 (전체 코드 토글 + Accept/Reject).
+    expect(screen.getByTestId("plugin-consent-overlay")).toBeTruthy();
+    expect(screen.getByTestId("parser-apply-msg").textContent).toContain("동의 대기");
+    acceptConsent();
     const msg = screen.getByTestId("parser-apply-msg").textContent ?? "";
     expect(msg).toContain("등록됨");
-    expect(msg).toContain(".wiki");
-    expect(msg).toContain(".md");
+    const entry = getParserRegistry()
+      .list()
+      .find((p) => p.manifest.id === "my-parser");
+    expect(entry?.manifest.fileMatch?.extensions).toEqual([".wiki", ".md"]);
+  });
+
+  it("apply: consent reject → parser is rolled back (SC-SEC-04)", () => {
+    render(<ParserWorkbench workspace={WS} />);
+    fireEvent.change(screen.getByTestId("parser-id"), { target: { value: "my-parser" } });
+    fireEvent.change(screen.getByTestId("parser-extensions"), { target: { value: ".wiki" } });
+    fireEvent.click(screen.getByTestId("parser-apply"));
+    fireEvent.click(screen.getByTestId("consent-reject"));
+    expect(screen.getByTestId("parser-apply-msg").textContent).toContain("동의 거절");
+    expect(
+      getParserRegistry()
+        .list()
+        .some((p) => p.manifest.id === "my-parser"),
+    ).toBe(false);
+  });
+
+  it("apply: re-apply of a consented parser skips the dialog (T5.F 수정마다 X)", () => {
+    render(<ParserWorkbench workspace={WS} />);
+    fireEvent.change(screen.getByTestId("parser-id"), { target: { value: "my-parser" } });
+    fireEvent.change(screen.getByTestId("parser-extensions"), { target: { value: ".wiki" } });
+    fireEvent.click(screen.getByTestId("parser-apply"));
+    acceptConsent();
+    // 소스를 고치고 다시 [적용] — 이미 동의된 id 는 다이얼로그 없이 즉시 등록.
+    fireEvent.change(screen.getByTestId("parser-source"), {
+      target: { value: `(input) => ({ ast: { kind: "html", html: "v2" } })` },
+    });
+    fireEvent.click(screen.getByTestId("parser-apply"));
+    expect(screen.queryByTestId("plugin-consent-overlay")).toBeNull();
+    expect(screen.getByTestId("parser-apply-msg").textContent).toContain("등록됨");
+  });
+
+  it("apply: validator violation → 등록 거부 + 위반 목록 (SC-SEC-02)", () => {
+    render(<ParserWorkbench workspace={WS} />);
+    fireEvent.change(screen.getByTestId("parser-source"), {
+      target: {
+        value: `(input) => { fetch("/x"); return { ast: { kind: "html", html: input.content } }; }`,
+      },
+    });
+    fireEvent.change(screen.getByTestId("parser-id"), { target: { value: "my-parser" } });
+    fireEvent.change(screen.getByTestId("parser-extensions"), { target: { value: ".wiki" } });
+    fireEvent.click(screen.getByTestId("parser-apply"));
+    const msg = screen.getByTestId("parser-apply-msg").textContent ?? "";
+    expect(msg).toContain("등록 실패");
+    expect(msg).toContain("network_fetch");
+    expect(screen.queryByTestId("plugin-consent-overlay")).toBeNull();
   });
 
   it("send: no agent → system hint", async () => {
@@ -426,7 +510,7 @@ describe("ParserWorkbench", () => {
     expect(screen.queryByTestId("parser-back")).toBeNull();
   });
 
-  it("N10: '이 파서로 지금 렌더' registers, returns to review, and bumps the render nonce", () => {
+  it("N10: '이 파서로 지금 렌더' registers (after consent), returns to review, and bumps the render nonce", () => {
     act(() => {
       useActivityMode.getState().enterParser();
     });
@@ -435,7 +519,10 @@ describe("ParserWorkbench", () => {
     fireEvent.change(screen.getByTestId("parser-extensions"), { target: { value: ".md" } });
     const before = useActivityMode.getState().parserRenderNonce;
     fireEvent.click(screen.getByTestId("parser-apply-render"));
-    // registration succeeded → message + back to review + nonce bumped.
+    // SC-SEC-04: 동의 대기 — 아직 워크벤치에 머문다.
+    expect(useActivityMode.getState().mode).toBe("parser");
+    acceptConsent();
+    // Accept → 등록 + back to review + nonce bumped.
     expect(screen.getByTestId("parser-apply-msg").textContent).toContain("등록됨");
     expect(useActivityMode.getState().mode).toBe("workspace");
     expect(useActivityMode.getState().parserRenderNonce).toBe(before + 1);
@@ -516,6 +603,27 @@ describe("ParserWorkbench", () => {
     expect(nextSampleRatio(0.28, 40, 0)).toBe(0.28);
     // NaN ratio falls back to the default
     expect(clampSampleRatio(Number.NaN)).toBeCloseTo(0.28, 5);
+  });
+
+  it("N10: already-consented parser → '이 파서로 지금 렌더' 는 다이얼로그 없이 즉시 복귀한다", () => {
+    act(() => {
+      useActivityMode.getState().enterParser();
+    });
+    render(<ParserWorkbench workspace={WS} />);
+    fireEvent.change(screen.getByTestId("parser-id"), { target: { value: "my-parser" } });
+    fireEvent.change(screen.getByTestId("parser-extensions"), { target: { value: ".md" } });
+    // 1차: [적용] 으로 동의를 먼저 끝낸다 (renderAfterConsent 미설정 → 워크벤치 유지).
+    fireEvent.click(screen.getByTestId("parser-apply"));
+    acceptConsent();
+    expect(useActivityMode.getState().mode).toBe("parser");
+    const before = useActivityMode.getState().parserRenderNonce;
+    // 2차: 이미 동의된 id → applyParser 가 "activated" 를 반환, 라인 388 의
+    // renderWithParser() 가 곧바로 실행된다 (동의 다이얼로그 없음).
+    fireEvent.click(screen.getByTestId("parser-apply-render"));
+    expect(screen.queryByTestId("plugin-consent-overlay")).toBeNull();
+    expect(screen.getByTestId("parser-apply-msg").textContent).toContain("등록됨");
+    expect(useActivityMode.getState().mode).toBe("workspace");
+    expect(useActivityMode.getState().parserRenderNonce).toBe(before + 1);
   });
 
   it("N10: '이 파서로 지금 렌더' stays in parser mode when registration fails", () => {
