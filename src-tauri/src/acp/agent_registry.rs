@@ -407,7 +407,10 @@ mod tests {
         let entry = entry_from_custom(&sample_custom("codex")).unwrap();
         assert_eq!(entry.id, AgentId("codex".into()));
         assert_eq!(entry.name, "codex label");
-        assert_eq!(entry.command, vec!["codex-acp".to_string(), "--acp".to_string()]);
+        assert_eq!(
+            entry.command,
+            vec!["codex-acp".to_string(), "--acp".to_string()]
+        );
         assert_eq!(entry.auth, AuthMode::None);
         assert_eq!(
             entry.extra_env,

@@ -702,7 +702,10 @@ struct KeyTestPlan {
 /// catalog in `lib/ai/providers.ts`; `base_url` (when set) overrides.
 fn key_test_plan(provider: &str, base_url: Option<&str>, key: &str) -> Result<KeyTestPlan, String> {
     fn base(base_url: Option<&str>, default: &str) -> String {
-        base_url.unwrap_or(default).trim_end_matches('/').to_string()
+        base_url
+            .unwrap_or(default)
+            .trim_end_matches('/')
+            .to_string()
     }
     match provider {
         "anthropic" => Ok(KeyTestPlan {
@@ -786,7 +789,12 @@ pub async fn ai_key_test(
         String::new()
     } else {
         // Truncated body so a chatty 4xx/5xx doesn't flood the IPC pipe.
-        resp.text().await.unwrap_or_default().chars().take(300).collect()
+        resp.text()
+            .await
+            .unwrap_or_default()
+            .chars()
+            .take(300)
+            .collect()
     };
     Ok(AiKeyTestResult {
         status,
