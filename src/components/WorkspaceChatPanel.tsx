@@ -301,6 +301,7 @@ export function WorkspaceChatPanel({ workspaceId }: WorkspaceChatPanelProps) {
   const handleDragDecision = useCallback(
     async (decision: Decision) => {
       const flow = dragEdit;
+      /* v8 ignore next -- defensive: every decision source (overlay buttons, the capture-phase key listener) only exists while dragEdit.diff is set, and both close over that same render's flow */
       if (!flow?.diff) return;
       if (decision === "retry") {
         // 재요청은 1회 — 이미 소진했으면 조용히 무시 (overlay 유지).

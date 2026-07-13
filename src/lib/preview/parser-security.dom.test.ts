@@ -170,6 +170,49 @@ describe("SC-SEC-03 — BudgetGuard 100ms 로컬 예산 강제", () => {
   });
 });
 
+describe("sandbox 프로토콜 결과 처리 — parse:ok 의 두 result kind", () => {
+  // renderInSandbox 는 worker 가 `{ kind: "html" }` 를 직접 보낼 수도,
+  // `{ kind: "ast" }` 를 보낼 수도 있다 (messages.ts ParseResponseSchema).
+  // 기본 worker bootstrap 은 항상 ast 로 보내므로, html 직행/미인식 AST 분기는
+  // 프로토콜을 그대로 말하는 fake transport 로 고정한다.
+  function respondWith(result: { kind: "html"; html: string } | { kind: "ast"; ast: unknown }) {
+    setRuntimeParserTransportFactoryForTests((): SandboxTransport => {
+      let handler: ((raw: unknown) => void) | null = null;
+      return {
+        mode: "worker",
+        postMessage: (msg) => {
+          handler?.({ type: "parse:ok", requestId: msg.requestId, parserId: msg.parserId, result });
+        },
+        onMessage: (h) => {
+          handler = h;
+          return () => {
+            handler = null;
+          };
+        },
+        dispose: () => {},
+      };
+    });
+  }
+
+  it("kind:'html' 결과는 sanitize 를 거쳐 그대로 렌더된다 (render.ts 410-412)", async () => {
+    respondWith({ kind: "html", html: "<p>DIRECT-HTML</p><script>window.x=1</script>" });
+    registerAndConsent("sec-proto-html", ".sech", OK_SOURCE);
+    const out = await render("DOC", { path: "/ws/a.sech" });
+    // 본문은 통과, script 는 이중 sanitize(worker-host + render) 에서 제거.
+    expect(out).toContain("<p>DIRECT-HTML</p>");
+    expect(out).not.toContain("<script>");
+    expect(out).not.toContain("parser-blocked");
+  });
+
+  it("미인식 AST kind 는 bad-ast 차단 카드를 렌더한다 (render.ts 414-417)", async () => {
+    respondWith({ kind: "ast", ast: { kind: "mystery-kind" } });
+    registerAndConsent("sec-proto-badast", ".secb", OK_SOURCE);
+    const out = await render("DOC", { path: "/ws/a.secb" });
+    expect(out).toContain("parser-blocked");
+    expect(out).toContain('data-blocked-reason="bad-ast"');
+  });
+});
+
 describe("SC-SEC-04 — 활성 동의 없이는 실행되지 않는다", () => {
   it("미동의 파서 렌더는 consent 차단 카드 (사용자 코드 미실행)", async () => {
     const r = registerParserFromSource({

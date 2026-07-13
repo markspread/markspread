@@ -59,6 +59,7 @@ vi.mock("./SubscriptionAuthModal", () => ({
   },
 }));
 
+import { Component, type ReactNode } from "react";
 import { PROVIDERS } from "../lib/ai/providers";
 import { SettingsAi } from "./SettingsAi";
 
@@ -419,6 +420,16 @@ describe("SettingsAi", () => {
     expect(chip.textContent).toContain("HTTP 401");
   });
 
+  it("changes the model via the registry dropdown for fixed-model providers", async () => {
+    render(<SettingsAi />);
+    await waitFor(() => expect(screen.getByText(/sk-…abcd/)).toBeTruthy());
+    // anthropic (allowCustomModels: false) renders the <select> variant — its
+    // onChange is the model-picking path for every fixed-catalog provider.
+    const select = screen.getByTestId("ai-model-select") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "claude-sonnet-4-6" } });
+    expect(select.value).toBe("claude-sonnet-4-6");
+  });
+
   it("shows the network classification when ai_key_test rejects with a network error", async () => {
     invoke.mockImplementation((cmd: string) => {
       if (cmd === "ai_key_list") return Promise.resolve({ entries: [], defaultAlias: null });
@@ -435,5 +446,66 @@ describe("SettingsAi", () => {
     });
     const chip = await waitFor(() => screen.getByTestId("ai-key-test-result"));
     expect(chip.textContent).toContain("Network error");
+  });
+});
+
+// ── provider-catalog fallback branches (SettingsAi lines 43/55/64) ─────
+// The shipped PROVIDERS catalog is non-empty and its first entry has a
+// recommended model, so these fallback arms only fire when the catalog
+// module is swapped out — pin them with a mocked registry.
+
+class CatchBoundary extends Component<{ children: ReactNode }, { err: Error | null }> {
+  state: { err: Error | null } = { err: null };
+  static getDerivedStateFromError(err: Error) {
+    return { err };
+  }
+  render() {
+    if (this.state.err) return <div data-testid="catalog-error">{this.state.err.message}</div>;
+    return this.props.children;
+  }
+}
+
+describe("SettingsAi — provider catalog edge cases", () => {
+  afterEach(() => {
+    vi.doUnmock("../lib/ai/providers");
+    vi.resetModules();
+  });
+
+  it("fails fast with a clear error when the provider catalog is empty", async () => {
+    vi.resetModules();
+    vi.doMock("../lib/ai/providers", () => ({
+      PROVIDERS: [],
+      getProvider: () => undefined,
+      defaultModel: () => undefined,
+    }));
+    const { SettingsAi: EmptyCatalogSettingsAi } = await import("./SettingsAi");
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <CatchBoundary>
+        <EmptyCatalogSettingsAi />
+      </CatchBoundary>,
+    );
+    // firstProvider() fell back to "anthropic" (line 43), the model initialiser
+    // took the no-definition arm (line 55), and `?? PROVIDERS[0]` (line 64)
+    // produced undefined → the guard throw surfaces.
+    expect(screen.getByTestId("catalog-error").textContent).toBe("provider catalog is empty");
+    errSpy.mockRestore();
+  });
+
+  it("initialises the model id to empty when the first provider has no models", async () => {
+    vi.resetModules();
+    vi.doMock("../lib/ai/providers", async () => {
+      const actual =
+        await vi.importActual<typeof import("../lib/ai/providers")>("../lib/ai/providers");
+      const compat = actual.PROVIDERS.find((p) => p.id === "openai-compatible");
+      if (!compat) throw new Error("openai-compatible provider missing from catalog");
+      // Catalog whose *first* entry has an empty model list → the mount-time
+      // initialiser hits `defaultModel(def)?.id ?? ""` (line 55 nullish arm).
+      return { ...actual, PROVIDERS: [compat] };
+    });
+    const { SettingsAi: NoModelSettingsAi } = await import("./SettingsAi");
+    render(<NoModelSettingsAi />);
+    await waitFor(() => expect(screen.getByTestId("ai-model-input")).toBeTruthy());
+    expect((screen.getByTestId("ai-model-input") as HTMLInputElement).value).toBe("");
   });
 });

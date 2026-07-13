@@ -605,6 +605,27 @@ describe("ParserWorkbench", () => {
     expect(clampSampleRatio(Number.NaN)).toBeCloseTo(0.28, 5);
   });
 
+  it("N10: already-consented parser → '이 파서로 지금 렌더' 는 다이얼로그 없이 즉시 복귀한다", () => {
+    act(() => {
+      useActivityMode.getState().enterParser();
+    });
+    render(<ParserWorkbench workspace={WS} />);
+    fireEvent.change(screen.getByTestId("parser-id"), { target: { value: "my-parser" } });
+    fireEvent.change(screen.getByTestId("parser-extensions"), { target: { value: ".md" } });
+    // 1차: [적용] 으로 동의를 먼저 끝낸다 (renderAfterConsent 미설정 → 워크벤치 유지).
+    fireEvent.click(screen.getByTestId("parser-apply"));
+    acceptConsent();
+    expect(useActivityMode.getState().mode).toBe("parser");
+    const before = useActivityMode.getState().parserRenderNonce;
+    // 2차: 이미 동의된 id → applyParser 가 "activated" 를 반환, 라인 388 의
+    // renderWithParser() 가 곧바로 실행된다 (동의 다이얼로그 없음).
+    fireEvent.click(screen.getByTestId("parser-apply-render"));
+    expect(screen.queryByTestId("plugin-consent-overlay")).toBeNull();
+    expect(screen.getByTestId("parser-apply-msg").textContent).toContain("등록됨");
+    expect(useActivityMode.getState().mode).toBe("workspace");
+    expect(useActivityMode.getState().parserRenderNonce).toBe(before + 1);
+  });
+
   it("N10: '이 파서로 지금 렌더' stays in parser mode when registration fails", () => {
     act(() => {
       useActivityMode.getState().enterParser();

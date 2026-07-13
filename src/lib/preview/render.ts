@@ -138,6 +138,7 @@ interface MdastNode {
 // remark-rehype maps node.data to hast.
 function remarkPromoteDisplayMath() {
   return (tree: MdastNode, file: { value?: unknown }) => {
+    /* v8 ignore next -- the pipeline always processes a string, so file.value is a string here; the "" arm guards direct transformer reuse */
     const src = typeof file.value === "string" ? file.value : "";
     const promote = (node: MdastNode): void => {
       for (const child of node.children ?? []) promote(child);
@@ -146,6 +147,7 @@ function remarkPromoteDisplayMath() {
       if (only?.type !== "inlineMath") return;
       const start = only.position?.start?.offset;
       if (typeof start !== "number" || src.slice(start, start + 2) !== "$$") return;
+      /* v8 ignore next -- mdast-util-math always sets data (hName/hProperties) on inlineMath, so the {} arm only guards other math sources */
       const data = only.data ?? {};
       only.data = data;
       data.hProperties = { ...data.hProperties, className: ["language-math", "math-display"] };
@@ -381,6 +383,7 @@ async function renderUntrustedRuntimeParser(
         type: "parse",
         requestId: `r-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         parserId,
+        /* v8 ignore next -- render() only routes here when opts.path matched a parser, so the "" arm satisfies the type only */
         path: opts.path ?? "",
         content: md,
         encoding: opts.encoding ?? "utf-8",

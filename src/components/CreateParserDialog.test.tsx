@@ -76,6 +76,24 @@ describe("CreateParserDialog", () => {
     expect(m?.parser.manifest.id).toBe("wireweave-ui-test");
   });
 
+  it("re-creating an already-consented parser succeeds immediately without a consent dialog (T5.F 수정마다 X)", () => {
+    render(<CreateParserDialog open={true} onClose={() => {}} />);
+    setValue(screen.getByTestId("parser-id") as HTMLInputElement, "reconsented");
+    setValue(screen.getByTestId("parser-extensions") as HTMLInputElement, ".rc");
+    setValue(
+      screen.getByTestId("parser-source") as HTMLTextAreaElement,
+      `(input) => ({ ast: { kind: "html", html: input.content } })`,
+    );
+    fireEvent.click(screen.getByTestId("parser-create"));
+    fireEvent.click(screen.getByTestId("consent-accept"));
+    // 두 번째 Create — 동의가 유지되므로(already-consented) 다이얼로그 없이
+    // 바로 성공 메시지 경로(lines 109-117)를 탄다.
+    fireEvent.click(screen.getByTestId("parser-create"));
+    expect(screen.queryByTestId("plugin-consent-overlay")).toBeNull();
+    expect(screen.getByTestId("parser-result-success").textContent).toContain("등록 완료");
+    expect(getParserRegistry().match({ path: "/x.rc" })?.parser.manifest.id).toBe("reconsented");
+  });
+
   it("consent Reject rolls the registration back (SC-SEC-04)", () => {
     render(<CreateParserDialog open={true} onClose={() => {}} />);
     setValue(screen.getByTestId("parser-id") as HTMLInputElement, "rejected-parser");

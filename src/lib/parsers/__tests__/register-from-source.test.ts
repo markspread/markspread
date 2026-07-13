@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getOrchestrator, resetOrchestrator } from "../../plugins/runtime/orchestrator-singleton";
 import {
+  compileFactorySource,
   evaluateFactory,
   registerParserFromSource,
   resolveParserConsent,
@@ -139,6 +140,56 @@ describe("registerParserFromSource — happy path", () => {
     expect(second.consent?.action).toBe("already-consented");
     expect(second.activated).toBe(true);
   });
+
+  it("consent Accept 는 pending source 가 없으면 no-op (activated:false)", () => {
+    // 등록된 적 없는 id 의 Accept — pendingConsentSources 미스 가드 (line 229).
+    const { activated } = resolveParserConsent("never-registered", "accept");
+    expect(activated).toBe(false);
+    expect(getParserTransport("never-registered")).toBeNull();
+  });
+
+  it("consent Accept 시 recordConsent 실패면 활성하지 않는다 (lines 233-235)", () => {
+    registerParserFromSource({
+      id: "consent-boom",
+      displayName: "CB",
+      extensions: [".cb"],
+      source: `(input) => ({ ast: { kind: "html", html: input.content } })`,
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(getOrchestrator().trust, "recordConsent").mockImplementation(() => {
+      throw new Error("record-consent-boom");
+    });
+    const { activated } = resolveParserConsent("consent-boom", "accept");
+    expect(activated).toBe(false);
+    // 동의 기록 실패 = Worker 활성 없음 — 실패는 경고로 표면화된다.
+    expect(getParserTransport("consent-boom")).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      "[register-from-source] consent record failed",
+      expect.any(Error),
+    );
+  });
+
+  it("workbenchPreview: recordConsent 실패는 경고로 삼키고 등록은 계속된다 (lines 196-197)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(getOrchestrator().trust, "recordConsent").mockImplementation(() => {
+      throw new Error("wb-consent-boom");
+    });
+    const r = registerParserFromSource({
+      id: "wb-consent-fail",
+      displayName: "WB",
+      extensions: [".wbf"],
+      source: `(input) => ({ ast: { kind: "html", html: input.content } })`,
+      workbenchPreview: true,
+    });
+    expect(r.ok).toBe(true);
+    expect(warn).toHaveBeenCalledWith(
+      "[register-from-source] workbench consent record failed",
+      expect.any(Error),
+    );
+    // 동의 기록이 실패했으므로 즉시 활성 대신 동의 대기(show)로 떨어진다.
+    expect(r.consent?.action).toBe("show");
+    expect(r.activated).toBe(false);
+  });
 });
 
 describe("registerParserFromSource — validation + safety", () => {
@@ -214,6 +265,25 @@ describe("registerParserFromSource — validation + safety", () => {
     const result = evaluateFactory(`(() => { throw "plain-string-failure" })()`);
     expect(result).toBeInstanceOf(Error);
     expect((result as Error).message).toBe("plain-string-failure");
+  });
+
+  it("evaluateFactory returns a thrown Error instance as-is (line 99 instanceof arm)", () => {
+    const result = evaluateFactory(`(() => { throw new Error("eval-error-failure") })()`);
+    expect(result).toBeInstanceOf(Error);
+    expect((result as Error).message).toBe("eval-error-failure");
+  });
+
+  it("compileFactorySource normalises a non-Error throw into an Error (line 114 String(e) branch)", () => {
+    // `new Function` 컴파일은 항상 SyntaxError(Error) 를 던지므로, 비-Error 정규화
+    // 분기는 strip 단계 seam — .replace 가 문자열을 던지는 적대적 "source" 로만 도달한다.
+    const evil = {
+      replace: () => {
+        throw "compile-string-failure";
+      },
+    } as unknown as string;
+    const err = compileFactorySource(evil);
+    expect(err).toBeInstanceOf(Error);
+    expect(err?.message).toBe("compile-string-failure");
   });
 
   it("returns ok:false when the registry rejects the manifest (lines 100-106)", () => {

@@ -936,10 +936,10 @@ mod tests {
     // compare content + mtime, exactly the contract the task demands.
 
     /// Fake agent for the fs flow. On `session/prompt`:
-    ///   1. sends `session/request_permission` to the host and waits,
-    ///   2. if the host's decision is `allow`/`allow_once`, sends
-    ///      `fs/write_text_file` with `target_path`/`target_content`,
-    ///   3. completes the prompt with `end_turn`.
+    /// 1. sends `session/request_permission` to the host and waits,
+    /// 2. if the host's decision is `allow`/`allow_once`, sends
+    ///    `fs/write_text_file` with `target_path`/`target_content`,
+    /// 3. completes the prompt with `end_turn`.
     ///
     /// Returns nothing; runs until the transport closes.
     async fn run_fs_fake_agent(

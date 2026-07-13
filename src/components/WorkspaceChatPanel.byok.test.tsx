@@ -210,6 +210,66 @@ describe("WorkspaceChatPanel — BYOK chat lane (SC-LLM-05)", () => {
       expect(invokeMock).toHaveBeenCalledWith("ai_key_resolve", { alias: KEY_ENTRY.alias }),
     );
   });
+
+  it("falls back to the first entry when the default alias no longer exists", async () => {
+    setAcpAdapter(fakeAcpAdapter());
+    useKeyStore.setState({ entries: [KEY_ENTRY], defaultAlias: "deleted-alias" });
+    anthropicCall.mockImplementation(() => chunkStream({ kind: "text", delta: "ok" }, doneChunk()));
+    const { getByTestId } = render(<WorkspaceChatPanel workspaceId={WS} />);
+
+    await send(getByTestId, "go");
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith("ai_key_resolve", { alias: KEY_ENTRY.alias }),
+    );
+  });
+
+  it("hydrates the key store lazily when chat runs before Settings was opened", async () => {
+    setAcpAdapter(fakeAcpAdapter());
+    useKeyStore.setState({ entries: [], defaultAlias: null });
+    invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "ai_key_list") return { entries: [KEY_ENTRY], defaultAlias: KEY_ENTRY.alias };
+      if (cmd === "ai_key_resolve") return "sk-live-key";
+      return undefined;
+    });
+    anthropicCall.mockImplementation(() =>
+      chunkStream({ kind: "text", delta: "hydrated" }, doneChunk()),
+    );
+    const { getByTestId } = render(<WorkspaceChatPanel workspaceId={WS} />);
+
+    await send(getByTestId, "go");
+
+    await waitFor(() =>
+      expect(getByTestId("chat-msg-assistant").textContent).toContain("hydrated"),
+    );
+    expect(invokeMock).toHaveBeenCalledWith("ai_key_list");
+    expect(invokeMock).toHaveBeenCalledWith("ai_key_resolve", { alias: KEY_ENTRY.alias });
+  });
+
+  it("excludes system notices from the resent provider history", async () => {
+    setAcpAdapter(fakeAcpAdapter());
+    // 1st turn fails with an auth error → a system notice lands in the session.
+    anthropicCall.mockImplementationOnce(() =>
+      chunkStream({ kind: "error", message: "anthropic 401: invalid x-api-key" }),
+    );
+    anthropicCall.mockImplementationOnce(() =>
+      chunkStream({ kind: "text", delta: "ok now" }, doneChunk()),
+    );
+    const { getByTestId } = render(<WorkspaceChatPanel workspaceId={WS} />);
+
+    await send(getByTestId, "one");
+    await waitFor(() =>
+      expect(getByTestId("chat-msg-system").textContent).toContain("Authentication failed"),
+    );
+    await send(getByTestId, "two");
+    await waitFor(() => expect(anthropicCall).toHaveBeenCalledTimes(2));
+
+    const second = anthropicCall.mock.calls[1]?.[0] as CapturedCallOpts;
+    // The stored system *notice* is not replayed — only the preamble and
+    // the real user turns go back to the provider.
+    expect(second.messages.map((m) => m.role)).toEqual(["system", "user", "user"]);
+    expect(second.messages.some((m) => m.content.includes("Authentication failed"))).toBe(false);
+  });
 });
 
 describe("WorkspaceChatPanel — BYOK failure display (SC-LLM-06 chat half)", () => {
@@ -272,6 +332,23 @@ describe("WorkspaceChatPanel — BYOK failure display (SC-LLM-06 chat half)", ()
       expect(sys).toContain("Provider error");
       expect(sys).toContain("529");
     });
+  });
+
+  it("an error chunk without a message falls back to the generic provider error", async () => {
+    setAcpAdapter(fakeAcpAdapter());
+    // Wire-level malformation: an error chunk whose message field is missing.
+    anthropicCall.mockImplementation(() =>
+      chunkStream({ kind: "error", message: undefined as unknown as string }),
+    );
+    const { getByTestId } = render(<WorkspaceChatPanel workspaceId={WS} />);
+
+    await send(getByTestId, "hello?");
+
+    await waitFor(() =>
+      expect(getByTestId("chat-msg-system").textContent).toContain(
+        "Provider error: unknown provider error",
+      ),
+    );
   });
 
   it("a key-resolve failure (thrown before the provider call) still lands in chat", async () => {
@@ -360,6 +437,26 @@ describe("WorkspaceChatPanel — BYOK drag-edit lane (SC-LLM-05 × SC-DRAG-01)",
 
     await waitFor(() => expect(container.textContent ?? "").toContain("no replacement text"));
     expect(queryByTestId("inline-diff-overlay")).toBeNull();
+  });
+
+  it("a key-resolve failure during a drag-edit lands as a provider error notice (no overlay)", async () => {
+    setAcpAdapter(fakeAcpAdapter());
+    invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "ai_key_resolve") throw new Error("keychain locked");
+      return undefined;
+    });
+    const { getByTestId, queryByTestId } = render(<WorkspaceChatPanel workspaceId={WS} />);
+    captureSelection();
+
+    await send(getByTestId, "improve");
+
+    await waitFor(() => {
+      const sys = getByTestId("chat-msg-system").textContent ?? "";
+      expect(sys).toContain("Provider error");
+      expect(sys).toContain("keychain locked");
+    });
+    expect(queryByTestId("inline-diff-overlay")).toBeNull();
+    expect(anthropicCall).not.toHaveBeenCalled();
   });
 
   it("drag-edit without a stored key prints the Settings guidance", async () => {

@@ -498,6 +498,14 @@ describe("render — math placeholders (SC-BASE-03)", () => {
     expect(root.querySelector(".ms-math .katex")).not.toBeNull();
   });
 
+  it("keeps a standalone single-dollar paragraph as inline math (no display promotion)", async () => {
+    // remarkPromoteDisplayMath 는 paragraph 가 inlineMath *하나뿐* 이어도 원문이
+    // `$$` 로 시작할 때만 display 로 승격한다 — `$x$` 단독 문단은 inline 유지.
+    const out = await render("$E=mc^2$");
+    expect(out).toContain('data-mode="inline"');
+    expect(out).not.toContain('data-mode="block"');
+  });
+
   it("treats inline $$…$$ as inline math (remark-math text-math semantics)", async () => {
     const out = await render("before $$x^2$$ after");
     expect(out).toContain('data-mode="inline"');

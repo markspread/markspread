@@ -45,7 +45,12 @@ import { useDragChatSelection } from "../store/drag-chat-selection";
 import { useTabs } from "../store/tabs";
 import { useTelemetry } from "../store/telemetry";
 import { useToolApprovalQueue } from "../store/tool-approval-queue";
-import { WorkspaceChatPanel, permissionRequestToProposal } from "./WorkspaceChatPanel";
+import {
+  WorkspaceChatPanel,
+  enqueuePermissionRequest,
+  extractProposedText,
+  permissionRequestToProposal,
+} from "./WorkspaceChatPanel";
 
 const invokeMock = invoke as unknown as ReturnType<typeof vi.fn>;
 const WS = "/ws-1";
@@ -669,6 +674,94 @@ describe("WorkspaceChatPanel — permission approval flow (SC-CHAT-01/02)", () =
     ).toBeNull();
   });
 
+  it("permissionRequestToProposal returns null for non-permission events", () => {
+    expect(
+      permissionRequestToProposal({
+        sessionId: "s",
+        agentId: "a",
+        event: { kind: "sessionUpdate" },
+      }),
+    ).toBeNull();
+  });
+
+  it("permissionRequestToProposal tolerates a payload with no params at all", () => {
+    const p = permissionRequestToProposal({
+      sessionId: "s",
+      agentId: "a",
+      event: { kind: "permissionRequest", requestId: 3 },
+    });
+    expect(p).not.toBeNull();
+    expect(p?.toolCallId).toBe("");
+    expect(p?.summary).toBe("");
+    expect(p?.filePath).toBe("");
+    // No kind, no summary keywords → the conservative edit_file default.
+    expect(p?.tool).toBe("edit_file");
+  });
+
+  it("infers the tool kind from the explicit toolCall.kind (write / create)", () => {
+    const withKind = (kind: string) =>
+      permissionRequestToProposal({
+        sessionId: "s",
+        agentId: "a",
+        event: { kind: "permissionRequest", requestId: 1, params: { toolCall: { kind } } },
+      });
+    expect(withKind("write")?.tool).toBe("write_file");
+    expect(withKind("create")?.tool).toBe("write_file");
+    expect(withKind("read")?.tool).toBe("edit_file");
+  });
+
+  it("infers write_file from each summary keyword when the kind is absent", () => {
+    const withSummary = (summary: string) =>
+      permissionRequestToProposal({
+        sessionId: "s",
+        agentId: "a",
+        event: { kind: "permissionRequest", requestId: 1, params: { summary } },
+      });
+    expect(withSummary("creates docs/notes.md")?.tool).toBe("write_file");
+    expect(withSummary("노트 파일 생성")?.tool).toBe("write_file");
+    expect(withSummary("초안 작성")?.tool).toBe("write_file");
+    expect(withSummary("rename heading")?.tool).toBe("edit_file");
+  });
+
+  it("keeps the params-level path over a diff entry's path, defaulting missing diff fields", () => {
+    const p = permissionRequestToProposal({
+      sessionId: "s",
+      agentId: "a",
+      event: {
+        kind: "permissionRequest",
+        requestId: 2,
+        params: {
+          path: "/from-params.md",
+          toolCall: { content: [{ type: "diff" }] },
+        },
+      },
+    });
+    expect(p?.filePath).toBe("/from-params.md");
+    expect(p?.before).toBe("");
+    expect(p?.after).toBe("");
+  });
+
+  it("falls back to the first toolCall location for the file path", () => {
+    const withLocations = (locations: unknown[]) =>
+      permissionRequestToProposal({
+        sessionId: "s",
+        agentId: "a",
+        event: { kind: "permissionRequest", requestId: 4, params: { toolCall: { locations } } },
+      });
+    expect(withLocations([{ path: "/loc.md" }])?.filePath).toBe("/loc.md");
+    // Malformed location entries degrade to an empty path, not a crash.
+    expect(withLocations([42])?.filePath).toBe("");
+  });
+
+  it("enqueuePermissionRequest drops payloads that do not map to a proposal", () => {
+    enqueuePermissionRequest({
+      sessionId: "s",
+      agentId: "a",
+      event: { kind: "sessionUpdate" },
+    });
+    expect(useToolApprovalQueue.getState().queue).toHaveLength(0);
+  });
+
   it("permissionRequestToProposal extracts a rich embedded diff when present", () => {
     const p = permissionRequestToProposal({
       sessionId: "s",
@@ -693,6 +786,50 @@ describe("WorkspaceChatPanel — permission approval flow (SC-CHAT-01/02)", () =
     expect(p?.after).toBe("new");
     expect(p?.summary).toBe("Edit notes.md");
     expect(p?.toolCallId).toBe("tc-9");
+  });
+
+  it("permissionRequestToProposal tolerates a diff entry and location with non-string fields", () => {
+    const p = permissionRequestToProposal({
+      sessionId: "s",
+      agentId: "a",
+      event: {
+        kind: "permissionRequest",
+        requestId: "rid-2",
+        params: {
+          toolCall: {
+            toolCallId: "tc-10",
+            title: "Edit",
+            kind: "edit",
+            // oldText/newText/path carry wire-shaped junk: the ?? "" arms
+            // must produce empty strings, and the locations fallback must
+            // also survive a non-string path.
+            content: [{ type: "diff", path: 123, oldText: null, newText: 7 }],
+            locations: [{ path: 42 }],
+          },
+        },
+      },
+    });
+    expect(p).not.toBeNull();
+    expect(p?.filePath).toBe("");
+    expect(p?.before).toBe("");
+    expect(p?.after).toBe("");
+  });
+});
+
+// ─── extractProposedText: fence-stripping for drag-edit replies ─────────
+
+describe("extractProposedText", () => {
+  it("strips one wrapping code fence (with or without a language tag)", () => {
+    expect(extractProposedText("```md\nfoo\n```")).toBe("foo");
+    expect(extractProposedText("```\nfoo\nbar\n```")).toBe("foo\nbar");
+  });
+
+  it("leaves an unterminated fence untouched", () => {
+    expect(extractProposedText("```fenced but never closed")).toBe("```fenced but never closed");
+  });
+
+  it("leaves a single-line fence-like reply untouched (no newline to split on)", () => {
+    expect(extractProposedText("``` inline ```")).toBe("``` inline ```");
   });
 });
 
@@ -841,13 +978,131 @@ describe("WorkspaceChatPanel — drag-chat edit (SC-DRAG-01..04)", () => {
     );
     expect(retryComposed).toContain("[Retry]");
 
-    // 재요청은 1회 — 추가 Cmd+R 은 요청을 만들지 않고 overlay 유지.
-    fireEvent.keyDown(window, { key: "r", metaKey: true });
+    // 재요청은 1회 — 추가 재시도 키는 요청을 만들지 않고 overlay 유지.
+    // (변형 조합 Ctrl+Shift 류 대문자 "R" 도 같은 retry 키로 인식된다.)
+    fireEvent.keyDown(window, { key: "R", ctrlKey: true });
     await act(async () => {
       await Promise.resolve();
     });
     expect(adapter.sendMessage).toHaveBeenCalledTimes(2);
     expect(getByTestId("inline-diff-overlay").textContent).toContain("second fix");
+  });
+
+  it("a drag request with no registered agent prints the system fallback", async () => {
+    setAcpAdapter(fakeAdapter());
+    useAgentRegistry.setState({ byId: {}, order: [] });
+    const { getByTestId, queryByTestId, container } = render(
+      <WorkspaceChatPanel workspaceId={WS} />,
+    );
+    captureSelection();
+    await sendDragRequest(getByTestId, "improve");
+    await waitFor(() => expect(container.textContent ?? "").toContain("No agent registered"));
+    expect(queryByTestId("inline-diff-overlay")).toBeNull();
+  });
+
+  it("positions the overlay at the captured selection rect and accepts via its button", async () => {
+    setAcpAdapter(streamingAdapter(["new line"]));
+    const { getByTestId, queryByTestId } = render(<WorkspaceChatPanel workspaceId={WS} />);
+    act(() => {
+      useDragChatSelection.getState().capture({
+        filePath: "notes.md",
+        fullText: DOC,
+        fromOffset: SEL_FROM,
+        toOffset: SEL_TO,
+        screenPosition: { top: 120, left: 48 },
+      });
+    });
+    await sendDragRequest(getByTestId, "improve");
+    await waitFor(() => expect(getByTestId("inline-diff-overlay")).toBeTruthy());
+    const overlay = getByTestId("inline-diff-overlay");
+    expect(overlay.style.top).toBe("120px");
+    expect(overlay.style.left).toBe("48px");
+
+    // 결정은 키보드뿐 아니라 overlay 버튼으로도 내린다.
+    fireEvent.click(getByTestId("inline-diff-accept"));
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith("fs_write", {
+        workspace: WS,
+        path: "notes.md",
+        content: "# Title\nnew line\nrest",
+      }),
+    );
+    await waitFor(() => expect(queryByTestId("inline-diff-overlay")).toBeNull());
+  });
+
+  it("a retry after the session vanished aborts without sending a second request", async () => {
+    const adapter = streamingAdapter(["first fix", "second fix"]);
+    setAcpAdapter(adapter);
+    const { getByTestId, queryByTestId, rerender } = render(
+      <WorkspaceChatPanel workspaceId={WS} />,
+    );
+    captureSelection();
+    await sendDragRequest(getByTestId, "improve");
+    await waitFor(() => expect(getByTestId("inline-diff-overlay")).toBeTruthy());
+
+    // 워크스페이스가 닫히고 세션 선택이 사라진 상태 — 자동 세션 부트스트랩도
+    // workspaceId 없음이라 돌지 않는다.
+    rerender(<WorkspaceChatPanel workspaceId="" />);
+    act(() => {
+      useChatSessions.setState({ activeSessionId: null });
+    });
+
+    fireEvent.keyDown(window, { key: "r", metaKey: true });
+
+    // retry 는 시작(diff 해제)되지만 세션이 없어 재요청은 나가지 않는다.
+    await waitFor(() => expect(queryByTestId("inline-diff-overlay")).toBeNull());
+    expect(adapter.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("a superseded drag request (selection re-sent while in flight) degrades to the no-replacement notice", async () => {
+    let resolveFirst: (() => void) | undefined;
+    let call = 0;
+    const adapter = fakeAdapter({
+      sendMessage: vi.fn(() => {
+        call += 1;
+        if (call === 1) {
+          return new Promise<void>((r) => {
+            resolveFirst = r;
+          });
+        }
+        acpListeners[acpListeners.length - 1]?.({
+          payload: {
+            sessionId: "fake-sess",
+            agentId: "claude-subscription",
+            event: {
+              kind: "sessionUpdate",
+              update: {
+                update: {
+                  sessionUpdate: "agent_message_chunk",
+                  content: { type: "text", text: "second proposal" },
+                },
+              },
+            },
+          },
+        });
+        return Promise.resolve();
+      }),
+    });
+    setAcpAdapter(adapter);
+    const { getByTestId, container } = render(<WorkspaceChatPanel workspaceId={WS} />);
+    captureSelection();
+
+    await sendDragRequest(getByTestId, "first ask");
+    await waitFor(() => expect(adapter.sendMessage).toHaveBeenCalledTimes(1));
+    // 첫 요청이 in-flight 인 동안 두 번째 요청이 capture buffer 를 가져간다.
+    await sendDragRequest(getByTestId, "second ask");
+    await waitFor(() =>
+      expect(getByTestId("inline-diff-overlay").textContent).toContain("second proposal"),
+    );
+
+    // 뒤늦게 완료된 첫 요청은 버퍼를 잃었으므로 빈 응답으로 강등된다.
+    await act(async () => {
+      resolveFirst?.();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(container.textContent ?? "").toContain("no replacement text"));
+    // 두 번째 요청의 overlay 는 그대로 유지된다.
+    expect(getByTestId("inline-diff-overlay").textContent).toContain("second proposal");
   });
 
   it("clears the selection chip via its ✕ button (request then routes as normal chat)", async () => {
