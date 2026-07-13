@@ -1,6 +1,7 @@
 ---
-"markspread": patch
 ---
+
+App-level change (the root `markspread` app is not a changesets-versioned workspace package — releases ride the Tauri pipeline, same pattern as whole-canyons-yawn).
 
 Wire finished modules into the live app and harden the parser runtime — full-behavior regression (47 SDI scenarios) now passes end-to-end.
 
