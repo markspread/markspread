@@ -60,3 +60,19 @@ jobs:
       - name: rustfmt
         working-directory: src-tauri
         run: cargo fmt --all -- --check
+
+  # S-A11-002 / S-A11-007: static accessibility gates. Both are plain
+  # node scripts over the source tree, so they belong with the lint
+  # pass rather than behind a browser run — the axe assertions that do
+  # need a DOM live in `test.yml`.
+  a11y-static:
+    name: a11y static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: positive tabindex lint
+        run: node scripts/check-tabindex.mjs
+      - name: WCAG AA contrast
+        run: node scripts/check-contrast.mjs
