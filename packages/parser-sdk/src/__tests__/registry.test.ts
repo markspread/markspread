@@ -105,7 +105,9 @@ describe("ParserRegistry — conflicts and candidates", () => {
     reg.registerParser(mf({ id: "csv-glob", fileMatch: { globs: ["**/*.csv"] } }), noopFactory);
     const cs = reg.candidates({ path: "/a.csv" });
     expect(cs.map((c) => c.parser.manifest.id)).toEqual(["csv-ext", "csv-glob"]);
-    expect(cs[0]?.score).toBeGreaterThan(cs[1]?.score);
+    const [top, next] = cs;
+    if (!top || !next) throw new Error("expected two ranked candidates");
+    expect(top.score).toBeGreaterThan(next.score);
   });
 
   it("candidates() is empty for unsupported paths (no fallback)", () => {
