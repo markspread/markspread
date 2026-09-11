@@ -6,9 +6,9 @@
 #   - workspace authoring (covers tree, editor, preview surface)
 #   - AI mock action     (provides reactive coverage for the AI bus)
 #
-# The full OS matrix + plugin lifecycle + updater + visual checks live
-# in `test.yml` (smoke gate) and `e2e-main.yml` (post-merge). Keeping
-# the PR e2e tight (~3 min in CI) is what makes the gate viable.
+# The tauri-shell boot check and the visual / a11y specs live in
+# `test.yml`. Keeping the PR e2e tight (~3 min in CI) is what makes the
+# gate viable.
 
 name: e2e-pr
 
@@ -45,7 +45,7 @@ jobs:
         # which serves the prebuilt dist/ — it does not build. Without
         # this step the webServer dies with "The directory dist does not
         # exist" before the first test. Renderer build only; the full
-        # tauri build lives in test.yml / e2e-main.yml.
+        # tauri build lives in test.yml.
         run: pnpm vite:build
       - name: Run representative e2e
         env:
