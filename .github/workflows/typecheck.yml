@@ -1,10 +1,10 @@
 # S-CI-002: PR typecheck — tsc + cargo check.
 #
 # Lint catches stylistic issues; this job catches the structural ones.
-# We use `tsc --noEmit -p tsconfig.json` against every project ref in
-# the workspace so a renderer change that breaks an SDK consumer is
-# flagged here. Cargo check (without `--all-targets`) is faster than
-# clippy and gives the same compilation guarantees minus lints.
+# We run `tsc --noEmit` over the renderer and every workspace package
+# so a renderer change that breaks an SDK consumer is flagged here.
+# Cargo check (without `--all-targets`) is faster than clippy and gives
+# the same compilation guarantees minus lints.
 
 name: typecheck
 
@@ -27,10 +27,11 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - name: Renderer
         run: pnpm tsc --noEmit -p tsconfig.json
-      - name: SDK
-        run: pnpm --filter @markspread/sdk exec tsc --noEmit
-      - name: CLI
-        run: pnpm --filter @markspread/cli exec tsc --noEmit
+      # Workspace packages are enumerated by pnpm rather than named
+      # one-by-one: a `--filter` that matches nothing exits 0, so a
+      # renamed or added package would silently stop being checked.
+      - name: Workspace packages
+        run: pnpm -r --filter '!markspread' exec tsc --noEmit
 
   cargo-check:
     name: cargo check
