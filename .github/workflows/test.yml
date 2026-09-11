@@ -6,12 +6,13 @@
 #   unit    ubuntu — vitest + cargo test, ~2 min
 #   smoke   ubuntu — `pnpm tauri build --debug` then the first-launch +
 #           create-workspace walk, proving the Tauri shell still boots.
-#   visual + a11y  ubuntu; visual is parked behind a label.
+#   a11y    ubuntu — axe assertions against the built renderer.
 #
 # Cross-OS build verification belongs to `release.yml`, which compiles
 # and signs every shipped target on its own runner. Repeating that
 # matrix per PR costs four runners for a failure mode — platform-specific
-# Rust compilation — that `cargo check` already catches on every push.
+# Rust compilation — that `lint.yml`'s clippy run already catches on
+# every push.
 
 name: test
 
@@ -109,27 +110,6 @@ jobs:
           path: |
             test-results/
             playwright-report/
-
-  visual:
-    name: Visual regression (Linux only)
-    if: contains(github.event.pull_request.labels.*.name, 'visual')
-    runs-on: ubuntu-latest
-    needs: smoke
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: corepack enable && pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-      # The renderer project starts `vite preview`, which serves `dist/` —
-      # build it before running the specs.
-      - run: pnpm vite:build
-      - run: pnpm exec playwright test --project=renderer --grep "visual:"
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: visual-diff
-          path: test-results/
 
   a11y:
     name: Accessibility (axe)
