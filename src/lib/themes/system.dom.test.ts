@@ -35,7 +35,7 @@ describe("bindSystemTheme", () => {
 
   it("adds change listeners for color-scheme and contrast", async () => {
     const mqls = new Map<string, FakeMql>();
-    vi.spyOn(window, "matchMedia").mockImplementation((q: string) => {
+    vi.stubGlobal("matchMedia", (q: string) => {
       const m = mqls.get(q) ?? makeMql(q);
       mqls.set(q, m);
       return m as unknown as MediaQueryList;
@@ -49,9 +49,7 @@ describe("bindSystemTheme", () => {
   });
 
   it("is idempotent — a second call returns a no-op while installed", async () => {
-    vi.spyOn(window, "matchMedia").mockImplementation(
-      (q: string) => makeMql(q) as unknown as MediaQueryList,
-    );
+    vi.stubGlobal("matchMedia", (q: string) => makeMql(q) as unknown as MediaQueryList);
     const { bindSystemTheme } = await import("./system");
     bindSystemTheme();
     const second = bindSystemTheme();
@@ -61,7 +59,7 @@ describe("bindSystemTheme", () => {
 
   it("re-applies the theme when the system flips and mode is system", async () => {
     const mqls = new Map<string, FakeMql>();
-    vi.spyOn(window, "matchMedia").mockImplementation((q: string) => {
+    vi.stubGlobal("matchMedia", (q: string) => {
       const m = mqls.get(q) ?? makeMql(q);
       mqls.set(q, m);
       return m as unknown as MediaQueryList;
@@ -79,7 +77,7 @@ describe("bindSystemTheme", () => {
 
   it("does not re-apply when mode is fixed and contrast is high", async () => {
     const mqls = new Map<string, FakeMql>();
-    vi.spyOn(window, "matchMedia").mockImplementation((q: string) => {
+    vi.stubGlobal("matchMedia", (q: string) => {
       const m = mqls.get(q) ?? makeMql(q);
       mqls.set(q, m);
       return m as unknown as MediaQueryList;

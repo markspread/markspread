@@ -23,8 +23,12 @@ const record: AiHistoryRecord = {
   durationMs: 1200,
 };
 
-beforeEach(() => invokeMock.mockReset());
-afterEach(() => invokeMock.mockReset());
+beforeEach(() => {
+  invokeMock.mockReset();
+});
+afterEach(() => {
+  invokeMock.mockReset();
+});
 
 describe("recordHistory", () => {
   it("invokes ai_history_record with the record", async () => {

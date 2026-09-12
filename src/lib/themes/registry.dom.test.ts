@@ -110,7 +110,8 @@ describe("applyTheme", () => {
   });
 
   it("resolves system mode via matchMedia", () => {
-    const spy = vi.spyOn(window, "matchMedia").mockImplementation(
+    vi.stubGlobal(
+      "matchMedia",
       (q: string) =>
         ({
           matches: q.includes("dark"),
@@ -121,11 +122,12 @@ describe("applyTheme", () => {
     );
     applyTheme({ themeId: "default-light", mode: "system" });
     expect(document.documentElement.dataset.theme).toBe("dark");
-    spy.mockRestore();
+    vi.unstubAllGlobals();
   });
 
   it("applies high contrast automatically when the system prefers it", () => {
-    const spy = vi.spyOn(window, "matchMedia").mockImplementation(
+    vi.stubGlobal(
+      "matchMedia",
       (q: string) =>
         ({
           matches: q.includes("prefers-contrast"),
@@ -136,7 +138,7 @@ describe("applyTheme", () => {
     );
     applyTheme({ themeId: "default-light", mode: "light", contrast: "auto" });
     expect(document.documentElement.style.getPropertyValue("--ms-color-fg")).toBe("#000000");
-    spy.mockRestore();
+    vi.unstubAllGlobals();
   });
 });
 

@@ -1,25 +1,25 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const invoke = vi.fn<(cmd: string, args?: unknown) => Promise<unknown>>(
-  (cmd: string, _args?: unknown) => {
-    if (cmd === "ai_key_list")
-      return Promise.resolve({
-        entries: [
-          {
-            alias: "default",
-            provider: "anthropic",
-            model: "claude-sonnet-4-6",
-            baseUrl: null,
-            maskedKey: "sk-…abcd",
-            createdAt: 0,
-          },
-        ],
-        defaultAlias: "default",
-      });
-    return Promise.resolve(undefined);
-  },
-);
+const defaultInvoke = (cmd: string, _args?: unknown): Promise<unknown> => {
+  if (cmd === "ai_key_list")
+    return Promise.resolve({
+      entries: [
+        {
+          alias: "default",
+          provider: "anthropic",
+          model: "claude-sonnet-4-6",
+          baseUrl: null,
+          maskedKey: "sk-…abcd",
+          createdAt: 0,
+        },
+      ],
+      defaultAlias: "default",
+    });
+  return Promise.resolve(undefined);
+};
+
+const invoke = vi.fn<(cmd: string, args?: unknown) => Promise<unknown>>(defaultInvoke);
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args?: unknown) => invoke(cmd, args),
 }));
@@ -68,7 +68,8 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  invoke.mockClear();
+  invoke.mockReset();
+  invoke.mockImplementation(defaultInvoke);
 });
 
 describe("SettingsAi", () => {

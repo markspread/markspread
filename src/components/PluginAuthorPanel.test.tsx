@@ -18,7 +18,9 @@ import { scaffoldPlugin } from "../lib/plugins/scaffold";
 import { PluginAuthorPanel } from "./PluginAuthorPanel";
 
 afterEach(cleanup);
-beforeEach(() => invoke.mockReset());
+beforeEach(() => {
+  invoke.mockReset();
+});
 
 function makeHost(): PluginHost {
   return new PluginHost({
